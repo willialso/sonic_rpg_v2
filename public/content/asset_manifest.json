@@ -1,0 +1,160 @@
+{
+  "version": "temp-v1",
+  "imageBasePath": "/assets/images",
+  "backgrounds": {
+    "landing_page": "backgrounds/bg_landing_base.webp",
+    "landing_page_sign": "backgrounds/landing_sign.webp",
+    "dean_office": "backgrounds/bg_dean_office.webp",
+    "quad": "backgrounds/bg_quad.webp",
+    "eggman_classroom": "backgrounds/bg_eggman_classroom.webp",
+    "frat": "backgrounds/bg_frat_house.webp",
+    "sorority": "backgrounds/bg_sorority_house.webp",
+    "tunnel": "backgrounds/bg_tunnel.webp",
+    "cafeteria": "backgrounds/bg_cafeteria.webp",
+    "dorms": "backgrounds/bg_dorm_hall.webp",
+    "dorm_room": "backgrounds/bg_dorm_room.webp",
+    "stadium": "backgrounds/bg_stadium_gate.webp",
+    "beer_pong_stage": "backgrounds/bg_frat_house.webp",
+    "strip_poker_room": "backgrounds/bg_sorority_house.webp"
+  },
+  "characters": {
+    "dean_cain": {
+      "default": "characters/char_dean_neutral_smirk.webp",
+      "states": {
+        "neutral": "characters/char_dean_neutral_smirk.webp",
+        "warning": "characters/char_dean_neutral_smirk.webp",
+        "angry": "characters/char_dean_neutral_smirk.webp"
+      }
+    },
+    "luigi": {
+      "default": "characters/char_luigi_threatening.webp",
+      "states": {
+        "neutral": "characters/char_luigi_threatening.webp",
+        "suspicious": "characters/char_luigi_threatening.webp",
+        "threat": "characters/char_luigi_threatening.webp"
+      }
+    },
+    "eggman": {
+      "default": "characters/char_eggman_smug.webp",
+      "states": {
+        "neutral": "characters/char_eggman_smug.webp",
+        "lecture": "characters/char_eggman_smug.webp",
+        "annoyed": "characters/char_eggman_smug.webp"
+      }
+    },
+    "earthworm_jim": {
+      "default": "characters/char_jim_helpful_chaos.webp",
+      "states": {
+        "neutral": "characters/char_jim_helpful_chaos.webp",
+        "panic": "characters/char_jim_helpful_chaos.webp",
+        "helpful": "characters/char_jim_helpful_chaos.webp"
+      }
+    },
+    "frat_boys": {
+      "default": "characters/char_frat_group_hype.webp",
+      "states": {
+        "neutral": "characters/char_frat_group_hype.webp",
+        "taunt": "characters/char_frat_group_taunt.webp",
+        "hostile": "characters/char_frat_group_taunt.webp"
+      },
+      "speakerOverrides": {
+        "Diesel": "characters/char_frat_group_hype.webp",
+        "Tank": "characters/char_frat_group_taunt.webp",
+        "Chad": "characters/char_frat_group_hype.webp",
+        "Brody": "characters/char_frat_group_taunt.webp"
+      }
+    },
+    "sorority_girls": {
+      "default": "characters/char_sorority_group_social.webp",
+      "states": {
+        "neutral": "characters/char_sorority_group_social.webp",
+        "annoyed": "characters/char_sorority_group_annoyed.webp",
+        "ban": "characters/char_sorority_group_annoyed.webp"
+      },
+      "speakerOverrides": {
+        "Apple": "characters/char_sorority_group_social.webp",
+        "Tiffany": "characters/char_sorority_group_annoyed.webp",
+        "Madison": "characters/char_sorority_group_social.webp",
+        "Brittany": "characters/char_sorority_group_annoyed.webp"
+      }
+    },
+    "thunderhead": {
+      "default": "characters/char_thunderhead_neutral_creep.webp",
+      "states": {
+        "neutral": "characters/char_thunderhead_neutral_creep.webp",
+        "trade": "characters/char_thunderhead_neutral_creep.webp",
+        "reject": "characters/char_thunderhead_neutral_creep.webp"
+      }
+    },
+    "sonic": {
+      "default": "characters/char_sonic_cool_neutral.webp",
+      "states": {
+        "neutral": "characters/char_sonic_cool_neutral.webp",
+        "taunt": "characters/char_sonic_cool_neutral.webp",
+        "drunk": "characters/char_sonic_cool_neutral.webp"
+      }
+    },
+    "tails": {
+      "default": "characters/char_tails_helpful.webp",
+      "states": {
+        "neutral": "characters/char_tails_helpful.webp",
+        "explain": "characters/char_tails_helpful.webp",
+        "urgent": "characters/char_tails_helpful.webp"
+      }
+    },
+    "knuckles": {
+      "default": "characters/char_knuckles_challenge.webp",
+      "states": {
+        "neutral": "characters/char_knuckles_challenge.webp",
+        "impressed": "characters/char_knuckles_challenge.webp",
+        "annoyed": "characters/char_knuckles_challenge.webp"
+      }
+    },
+    "expulsion_card": {
+      "default": "characters/char_car_expell.webp",
+      "states": {
+        "default": "characters/char_car_expell.webp",
+        "neutral": "characters/char_car_expell.webp"
+      }
+    }
+  },
+  "items": {
+    "Student ID": "characters/char_jim_helpful_chaos.webp",
+    "Dean Whiskey": "characters/char_jim_helpful_chaos.webp",
+    "Asswine": "characters/char_jim_helpful_chaos.webp",
+    "Lace Undies": "characters/char_jim_helpful_chaos.webp",
+    "Fake ID Wristband": "characters/char_jim_helpful_chaos.webp",
+    "Exam Keycard": "characters/char_jim_helpful_chaos.webp",
+    "Frat Bong": "characters/char_jim_helpful_chaos.webp",
+    "Glitter Flask": "characters/char_jim_helpful_chaos.webp",
+    "Sorority Mascara": "characters/char_jim_helpful_chaos.webp",
+    "Sorority Composite": "characters/char_jim_helpful_chaos.webp",
+    "Hairbrush": "characters/char_jim_helpful_chaos.webp",
+    "Sorority House Key": "characters/char_jim_helpful_chaos.webp",
+    "Warm Beer": "characters/char_jim_helpful_chaos.webp",
+    "Super Dean Beans": "characters/char_jim_helpful_chaos.webp",
+    "Mystery Meat": "characters/char_jim_helpful_chaos.webp",
+    "Expired Energy Shot": "characters/char_jim_helpful_chaos.webp",
+    "Turbo Sludge": "characters/char_jim_helpful_chaos.webp",
+    "Glitter Bomb Brew": "characters/char_jim_helpful_chaos.webp",
+    "Spare Socks": "characters/char_jim_helpful_chaos.webp",
+    "Extra Sock": "characters/char_jim_helpful_chaos.webp",
+    "Campus Map": "characters/char_jim_helpful_chaos.webp",
+    "RA Whistle": "characters/char_jim_helpful_chaos.webp",
+    "Ping Pong Paddle": "characters/char_jim_helpful_chaos.webp",
+    "Party Wristband": "characters/char_jim_helpful_chaos.webp",
+    "Lost Lanyard": "characters/char_jim_helpful_chaos.webp",
+    "Lecture Notes": "characters/char_jim_helpful_chaos.webp",
+    "Remote Battery": "characters/char_jim_helpful_chaos.webp",
+    "Pocket Flashlight": "characters/char_jim_helpful_chaos.webp",
+    "Rusty Token": "characters/char_jim_helpful_chaos.webp",
+    "Gate Stamp": "characters/char_jim_helpful_chaos.webp",
+    "Security Schedule": "characters/char_jim_helpful_chaos.webp",
+    "Laundry Detergent": "characters/char_jim_helpful_chaos.webp"
+  },
+  "fallbacks": {
+    "background": "backgrounds/bg_quad.webp",
+    "character": "characters/char_sonic_cool_neutral.webp",
+    "item": "characters/char_jim_helpful_chaos.webp"
+  }
+}

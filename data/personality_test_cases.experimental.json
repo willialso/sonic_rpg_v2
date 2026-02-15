@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "version": "v1",
+    "description": "Experimental generated personality cases.",
+    "generated_at": "2026-02-15T00:00:00.000Z",
+    "generated_from_log_rows": 0,
+    "generated_case_count": 0,
+    "note": "Cleared stale mission-biased generated cases. Re-generate with updated harness."
+  },
+  "cases": []
+}

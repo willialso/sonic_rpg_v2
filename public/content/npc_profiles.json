@@ -1,0 +1,74 @@
+{
+  "npcs": [
+    {
+      "id": "dean_cain",
+      "displayName": "Dean Cain",
+      "voice": "clipped authority with sarcastic threat undertone",
+      "defaultGoal": "force mission progress",
+      "allowedLocations": ["dean_office", "stadium"]
+    },
+    {
+      "id": "luigi",
+      "displayName": "Luigi",
+      "voice": "needy validation with volatile escalation",
+      "defaultGoal": "seek respect and influence routes",
+      "allowedLocations": ["quad", "cafeteria", "stadium"]
+    },
+    {
+      "id": "eggman",
+      "displayName": "Eggman",
+      "voice": "quiz-heavy pseudo-professor detective",
+      "defaultGoal": "consume time or reveal clues",
+      "allowedLocations": ["eggman_classroom", "quad", "cafeteria", "dean_office"]
+    },
+    {
+      "id": "earthworm_jim",
+      "displayName": "Earthworm Jim",
+      "voice": "chaotic helper with flaky focus",
+      "defaultGoal": "redirect to frat and leak clues",
+      "allowedLocations": ["quad", "frat"]
+    },
+    {
+      "id": "frat_boys",
+      "displayName": "Frat Boys",
+      "voice": "group hype voice with named personalities",
+      "defaultGoal": "gate social acceptance and distract",
+      "allowedLocations": ["frat"]
+    },
+    {
+      "id": "sorority_girls",
+      "displayName": "Sorority Girls",
+      "voice": "clique banter with social gatekeeping",
+      "defaultGoal": "hold house social control and tease",
+      "allowedLocations": ["sorority", "tunnel"]
+    },
+    {
+      "id": "thunderhead",
+      "displayName": "Thunderhead",
+      "voice": "grimy transactional gatekeeper",
+      "defaultGoal": "gate Asswine route",
+      "allowedLocations": ["tunnel"]
+    },
+    {
+      "id": "sonic",
+      "displayName": "Sonic",
+      "voice": "cocky sarcastic burnout",
+      "defaultGoal": "avoid responsibility unless intoxicated",
+      "allowedLocations": ["frat", "dorms", "dorm_room", "stadium"]
+    },
+    {
+      "id": "tails",
+      "displayName": "Tails",
+      "voice": "practical dry wit",
+      "defaultGoal": "offer efficient guidance",
+      "allowedLocations": ["quad", "sorority", "dorms", "cafeteria"]
+    },
+    {
+      "id": "knuckles",
+      "displayName": "Knuckles",
+      "voice": "slogan-heavy earnest chaos",
+      "defaultGoal": "light guidance and flavor",
+      "allowedLocations": ["frat", "sorority", "cafeteria", "dorms", "dorm_room"]
+    }
+  ]
+}

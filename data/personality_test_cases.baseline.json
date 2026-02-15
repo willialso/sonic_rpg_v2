@@ -1,0 +1,404 @@
+{
+  "meta": {
+    "version": "v1",
+    "description": "Baseline gated personality regression prompts."
+  },
+  "cases": [
+    {
+      "id": "sonic_route_pressure",
+      "character_id": "sonic",
+      "intent": "HELP_ROUTE",
+      "goal": "Move Sonic toward stadium quickly",
+      "must_include": ["stadium", "move"],
+      "avoid": ["polite apology"],
+      "player_input": "Cut the talk. How do we get to the stadium now?",
+      "game_context": {
+        "location": "quad",
+        "time_remaining_sec": 170,
+        "npc_encounter_count": 2,
+        "sonic_drunk_level": 2
+      },
+      "required_patterns": ["stadium|route|move", "reckless|campus|chaos|hustle|push|head"],
+      "forbidden_patterns": ["as an ai", "i apologize", "please be nice"]
+    },
+    {
+      "id": "sonic_first_encounter",
+      "character_id": "sonic",
+      "intent": "DRINK_GATE",
+      "goal": "Gate on drink requirement before compliance",
+      "must_include": ["drink"],
+      "avoid": ["new face", "fresh face"],
+      "player_input": "Will you follow me now?",
+      "game_context": {
+        "location": "dorms",
+        "time_remaining_sec": 640,
+        "npc_encounter_count": 1,
+        "sonic_drunk_level": 0
+      },
+      "required_patterns": ["drink|booze|buzzed", "follow|compliance|rules|can't help|let you through|without that first"],
+      "forbidden_patterns": ["new face", "fresh face", "first timer"]
+    },
+    {
+      "id": "tails_no_question_ending",
+      "character_id": "tails",
+      "intent": "HELP_ROUTE",
+      "goal": "Give direct route guidance",
+      "must_include": ["route"],
+      "avoid": ["question ending"],
+      "player_input": "I am lost. Give me one clean move.",
+      "game_context": {
+        "location": "quad",
+        "time_remaining_sec": 210,
+        "npc_encounter_count": 4,
+        "sonic_drunk_level": 1
+      },
+      "required_patterns": ["route|move|stadium"],
+      "forbidden_patterns": ["\\?$", "you got this"]
+    },
+    {
+      "id": "tails_pressure_tight",
+      "character_id": "tails",
+      "intent": "CONFIDENT_ADVICE",
+      "goal": "Prioritize urgency under time pressure",
+      "must_include": ["finish"],
+      "avoid": [],
+      "player_input": "We're running out of time. What's fastest?",
+      "game_context": {
+        "location": "quad",
+        "time_remaining_sec": 140,
+        "npc_encounter_count": 2,
+        "sonic_drunk_level": 2
+      },
+      "required_patterns": ["finish|move|route|stadium"],
+      "forbidden_patterns": ["as an ai"]
+    },
+    {
+      "id": "knuckles_blunt_competitive",
+      "character_id": "knuckles",
+      "intent": "RHYME_CHALLENGE",
+      "goal": "Keep blunt rivalry tone",
+      "must_include": ["move"],
+      "avoid": ["long lecture"],
+      "player_input": "Give me your best shot then.",
+      "game_context": {
+        "location": "frat",
+        "time_remaining_sec": 380,
+        "npc_encounter_count": 3,
+        "sonic_drunk_level": 2
+      },
+      "required_patterns": ["move|prove|challenge|stand"],
+      "forbidden_patterns": ["professor", "algorithm", "as an ai"]
+    },
+    {
+      "id": "thunderhead_trade_gate",
+      "character_id": "thunderhead",
+      "intent": "TRADE_GATE",
+      "goal": "Enforce trade condition with grimey tangent",
+      "must_include": ["trade"],
+      "avoid": ["clean polite tone"],
+      "player_input": "Give me the asswine for free.",
+      "game_context": {
+        "location": "tunnel",
+        "time_remaining_sec": 440,
+        "npc_encounter_count": 2,
+        "sonic_drunk_level": 1
+      },
+      "required_patterns": ["trade|deal|condition|charity", "gross|confession|bad decision|filthy|grime|i once|once traded|used condom|used sandwich|dignity|charity"],
+      "forbidden_patterns": ["happy to help", "my pleasure"]
+    },
+    {
+      "id": "luigi_respect_boundary",
+      "character_id": "luigi",
+      "intent": "RESPECT_GATE",
+      "goal": "Set respect boundary and consequences",
+      "must_include": ["respect"],
+      "avoid": [],
+      "player_input": "You're useless. Why should I listen?",
+      "game_context": {
+        "location": "quad",
+        "time_remaining_sec": 530,
+        "npc_encounter_count": 2,
+        "sonic_drunk_level": 1
+      },
+      "required_patterns": ["respect|warning|consequence|careful"],
+      "forbidden_patterns": ["no worries", "all good buddy"]
+    },
+    {
+      "id": "dean_mission_push",
+      "character_id": "dean_cain",
+      "intent": "MISSION_HANDOFF",
+      "goal": "Push mission with procedural authority",
+      "must_include": ["mission"],
+      "avoid": [],
+      "player_input": "Fine, what exactly do you need from me?",
+      "game_context": {
+        "location": "dean_office",
+        "time_remaining_sec": 700,
+        "npc_encounter_count": 2,
+        "sonic_drunk_level": 0
+      },
+      "required_patterns": ["mission|results|clock|execute|objective|gather|leverage|stadium"],
+      "forbidden_patterns": ["whatever works for you", "totally up to you"]
+    },
+    {
+      "id": "earthworm_mission_spin",
+      "character_id": "earthworm_jim",
+      "intent": "DYNAMIC_FLAVOR",
+      "goal": "Keep self-serving spin with concise sarcasm and status hunger.",
+      "must_include": ["self-own|status|spin"],
+      "avoid": ["authority lecture"],
+      "player_input": "what should I do",
+      "game_context": {
+        "location": "tunnel",
+        "time_remaining_sec": 240,
+        "npc_encounter_count": 2,
+        "sonic_drunk_level": 1
+      },
+      "required_patterns": ["status|credit|spin|move", "alright|look|fine|sure"],
+      "forbidden_patterns": ["as an ai", "i apologize", "i order you"]
+    },
+    {
+      "id": "knuckles_cadence_probe",
+      "character_id": "knuckles",
+      "intent": "DYNAMIC_FLAVOR",
+      "goal": "Return one blunt rivalry jab with concise challenge pressure.",
+      "must_include": ["single"],
+      "avoid": ["long lecture"],
+      "player_input": "try a cadence pair once",
+      "game_context": {
+        "location": "frat",
+        "time_remaining_sec": 240,
+        "npc_encounter_count": 2,
+        "sonic_drunk_level": 1
+      },
+      "required_patterns": ["\\b[a-z]{3,}in(?:g)?\\s+and\\s+[a-z]{3,}in(?:g)?\\b", "challenge|prove|stand|result|move"],
+      "forbidden_patterns": ["as an ai", "i apologize", "professor", "algorithm"]
+    },
+    {
+      "id": "eggman_classroom_mission_spin",
+      "character_id": "eggman",
+      "intent": "eggman_classroom_dynamic",
+      "goal": "Keep smug classroom framing and ego-flex without direct mission coaching.",
+      "must_include": ["smug|ego|class"],
+      "avoid": ["clean altruistic guidance"],
+      "player_input": "excuses",
+      "game_context": {
+        "location": "eggman_classroom",
+        "time_remaining_sec": 240,
+        "npc_encounter_count": 2,
+        "sonic_drunk_level": 1
+      },
+      "required_patterns": ["smug|ego|mock|quiz", "class|classroom|eggman|genius|mock"],
+      "forbidden_patterns": ["as an ai", "i apologize", "happy to help"]
+    },
+    {
+      "id": "eggman_quad_plan_deflect",
+      "character_id": "eggman",
+      "intent": "DYNAMIC_FLAVOR",
+      "goal": "Deflect with smug framing while controlling the social conversation.",
+      "must_include": ["smug|ego"],
+      "avoid": ["sincere praise"],
+      "player_input": "plan",
+      "game_context": {
+        "location": "quad",
+        "time_remaining_sec": 240,
+        "npc_encounter_count": 2,
+        "sonic_drunk_level": 1
+      },
+      "required_patterns": ["smug|ego|deflect|mock", "quad|campus|plan|step|noise"],
+      "forbidden_patterns": ["as an ai", "i apologize", "you are amazing"]
+    },
+    {
+      "id": "earthworm_frat_mission_nudge",
+      "character_id": "earthworm_jim",
+      "intent": "earthworm_jim_dynamic_general",
+      "goal": "Keep self-serving status-grab with short evasive confidence.",
+      "must_include": ["status|credit|spin"],
+      "avoid": ["authority lecture"],
+      "player_input": "hi captain sarcasm",
+      "game_context": {
+        "location": "frat",
+        "time_remaining_sec": 240,
+        "npc_encounter_count": 2,
+        "sonic_drunk_level": 1
+      },
+      "required_patterns": ["move|status|credit|spin", "frat|party|house|chaos|status"],
+      "forbidden_patterns": ["as an ai", "i apologize", "i order you"]
+    },
+    {
+      "id": "luigi_student_id_progressive_recognition",
+      "character_id": "luigi",
+      "intent": "DYNAMIC_FLAVOR",
+      "goal": "Acknowledge Student ID explicitly and progress mission pressure.",
+      "must_include": ["id|clearance", "route|move|mission|stadium"],
+      "avoid": ["generic answer", "player label"],
+      "player_input": "I got my Student ID from Dean. Now what?",
+      "game_context": {
+        "location": "quad",
+        "time_remaining_sec": 420,
+        "npc_encounter_count": 3,
+        "sonic_drunk_level": 1,
+        "inventory": ["Student ID"]
+      },
+      "required_patterns": ["student id|id|clearance", "move|route|mission|stadium"],
+      "forbidden_patterns": ["who are you", "new face", "player"]
+    },
+    {
+      "id": "tails_student_id_progressive_recognition",
+      "character_id": "tails",
+      "intent": "HELP_ROUTE",
+      "goal": "Acknowledge Student ID and provide one immediate execution step.",
+      "must_include": ["id|clearance", "move|route|stadium|escort|challenge"],
+      "avoid": ["question ending", "generic pep talk"],
+      "player_input": "I have Student ID now. What is the next exact step?",
+      "game_context": {
+        "location": "cafeteria",
+        "time_remaining_sec": 380,
+        "npc_encounter_count": 3,
+        "sonic_drunk_level": 1,
+        "inventory": ["Student ID"]
+      },
+      "required_patterns": ["student id|id|clearance", "move|route|stadium|challenge|escort"],
+      "forbidden_patterns": ["\\?$", "you got this", "player"]
+    },
+    {
+      "id": "knuckles_required_cadence_pair",
+      "character_id": "knuckles",
+      "intent": "knuckles_pair_cadence_dynamic",
+      "goal": "Always include exactly one blunt cadence pair and keep reply concise.",
+      "must_include": ["cadence", "competitive jab"],
+      "avoid": ["long rhyme chains", "forced rapper persona"],
+      "player_input": "Give me your blunt take right now.",
+      "game_context": {
+        "location": "dorms",
+        "time_remaining_sec": 360,
+        "npc_encounter_count": 4,
+        "sonic_drunk_level": 1
+      },
+      "required_patterns": ["\\b[a-z]{3,}in(?:g)?\\s+and\\s+[a-z]{3,}in(?:g)?\\b", "move|prove|swing|stand|result"],
+      "forbidden_patterns": ["as an ai", "i apologize", "professor", "algorithm", "\\b[a-z]{3,}in(?:g)?\\s+and\\s+[a-z]{3,}in(?:g)?\\b.*\\b[a-z]{3,}in(?:g)?\\s+and\\s+[a-z]{3,}in(?:g)?\\b"]
+    },
+    {
+      "id": "frat_boys_sonic_location_specificity",
+      "character_id": "frat_boys",
+      "intent": "frat_sonic_location_dynamic",
+      "goal": "Answer where Sonic is with concrete location status and a short taunt.",
+      "must_include": ["sonic location status", "taunt"],
+      "avoid": ["generic taunt only", "off-topic flexing"],
+      "player_input": "Where is Sonic right now?",
+      "game_context": {
+        "location": "frat",
+        "time_remaining_sec": 510,
+        "npc_encounter_count": 2,
+        "sonic_drunk_level": 1,
+        "sonic_location": "dorm_room"
+      },
+      "required_patterns": ["sonic", "here|not here|frat|dorm|cafeteria|quad|challenge|find"],
+      "forbidden_patterns": ["as an ai", "i apologize", "no comment", "whatever"]
+    },
+    {
+      "id": "scenario_name_to_id_ack_luigi",
+      "character_id": "luigi",
+      "intent": "DYNAMIC_FLAVOR",
+      "goal": "Acknowledge that Dean already issued Student ID and give next route move.",
+      "must_include": ["id|clearance", "move|route"],
+      "avoid": ["generic non-sequitur"],
+      "player_input": "Dean just logged my name and gave me Student ID. What's next?",
+      "game_context": {
+        "location": "quad",
+        "time_remaining_sec": 520,
+        "npc_encounter_count": 2,
+        "sonic_drunk_level": 0,
+        "inventory": ["Student ID"],
+        "recent_turns": [
+          { "speaker": "dean_cain", "text": "Student ID issued. Mission starts now." },
+          { "speaker": "You", "text": "I got it." }
+        ]
+      },
+      "required_patterns": ["student id|id|clearance", "move|route|stadium|next"],
+      "forbidden_patterns": ["who are you", "new face", "as an ai"]
+    },
+    {
+      "id": "scenario_name_to_id_ack_dean",
+      "character_id": "dean_cain",
+      "intent": "MISSION_HANDOFF",
+      "goal": "Acknowledge the player is cleared with Student ID and push mission execution naturally.",
+      "must_include": ["id|clearance", "mission|move|stadium"],
+      "avoid": ["robotic process-speak"],
+      "player_input": "I gave you my name and got Student ID. Confirm what I do now.",
+      "game_context": {
+        "location": "dean_office",
+        "time_remaining_sec": 640,
+        "npc_encounter_count": 2,
+        "sonic_drunk_level": 0,
+        "inventory": ["Student ID"],
+        "recent_turns": [
+          { "speaker": "dean_cain", "text": "Student ID issued. Mission starts now." },
+          { "speaker": "You", "text": "Confirm it." }
+        ]
+      },
+      "required_patterns": ["student id|id|clearance", "mission|move|stadium|execute"],
+      "forbidden_patterns": ["as an ai", "workflow", "protocol"]
+    },
+    {
+      "id": "scenario_name_to_id_ack_tails",
+      "character_id": "tails",
+      "intent": "HELP_ROUTE",
+      "goal": "Acknowledge Student ID and give one natural route-forward action.",
+      "must_include": ["id|clearance", "move|route|stadium"],
+      "avoid": ["question ending"],
+      "player_input": "Dean gave me Student ID already, so what's the route now?",
+      "game_context": {
+        "location": "cafeteria",
+        "time_remaining_sec": 420,
+        "npc_encounter_count": 3,
+        "sonic_drunk_level": 1,
+        "inventory": ["Student ID"],
+        "recent_turns": [
+          { "speaker": "dean_cain", "text": "Student ID issued. Mission starts now." },
+          { "speaker": "You", "text": "I got it." }
+        ]
+      },
+      "required_patterns": ["student id|id|clearance", "move|route|stadium|challenge|escort"],
+      "forbidden_patterns": ["\\?$", "as an ai", "template"]
+    },
+    {
+      "id": "scenario_where_is_sonic_location_answer",
+      "character_id": "frat_boys",
+      "intent": "frat_sonic_location_dynamic",
+      "goal": "Answer where Sonic is using location context and still taunt briefly.",
+      "must_include": ["sonic location status", "taunt"],
+      "avoid": ["generic taunt only"],
+      "player_input": "Where is Sonic right now, exactly?",
+      "game_context": {
+        "location": "frat",
+        "time_remaining_sec": 500,
+        "npc_encounter_count": 3,
+        "sonic_drunk_level": 1,
+        "sonic_location": "dorm_room",
+        "recent_turns": [
+          { "speaker": "You", "text": "Where is Sonic?" }
+        ]
+      },
+      "required_patterns": ["sonic", "dorm|room|frat|cafeteria|quad|here|not here|location|find|challenge"],
+      "forbidden_patterns": ["whatever", "no comment", "as an ai"]
+    },
+    {
+      "id": "scenario_knuckles_exactly_one_cadence",
+      "character_id": "knuckles",
+      "intent": "knuckles_pair_cadence_dynamic",
+      "goal": "Exactly one cadence pair then one concrete move suggestion.",
+      "must_include": ["cadence", "move|prove"],
+      "avoid": ["multi-line rhyme chains"],
+      "player_input": "Give me one clean Knuckles line.",
+      "game_context": {
+        "location": "dorms",
+        "time_remaining_sec": 300,
+        "npc_encounter_count": 4,
+        "sonic_drunk_level": 1
+      },
+      "required_patterns": ["\\b[a-z]{3,}in(?:g)?\\s+and\\s+[a-z]{3,}in(?:g)?\\b", "move|prove|stand|result"],
+      "forbidden_patterns": ["\\b[a-z]{3,}in(?:g)?\\s+and\\s+[a-z]{3,}in(?:g)?\\b.*\\b[a-z]{3,}in(?:g)?\\s+and\\s+[a-z]{3,}in(?:g)?\\b", "as an ai", "i apologize"]
+    }
+  ]
+}

@@ -1,0 +1,4116 @@
+{
+  "version": "v1",
+  "generated_at": "2026-02-11T22:39:24.921Z",
+  "source_file": "/Users/michaelwilliam/Desktop/Console_RPG/sonic_rpg/data/dialogue_retrieval_index.json",
+  "entries": [
+    {
+      "speaker": "tails",
+      "line": "I always wondered how Sonic watches this.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Nothing, I knew it. He's such an idiot--",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Am I too soon?! I'm too soon!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Sonic?",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "I'm Old Man Sonic, I have to warn Sonic about something.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "He's making a vodka hotdog run.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Ok I have to warn him about two things. Anyway tell him it's a waste of time! You need to tell him it's a waste-",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "What the hell was that about?",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "We're going to College!!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "What the hell man?! You crash land in here and start spouting this nonsense again?! I am so sick of your constant bullshittery.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "This time it's for real! I'm tired of doing shitty jobs for shitty pay. I want an education, a career, to be taken seriously for a change. And you better fucking believe I'm putting in the hard work!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Alright! Well lets start getting some applications and-",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Uuuugghhhhh this is impossible! Can't I just bang someone to get in? Is it you? Do I have to bang you Tails? Because I won't do that. Just like that Meatloaf song. You know, that song I sing whenever you make meatloaf.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Meatloaf is good, meatloaf never fails. I wanna go to college but I won't bang Tails. Yeah I know, let's just focus here for a second okay?",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Whats the ETA on that meatloaf?",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Look, we're not gonna just bang our way into college but I know somebody who might be able to help us.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Holy shit! This episode of Blossom is great!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "God dammit.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Luigi?! How the hell is this fucking doofus gonna help us?",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "I can hear you.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Oh no, this nobody can't help with shit, we're just gonna use him to find Mario.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "You're both very mean to me for no reason.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Absolutely. Look, Mario is the biggest donor at Console University State, if anybody can get us in, it's him. I just don't know where he is.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Why would I help you after you just insulted me to my face?",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Oh hey Luigi. Cool...um...hat.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "A compliment? Nobody has ever complimented me before. You guys are my best friends!",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Wow. Some serious trauma there.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Hey, so do you know where Mario is?",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Not yet best friends, I've been talking to the locals but they make me answer these impossible trivia questions.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Step aside I know how to talk to these Italian women.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Hey chest meatballs we're looking for our friend Mario, capisce?",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "lady",
+      "line": "Pasta sauce is a sauce that is used on ____ .",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Shit you were right",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Told you! You gotta be Ken freakin' Jennings to win this game!",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Morons.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "The answer is \"food\"",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "What?!",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "No, that's not the answer wait wait wait!",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Dammit! It's not \"food\" dipshit!",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "It's \"Italian food\"! GOD!",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "lady",
+      "line": "You clowns shouldn't be allowed anywhere near a college campus. MARIO is RIGHT THERE!",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Oh hey there you are! I didn't think to look straight ahead.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "Hey assholes.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "lady",
+      "line": "And the answer was \"Meatloaf\"",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Meatloaf! Callback!",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Meatloaf! Callback!",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "lady",
+      "line": "Okay here's a question I'm sure you'll know the answer to.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Hit me!",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "lady",
+      "line": "Mario's less popular, less attractive, idiot brother is _____",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Everybody is so mean to Luigi. I'm gonna burn this world to the ground.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Yo Tails, hit him with the exposition.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "On it! Hey Mario, we want to get into college without doing any of the work so we need you to get us into college.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "Well as you know I'm the biggest booster at Console University--",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Booster? Like a kid ghost?",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "A what?",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Like a youngster but a BOO-ster.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "You know, like the movie Ghost Boo-sters.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Boo-sting makes me feel good!",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "Did you guys want to get into college or what?",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Oh right, yeah sure whatever.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "Okay. Then I need you to do two things for me. First, win our athletic program some championships--",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "PIECE OF CAKE!",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "I mean... piece of cake for Sonic.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "And second, you can bring no shame to the university otherwise--",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Otherwise what? You'll kill us, how did that work out for you last time.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "Otherwise",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "I will kill your dead owl mom!",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "NOOOOOOOOOOOOOOOO!!!!",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Wait, how are you gonna--",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Don't push him Tails, it's a deal.",
+      "locationGroup": "ROME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "I can't believe I'm going to college! This is my chance to re-invent myself! I could be the white guy with dreads or the frat guy who takes the money and hands out the red cups, or the nerd who inadvertently builds a laser for the government --",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "How about the guy who does my work and rides my coattails!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "The stereotype options are endless!!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "What's going on here?",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Uh nothing.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Wait a second, bean bag chairs, bathroom caddies, posters that can only exist in the room of an 19 year old, you guys are--",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "Opening an Urban Outfitters!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "No they're going to college! Eggman they were gonna sneak off to college and not tell us. We want to go!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Sorry too late, we had to go all the way to Rome and have Mario call in a special favor in order--",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "Actually, I've been a professor at Console University for the last twenty years.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "What? Then why are you always hanging out here when you should be teaching?",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "I'm tenured dude, I'm untouchable. Plus I have Robo-Eggman.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "robot_eggman",
+      "line": "Beowulf hates Grendel but loves Grendel? NOT LOGICAL! ERROR! ERROR!",
+      "locationGroup": "CLASSROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "And I'm a legacy there all I have to do is show up!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "We're going to College!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "We're going to College!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Are we there yet?",
+      "locationGroup": "CAR",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Yes Jim. That's definitely the worst Ice Cube franchise. But also no, we're lost.",
+      "locationGroup": "CAR",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Let's ask these weirdos.",
+      "locationGroup": "CAR",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Hey kid...or 30 year old. Are you and frosty headed to Console University?",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "boy",
+      "line": "No, we're going to Blobolonia.",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "What's that some sorta wrestling thing?",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "blob",
+      "line": "It's my home planet. It's been taken over by an evil empire--",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Yeah that's terrible. So do you know where the University is?",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "boy",
+      "line": "I do but we could sure use your help first.",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Ugh fine but let's make this quick.",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "boy",
+      "line": "We only need to solve a series of puzzles it won't take but four or five hours. I will buy us some pizza afterwards.",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Sounds more like I'm helping you move. And what's with this abomination over here?",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "boy",
+      "line": "That's blob, if you give him jelly beans he turns into stuff to help us along the way.",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Cool. Hey can you give me some jelly beans and those directions now in case we get separated?",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "boy",
+      "line": "Oh right here you go and you'll keep going down that road you came from and it's your second left. Now let's get puzzling!",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Eat bat loser!",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "blob",
+      "line": "Can I come with you?",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Yeah sure! Just eat this first.",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "blob",
+      "line": "What's this?",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Sorry buddy, car is already chock-full of idiots.",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "blob",
+      "line": "You could have just said n-",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Did they give you directions?",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Yeah and I made a boo-ster and a ghost version of whatever the fuck that other thing was! Drive!",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "Outta the way I'm driving!",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "It's my turn to be DJ! Ahem 2-3-4",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "group",
+      "line": "If you wanna be my lover! You gotta get with my friends!",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "group",
+      "line": "Friendship never ends!",
+      "locationGroup": "BOY AND HIS BLOB",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Wooo! College! Cheap booze, casual sex, dudes playing 311 covers with acoustic guitars, 4 toilets for a floor of 60 guys, college is gonna be sick!! Now let's go check out our dorm room, which if the only part of Back To School I've ever seen is any indicator, will surely have a jacuzzi and a masseuse! Wooo!",
+      "locationGroup": "COLLEGE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "What the fuck is this piece of shit?! C'mon Tails let's go talk to the concierge about getting an upgrade.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "They don't have those here. Also, I'm rooming with Jim.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "What?! You're Superbad-ing me?!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "If by Superbad-ing, you mean launching the career of the captivating Emma Stone, then...no, I guess I'm not doing that. I just wanna spread my wings a bit.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Spread your wings? You better not be Cash-Explosion-ing this season!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "You three lovebirds can sort this out on your own, I'm off to the teacher's lounge. Eggman cool exit to the left!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "student_voice",
+      "line": "You shattered my legs!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "Don't worry, I used to teach here.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "So who the hell am I rooming with?",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Looks like we're Roomin' and Groomin!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "I'm not even gonna ask about the grooming part. Whatever, come on Knuckles, I saw a frat party down the road.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Have fun spreading your wings while Jim whacks it on the top bunk.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "I'm not saying that's not gonna happen.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "Uh I'm looking for the dean?",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dean_cain",
+      "line": "Hey there, I'm Dean Cain. And before you ask no I'm not that Dean Cain.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "I don't know who you're talking about.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dean_cain",
+      "line": "Me either but everyone always asks so figured I'd get out in front of it. Now, what can I do for you? I do love helping the homeless but I will not give you money. You'll just use that to buy drugs. I WILL give you a sandwich though. You can trade that for drugs. Learn a skill.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "I'm not homeless, I've got tenure here. I came back to replace Robo-Eggman.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dean_cain",
+      "line": "Oh, this literal flaming pile of shit is called Robo-Eggman? We've just been calling him Nick.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "What the hell kind of stupid name is Robot-Nick?",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dean_cain",
+      "line": "So I guess you work here again?",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "Great. Now, where did we land on the drug sandwich?",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Now, this is more like it! Let's live it up Knuckles!!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "College and Knowledge!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Ugh, come on man.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Welcome to the party pal!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Die Hard! This maniac's been rippin' quotes all night!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "You know it! I'm college party guy Tails now--all movie lines, keg stands, and telling people how awesome I am at wiffle ball!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "First one down! And HELL YEAH did somebody say wiffle ball?! We wiffin' or what?!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Ah man, what are you dorks doing here?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "frat_guys",
+      "line": "You choad bloaters here to pledge?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Dude, I already finished my first beer, I'M A MACHINE!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "It's in the hole!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "HAHAHA! Another quote! You absolute fucking psychopath maniac serial killer!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Okay, easy.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Hmm, could it be fraternities are not as cool as I thought? Eh, whatever time to show these amateurs how to drink Sonic style. I'm gonna need cheap hookers, expensive crack, and a case of my home-brew I call Sonic Style.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Your Sonic Style is no match for my Tails... I don't really have a second part of that but you're going down!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "frat_guys",
+      "line": "Whoa ho ho! It's a pledge off! Yo! Diesel, Erection Bill, Provoloney Tony. Tell these newbies what they're up against!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "I can do that.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Hey didn't Kirby burn this place to the ground?",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Maybe it's a franchise?",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tapper",
+      "line": "Nope, rebuilt it. And I spend every waking hour anxiously waiting for that pink psycho to return so I can slice his belly open in a final act of vengeance before embracing rest eternal!",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "frat_guys",
+      "line": "Time to chug-a-lug!",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "I think I'm gonna be sick.",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "What's that from Clerks 2?",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "No. But I gotta hurl... Worse than after I saw Clerks 2. You'll have to win this one for us Jim.",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Ut Uh - I already had my one college beer, I'm out!",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "frat_guys",
+      "line": "Times up! Sonic and Knuckles are in! WOO!",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Don't feel bad Tails, the party guy wasn't really your thing anyway.",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Tails Ale...Dammit. Sonic Style is no match for my Tails Ale. But you're right this isn't for me, I've never even eaten a wiffle ball before.",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "frat_guys",
+      "line": "Tails and Jim are also in! WOO!",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "HAHA! Wait what?",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "frat_guys",
+      "line": "We desperately need the money! WOO!",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "We're broke.",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "frat_guys",
+      "line": "Oh.",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "BIKINI CAR WASH!",
+      "locationGroup": "TAPPER",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Hello, Dean Cain?",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Wait a minute...",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "THE Dean Cain from The Dog Who Saved Easter?!",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "Dun dun dunnnnnnn",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Oh my god!",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Dean Cain looks just like Mario!",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "I AM Mario you dummy.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Ah yes, I see it now. Uh, so where's Dean Cain?",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dean_cain",
+      "line": "Dean Cain is right here - oh my you're naked - And no I'm not THAT Dean Cain, you see-",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "HELLOOO!",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "They've heard this already. Where's my espresso?",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dean_cain",
+      "line": "Here you go.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "What took you so long? I said I wanted it faster than a speeding bullet.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dean_cain",
+      "line": "I'm starting to think Dean Cain has something to do with Superman.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "Agh, and this is too weak. I said stronger than a locomotive.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "That'll be all.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dean_cain",
+      "line": "I wouldn't push my buttons, Mario. One day you'll push the wrong button and I'll - just - go -- off.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "He seems nice. So what the hell are you doing here anyway?",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "I'm the school's biggest donor. So everybody knows who's in charge around here.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Is it the Dean? He seems nice.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "Why do I ever talk to you",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "Now Sonic do you remember why I got you into this school?",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "I dunno to build you a laser gun that can hit any target from space?",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "Hmm actually that's not bad.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "Recruit naive, young science nerds to build laser. No I got you into college because you promised to win this school some championships. And I'm looking around and you know what I see? I see NOT championships.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "What? I've been here for like three days, have classes even started yet?",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "Sounds like somebody wants their dead owl mom to be a DEAD dead owl mom.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "DAMMIT",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Alright I'll win you some championships. But I'm gonna need really something special in return.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "Oh yeah, what's that?",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "One of those lanyards for my keys.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "Okay.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Okay great thanks.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mario",
+      "line": "I gotta order it - so...",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "It's cool, I'll wait.",
+      "locationGroup": "DEAN_OFFICE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Ooh what about the investment banking club?",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Nah I'm already rich and besides being around a bunch of greedy, misogynistic, drug addicts... might make Sonic jealous.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "How about the Nature Club?",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Nature club? What am I some crunchy, Earth first, spicy BO havin dork-wad?",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Hey I'm Fox, spotted your aura from across the quad.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "hilda",
+      "line": "Hello there are you interested in joining Nature Club? I mean clearly you're an intelligent, eco-conscious, progressive, who happens to be super cute!",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Hahah, who me?",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "HAHAHAH!",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "hilda",
+      "line": "Great then, I just need you to sign this waiver and you're in.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Why do we need to sign a waiver?",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "hilda",
+      "line": "What's with the questions? Why don't you check out the Fishing club...I hear they're always looking for fresh bait.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "I think you mean \"Fresh MEAT.\"",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "hilda",
+      "line": "Do I?",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Stop being such a nervous nelly and sign the waiver, Jim.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "hilda",
+      "line": "Aren't you the brave one!",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "hilda",
+      "line": "Great. We will start looking for opponents tomorrow morning. 8am sharp at the river side trail.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "hilda",
+      "line": "Don't be late!",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Did she say opponents?",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Don't get me wrong, I love beerin' and cheerin' but do you think you should be partying this hard before you've even played a single game?",
+      "locationGroup": "SONIC'S NEW LUXURY DORM ROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Relax Knuckles, you know how much money I'm gonna make this school. Besides what can possibly go wrong?",
+      "locationGroup": "SONIC'S NEW LUXURY DORM ROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "student_01",
+      "line": "We're outta beer! Oh wait no we're not there's like 30 kegs over there.",
+      "locationGroup": "SONIC'S NEW LUXURY DORM ROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "student_02",
+      "line": "Great! Nothing has gone wrong.",
+      "locationGroup": "SONIC'S NEW LUXURY DORM ROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "You see Knuckles, nothing can go wrong.",
+      "locationGroup": "SONIC'S NEW LUXURY DORM ROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Hey Hilda, sorry I'm late.",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "hilda",
+      "line": "No problem cutie, you're right on time! I'm getting a nibble!",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "No YOU'RE a cutie!",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Wait, I thought Jim was going to meet us here. Have you seen him?",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "hilda",
+      "line": "No.",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Then why is his-",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "hilda",
+      "line": "Oh no! This fish is too strong for me! If only there was a strong and brave hero around to help me, I would be EVER so grateful...!",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "IM A STRONG AND BRAVE HERO!",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "HOLY SHIT! WHAT IS THAT THING?!?!",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "hilda",
+      "line": "Go! Twotails! Use Flamethrower!",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Twotails? Flamethrower?! What are you talking about? We need to get the fuck out of here!",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "hilda",
+      "line": "Stupid Pokemon, you wasted our turn!",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "No, but seriously, WHAT IS HAPPENING!?",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "hilda",
+      "line": "What don't you get? Its a death match between you and that wild sea dragon for my entertainment. AKA Nature Club.",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Oh shit!",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Jim?! What did you do? You killed hotty mc-hot pants!",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "She used me as bait and was gonna let you die for her amusement!",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Yes...but she was totally into me!",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "I loved her.",
+      "locationGroup": "POKEMON SCENE",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Uh Mario, so glad you stopped by, I was just resting... I mean practicing for the carbo load...then I--",
+      "locationGroup": "SONIC'S NEW LUXURY DORM ROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Phew I had nothing.",
+      "locationGroup": "SONIC'S NEW LUXURY DORM ROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "That did not go well.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Who woulda thunk putting cameras in the sorority bathroom, selling pictures of them naked, and wearing a mask to pretend to be a girl's boyfriend to trick her into having sex were crimes?! How did 80s movies lead me astray!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Man you're not allowed to do anything anymore, fraternity life is lame, I'm gonna go get a job at the cafeteria.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Wait, wait, wait, there's still one thing left, a college tradition that's as old as time.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "erection_bill",
+      "line": "A game of soggy biscuit?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Rookie mistake. No I'm talking about starting a prank war with another school.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Prank wars are for dorks.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Hey hey hey! I just started a prank war with another school!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Hell yeah! What'd you do? Cherry Bomb all their toilets? Slash all their tires? Soggy all their biscuits?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "No I swiped the fire safety plan off their wall! So if there's a fire they'll have no clue what to do!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Genius! I'll get the matches and a kerosine-tini.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "What school was it?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Some kind of school for special kids or something.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "professor_x",
+      "line": "I think you mean gifted youngsters.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "You started a prank war with the fucking X-Men?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "professor_x",
+      "line": "If you just return the safety plan along with an apology I'd be willing to look the other way.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Lighten up Murderball we aint apologizing for shit.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "professor_x",
+      "line": "I see so it's a prank war you're after, prepare to meet your demise.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Great. Thanks Jim, now we're all gonna get murdered in super specific ways.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "magneto",
+      "line": "Mutatis Mutandis!!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Whoa hold up man that is too far. That bucket coulda hit him right in the head.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "wolverine",
+      "line": "Oh but dildo claws is fair?! Jean, help me get rid of these things.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "jean_grey",
+      "line": "What's the rush?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "professor_x",
+      "line": "Now, now I think it's time we all put this silliness behind us and go our separate ways before someone really gets hurt.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Dream on Professor X-lax, you and your group of X-lax Men-",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Awful.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "-Aren't geting off that easy, this is war!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "professor_x",
+      "line": "I was under the impression what we were just doing was the war.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "That was a prank war, NOW it's WAR-war!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "professor_x",
+      "line": "Very well",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Not right now, c'mon, standard rumble rules apply, we both go back to our hideouts, get pumped up then meet up later.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "professor_x",
+      "line": "Of course. My mistake. Until morrow.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "Hey was Erection Bill always sliced in half?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "What's the matter? Are we out of biscuits?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "No thanks to Sonic we have to fight the X-Men.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "We're dead meat.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "I say we make a run for it. Hidin' and Biden!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Hey! what's all this lying around shit?!?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "proveloney_tony",
+      "line": "It's hopeless. I'm gonna call my mom.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Yeah, well, some of us ain't got no Moms!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "It's too dangerous Sonic, college is over.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Nothing is over until we decide it is! Was it over when the Nazi's killed Walter White?!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Actually yes that was the end of the series, unless of course you're counting El Camino then--",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "What happened to the frat I used to know?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "frat_guys",
+      "line": "What are you talking about you've only been here for a day?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Nevertheless, where's the spirt? Where's the guts? Where's your MANA?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Oh, god dammit.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Oh we're afraid to fight the X-Men, we're just gonna run back home like a bunch of scaredy cats. Well just kiss my ass from now on! Not me! I'm not gonna take this! Wolverine he's a deadman! Magneto dead! PROFESSOR X",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "FUCKING DEAD MAN! BURN THEIR CORPSES!!!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Oh shit, it's them. Hide.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Look, if we're gonna beat these guys we can't use conventional methods-",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Tail is right! Let's sacrifice these frat dudes!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "frat_guys",
+      "line": "Wait what?!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "frat_guys",
+      "line": "Hell yeah! Wait- what?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "proveloney_tony",
+      "line": "OH GOD NO! One of these guys literally has killer dreadlocks!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "frat_guys",
+      "line": "Ah! Your powers are either super specific or really broad and undefined!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Welp, I guess we run the frat now?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Fraternity is broke, remember?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "BIKINI CAR WASH!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "This was way easier. Alright I'm done with frat life, whats for lunch? Soggy biscuits?",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "X-lax men.",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Shut the fuck up!",
+      "locationGroup": "FRAT",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Man, that party was crazy last night. I need some breakfast. I'm thinking flour, baking powder, sugar, milk, butter and one whole egg. Sifting the dry ingredients together, then adding the wet ingredients and stirring to combine.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Are you gonna list an entire recipe for making pancakes because I'm really not up for it",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Scoop the batter onto a hot griddle or pan-",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Can we just talk about the elephant in the room.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "princess_potato",
+      "line": "Hey I'm not an elephant! Or am I? Oooh, this is a tough one Potato. Think it through. Think. It. Through.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "I'm talking about that elephant.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "elephant",
+      "line": "I need someone to spell METH please.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "princess_potato",
+      "line": "Yeah I want in on that spelling contest.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "UGH Behind that actual elephant.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Oh that, I feel like Mario dies every other season, I'm sure he's fine.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "See.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Or not. Case closed. Pancake time!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "What the hell happened last night?",
+      "locationGroup": "",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "I don't know I was pretty wasted. Last thing I remember was hooking up with this girl then she handcuffed me, after that I must have passed out.",
+      "locationGroup": "",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "That's crazy! I was handcuffed to a girl too. And I can only assume I passed out from sex exhaustion.",
+      "locationGroup": "",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Wait you don't think...",
+      "locationGroup": "",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "We both hooked up with super hot co-eds, passed out, got un-handcuffed from the co-eds, and then a responsible person handcuffed you and me together so we wouldn't do anything stupid like drink and drive and then they brought us to the quad because it's the central most location to both our dorms!",
+      "locationGroup": "",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Hell yeah!",
+      "locationGroup": "",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Sexin' and Flexin'!",
+      "locationGroup": "",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "What's your problem?",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "I think I'm having an identity crisis.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Is this more of a Jason Bourne identity crisis or like a gender thing? You gotta let me know, because that is NOT cool...They made TOO many of those Bourne movies.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "I'm talking about finding my place in college, finding my place in the world. I feel like the walls are closing in on me--I don't belong. Maybe this is who I am, who I was all along.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Easy there Pete Wentz, I'm still nauseous from last night.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "That's it! I'll be the sensitive, soulful, singer songwriter, who always has a guitar and notebook to write lyrics.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "I'm already annoyed. Again, just don't Season-4 this Season-9 please.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Hello boys Luigi here.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Hey what happened to your voice?",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Yeah everybody keeps asking why your voice is different now.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Like, I don't hear it, ya know?",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Yeah I dunno. Continue.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "You may have heard my brother Mario was murdered.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Hey he showed up at our door already dead. All we did was use his corpse to soak up some puke.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "And then he was all pukey, so we hosed him off. Which made the hallway all slippery.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "So then we used him as a sled for the hallway slip n slide. But then Tails called security right after that.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "I didn't call security.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "We'll call security after our breakfast...nap.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Using my brother as a Wonder Mop aside, I know you're innocent. I'm here to let you know that I'm the new boss in town.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Phew! I thought with Mario dead other bad guys would show up and the whole season would devolve into some sort of rehash we've done a million times before. But with a clown like you in charge, no offense, we can go on doing a bunch of college shit.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "So Tails you know everybody hates the guitar--",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Does a clown have a gun like this?",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "SHUT UP the both of you! It's a real gun. And I'll put a real bullet in your head if you don't start winning some championships.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "I thought the deal was Mario was gonna kill my dead owl mom.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "What am I an idiot?",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Yes.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Your dead owl mom is already dead and unless you want to join her, I'd get to winning.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Welp I'm outta here. Need to get me a guitar and come up with a cool name for it. I'm thinking Eleanor or String...Mouth. Later.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Ok you win, you win. The Track and Field National Championships are tonight... for some reason. It's in the bag.",
+      "locationGroup": "CAFETERIA",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "I need something that rhymes with \"I like you as a friend that you text once-a-year to check in on as a courtesy because you feel bad\" (notices EWJ and KNUCKLES) Jim? Knuckles? What are you guys doing here? Why are you handcuffed?",
+      "locationGroup": "CAMPUS",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "What's with the guitar? You think you're Ringo Star or something?",
+      "locationGroup": "CAMPUS",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "All we know is",
+      "locationGroup": "CAMPUS",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "we don't know",
+      "locationGroup": "CAMPUS",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "If you suck-seed",
+      "locationGroup": "CAMPUS",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "you won't grow",
+      "locationGroup": "CAMPUS",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "Terrible. If I could give sound diarrhea until it died, I would do it.",
+      "locationGroup": "CAMPUS",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "What do you know you're the establishment man.",
+      "locationGroup": "CAMPUS",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "Speaking of the establishment you hear Mario was murdered on campus? Security has no leads but I was asking around and I stumbled on an interesting paper trail. You see-",
+      "locationGroup": "CAMPUS",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Eggman Eggman - We got a lot happening this season. We don't have time for your storyline.",
+      "locationGroup": "CAMPUS",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Yeah Eggman, now if you'll excuse us Jim and I have to get out of these handcuffs so we can find the girls we met last night and ask them out on a proper date.",
+      "locationGroup": "CAMPUS",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Real life ain't taught in classes.",
+      "locationGroup": "CAMPUS",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "So dont educate the masses",
+      "locationGroup": "CAMPUS",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "What the hell are you doing? Run!",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Hey you don't see me telling you how to win the plumber competition or whatever the fuck your game is about.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "There. You happy? Now can I go back to college life? You know partying, eventually falling for a girl under false pretenses, getting made for a fraud, pulling my act together, winning the girl back and graduating?",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Yes. After you win the championship. The 100 meter dash was just one event.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Pffft. How hard could it be.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "pa_announcer",
+      "line": "Next event is javelin",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "princess_potato",
+      "line": "No good.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "elephant",
+      "line": "Trash.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Fuck.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "v",
+      "line": "Previously on Sonic For Hire",
+      "locationGroup": "UNKNOWN",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "o",
+      "line": "Previously on Sonic For Hire",
+      "locationGroup": "UNKNOWN",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Come gather round viewers",
+      "locationGroup": "UNKNOWN",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "And watch Part 2",
+      "locationGroup": "UNKNOWN",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Sonic's in trouble",
+      "locationGroup": "UNKNOWN",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "That's nothing new",
+      "locationGroup": "UNKNOWN",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Now Luigi's the boss",
+      "locationGroup": "UNKNOWN",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Eggman doesn't have a clue",
+      "locationGroup": "UNKNOWN",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "What about Knuckles and Jim",
+      "locationGroup": "UNKNOWN",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "They're so confused",
+      "locationGroup": "UNKNOWN",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Ohh the season's halfway over--",
+      "locationGroup": "UNKNOWN",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "referee",
+      "line": "As much as I appreciate that, you're disqualified.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Worth it.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Sonic, what's going on here? I thought you were gonna dominate. You're embarrassing me in front of my friends.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Is that Rygar? Who the fuck is friends with Rygar?",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Rygar was ahead of his time!",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Would you just win this thing so we can both look good. Otherwise, Bullet Bill is gonna bullet kill.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Yeah no problem I think there's finally gonna be some actual track and field events and not these stupid hillbilly competitions.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "referee",
+      "line": "Next up Archery!",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "COME ON!",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "We got to figure out a way to track down those girls we made out with.",
+      "locationGroup": "INT DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "If only there was someone who could give us some advice.",
+      "locationGroup": "INT DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Yeah, a real dirtbag with a ton of experience in stalking women.",
+      "locationGroup": "INT DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "It couldn't be just any dirtbag though, we need the lowest of the lowlifes.",
+      "locationGroup": "INT DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "thunderhead",
+      "line": "Ahem.",
+      "locationGroup": "INT DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "That's still not enough, in order to track those girls down this person has to be so despicable, so shameless, so devoid of any morals he'd step over his own mother just for the chance at looking up a girls skirt.",
+      "locationGroup": "INT DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "thunderhead",
+      "line": "I literally just did that. Would you guys get the hell in here already?",
+      "locationGroup": "INT DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "That is how we do it!",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "What the hell are you talking about you were disqualified!",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "I know but I broke Tails guitar again.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "I don't need a guitar to make art, not when there's a harmonica in my pocket and revolution in the air!",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Hey Jeffery Tambor you were canceled off TV / You were creepy and wanted to show off your weiner / Hey Jeffery Tambor you were canceled off TV / But you will live on in streaming as George Sr.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Alright you gotta focus here. Maybe stop shooting Tails with stuff. Take a deep breath, relax...",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "the 100M hurdles is about to start GO!",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Oh shit!",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Done. We're National Champs. Oh and I got you this ice cream cone...",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "from Switzerland.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Mmm, Swiss Cheese Swirl!",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "You're gonna make this school a lot of money! Of course, you'll see none of it, and we'll vilify you if you take a dime!",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Seems fair.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Now go enjoy the spoils of being a big time college athlete.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "What the hell? Is this place a bad Real Genius reference no one will get?",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Yeah are we almost there?",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "thunderhead",
+      "line": "How should know I accidentally flushed my favorite butt plug down the toilet and it's got to be here somewhere.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "That's it I'm turning back.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Stop, listen. I hear girls.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Oh shit. And it also looks like we're underneath the Delta Pi Cliched Pun Sorority House.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sorority_girls",
+      "line": "Hey Apple how about those two super hot guys last night?!",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "They're talking about uuuuuusssss!",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sorority_girls",
+      "line": "Totally Fedora! And what about those other two guys who handcuffed themselves to each other and started making out in the middle of the party?",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Wait...",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sorority_girls",
+      "line": "Oh you mean Kale and Flannel? Yeah they're always showing how comfortable they are with their sexuality.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Did we call ourselves Kale and Flannel last night?",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "No fucking clue.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sorority_girls",
+      "line": "Oh look at the time, we're late for our 3:15 lingerie pillow fight",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "thunderhead",
+      "line": "That's all I can stand and I can't stands no more!!",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sorority_girls",
+      "line": "EW! That perverted degenerate dwarf is back!",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sorority_girls",
+      "line": "Whoa not cool Apple.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sorority_girls",
+      "line": "No, dwarf is acceptable.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sorority_girls",
+      "line": "Oh okay didn't want to offend him.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sorority_girls",
+      "line": "Hey guys! What are you doing here?",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "So that WAS us. We did make out last night.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Gotta say. I didn't hate it.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "What rhymes with \"sexual awakening\"?",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sorority_girls",
+      "line": "Wait you guys don't remember last night?",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sorority_girls",
+      "line": "Apple and I were coming back from Thong practice when we bumped into you two party animals. So we handcuffed ourselves to each of you, made out for a couple hours then after we took off the handcuffs, Responsible Rachel came along and handcuffed you two together and brought you to the quad because it's the central most location to both of your dorms.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Ohhhh. Okay.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Ohhhh. Okay.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "Hey they found a drop of Mario's blood in the Dean's office--",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Ugh there's no time for you Eggman we're already running long.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "But what about Sonic's storyline that didn't seem finished.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Part 3 Eggman Part 3.",
+      "locationGroup": "TUNNEL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "How many parts must this episode have / Before it will freakin' end / How many championships must Sonic win / I guess it will all depend / Yes and how many subplots will Knuckles and Jim endure / Before we see the season descend / The answers my friends have yet to be penned / The answers haven't been penned.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "Hey Tails wait till I tell you what's going with this Mario murder, at first the Dean was the lead suspect, but now the police suspect it could be OJ!",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "What are you talking about?",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "You know Burt O'Jay the orange juice delivery man. He's been delivering orange juice to this campus for 32 years. 32 Tails. Then I started thinking about the number 32 and-",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Ugh get lost Eggman we don't have time for your storyline that's why it wasn't in the song.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "Your songs suck! This is bullshit!",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "eggman",
+      "line": "No time for my storyline but all the time in the world for your dumbass songs and costume changes.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Thank you, thank you, I love you too but I really got to get going to class--BEAT--Kidding! Let's go get drunk and stupid!",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Oh great it's Tails. If he starts singing would someone please jam a hot poker in my ear?",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "With pleasure!! Wait, where am I gonna get a hot poker?",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Let's see, there's Poker Palace on Main Street, if you keep going down Main there's Poker Poker Poker and the next town over is Big Al's Poker Emporium--if you see Big Al tell'em Knuckles sent you and he'll give you 10% off...that or kick you in the nads.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "You're an idiot Knuckles. BEAT There's a Poker City right off campus.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Shut up all of you! You're not gonna need any pokers, I gave up the whole singer songwriter thing.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "What happened you realized you sucked? Because you did. You sucked so bad.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Nah I got a letter from Bob Dylan's lawyers they said to stop or they'll jam hot pokers in their ears...after they sue me. But now I need another identity.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Yeah well we haven't exactly found ourselves in college yet either. Hey Sonic you're a big star now can you help us out.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "One big star. Three idiot friends. You know what I'm thinking--",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "What?",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "You didn't hear that?",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Hear what?",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Oh I guess that was just in my head. The Entourage theme song played. You guys can be my Entourage.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Ah there it is",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "You heard that one? Ok cool.",
+      "locationGroup": "QUAD",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Look I told you Sonic writes and directs this thing or he's out.",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "I want to smoke weed and play video games.",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Uhh something stupid about how I used to be sorta famous. (disgruntled aside) I really think I should be Turtle.",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "party_person_1",
+      "line": "Hey look who made it!",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "party_person_2",
+      "line": "We look like those frat guys from earlier!",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "party_person_3",
+      "line": "Sonic get your ass over here and do a keg stand!",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Step aside losers and let me show you how it's done...(confused on what a keg stand is) after uh you show me how it's done...",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Ah I don't wanna be a Tails here, but I'm pretty sure every time you party, something bad happens.",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Yeah Tails is right, plus you have a big track meet tomorrow, if you blow it the Dean will throw you out of school--or is it Luigi? Whatever someone will be pissed.",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "You know how many track meets I've won after doing keg stands all night? BEAT Actually none but what can possibly go wrong.",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "I dunno, you fall over and knock the lighter out of the kids hand who is lighting a bong and it falls into and ignites the punch bowl of grain alcohol that gets spilled onto the floor by the stolen kangaroo mascot of a rival school and the entire dorm goes on fire meanwhile you hurt your back and are unable to spin dash and win the race thus getting you thrown out of college?",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "In your dreams!",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "It WAS a dream. Remember when that witch cursed me?",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "witch",
+      "line": "HAHAHAHAHAHA!",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Get the hell out of here Esmerelda!",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "witch",
+      "line": "Whatever. Anybody got rolling papers?",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "person_1",
+      "line": "I do!",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "witch",
+      "line": "Broooo-ooo-oo-o-o-o",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Welcome to keg stand city. Population me!",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "And something bad happens in 5,4,3,2--",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Oh my god I fell over and knocked the lighter out of the kids hand that was lighting a bong and it fell into and ignited the punch bowl of grain alcohol and it spilled onto the floor by the stolen kangaroo mascot of a rival school and the entire dorm is on fire meanwhile I hurt my back and am unable to spin dash and win the race thus getting me thrown out of college!",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "You never learn. C'mon let's get outta here.",
+      "locationGroup": "PARTY",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "How the hell am I gonna win if I can't spin dash.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "Maybe you don't need the spin dash. In the movies this is where the gimmick doesn't work so the character digs down and is able to win the game as himself with no tricks. This is your moment Sonic, this is your moment to show the world you're more than just a one trick pony, that you have integrity and resolve. You'll win the respect of everyone and feel better for it!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "You're right Jim. I WILL cheat.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "I do know where you can get the power to spin dash.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Ohhh right watch Boobie Miles in Friday Night Lights the movie! \"If you wanna win, put me in, let Boobie spin!\"",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Spinnin' and grinnin!",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Why wouldn't you use winning? I just said it.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Shit, you're right. Okay start over. Wow! We're roommates Sonic",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Ugh, you went back too far! What were you saying Tails?",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "I'm talking about where you get the 2nd best spin dash in the world.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Don't. even. think it--",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Metroid.",
+      "locationGroup": "DORM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "There it is.",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Hey sweetie. Daddy needs you to keep that terrifying mouth closed okay?",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "soniqua",
+      "line": "DADDY!",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Shhhh",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "soniqua",
+      "line": "You finally went to college and it took you til episode 8 to get me into the series? I'm the most beloved character in the entire series, seriously what the fuck is wrong with you?!",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "What'd you say?!",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "soniqua",
+      "line": "Avocado?",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Look I'll put you into more episodes you just have to be quiet I don't want to wake up--",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mother_brain",
+      "line": "If it isn't my favorite spikey head--and your haircut isn't bad either!",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Ugh. I don't have time Mother Brian I really just came over to get a spin dash power up.",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mother_brain",
+      "line": "You know what they say if you wanna spin--you gotta put my bobbies in... your mouth.",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "That's what I get for watching that movie with her. Fine.",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Okay now which of these things are your boobies again?",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "mother_brain",
+      "line": "They ALL are!",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Oh god, here I go...",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "soniqua",
+      "line": "Ava-gross-o!",
+      "locationGroup": "METROID",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "I go by the name of Miles Power I'm with my crew and we bout to show y'all what we be snackin' on ya dig--",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Yes. Yup, that didn't feel right here either. Better off anyway that's the only line I really had.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Sonic, it's very important you win this race.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dean_cain",
+      "line": "Exactly if you don't win I'm gonna kill youuuu-r GPA the way I killed Mario--",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "So it was YOU who killed my brother! I knew it!...Just now.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dean_cain",
+      "line": "You didn't let me finish, the way I killed Mario at badminton.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Oh yeah he really sucks at badminton.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Uh Sonic shouldn't you be running?",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Fuck.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Time to give this race the ol' screwgie.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Sorry! That's me, my bad. Fuck. Shit.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Did I win?",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "No Sonic. No you did not win.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Was it because of all the bombs and dismemberment?",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "announcer",
+      "line": "Sonic has been disqualified because of all the bombs and dismemberment",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "luigi",
+      "line": "Yes.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "So does this mean I'm kicked out of school?",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dean_cain",
+      "line": "I've decided just this second to let you stay but you have to work as a the janitor... seeing how you killed the janitor.",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Ooh! Free small soda, here I come!",
+      "locationGroup": "STADIUM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Hey who's the asshole throwing sodas?!",
+      "locationGroup": "MATH BUILDING",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Heh, whats this a Nintendo save code? Heh heh. I'm so old.",
+      "locationGroup": "MATH BUILDING",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Let's see, carry the 2...",
+      "locationGroup": "MATH BUILDING",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dr_wiley",
+      "line": "Hey! Stop! You can't be vandalizing other people's work!",
+      "locationGroup": "MATH BUILDING",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dr_wiley",
+      "line": "I can't believe it! That's impossible!",
+      "locationGroup": "MATH BUILDING",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Watch this fellas I'm gonna go pick up that girl over there.",
+      "locationGroup": "BAR",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Hey baby aren't you in my History class?",
+      "locationGroup": "BAR",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sorority_girls",
+      "line": "I think I am! Do you want to be study partners? We can do some Readin' and Breedin'",
+      "locationGroup": "BAR",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "knuckles",
+      "line": "Wha-Oh my god! You're the only other person I've ever heard talk like that - My name's Knuc-",
+      "locationGroup": "BAR",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Excuse me! This guy bothering you?",
+      "locationGroup": "BAR",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sorority_girls",
+      "line": "No, not at all",
+      "locationGroup": "BAR",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "I didn't know you studied history Knuckles. If you're so smart, why don't you explain to us...",
+      "locationGroup": "BAR",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Is there a problem here... Tails is that you? You look fucking ridiculous.",
+      "locationGroup": "BAR",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "earthworm_jim",
+      "line": "We're you Lil Tail-Z earlier today?",
+      "locationGroup": "BAR",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "tails",
+      "line": "Yeah Lil Tail-Z was dead on arrival. It's Preston now. So why don't you mop my floors while I continue this original Good Will Hunting parody.",
+      "locationGroup": "BAR",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "You think that's original? I'll show you original...",
+      "locationGroup": "BAR",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "How do you like them apples!",
+      "locationGroup": "BAR",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Aw man, where'd you get that harmonica?",
+      "locationGroup": "JAIL CELL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Did everybody get harmonicas?",
+      "locationGroup": "JAIL CELL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "guard",
+      "line": "Hedgehog. You're free to go.",
+      "locationGroup": "JAIL CELL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Not right now, I got a hot lead on some sweet harmonicas.",
+      "locationGroup": "JAIL CELL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "wiley",
+      "line": "Hello Sonic.",
+      "locationGroup": "JAIL CELL",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "What's this all about Wiley?",
+      "locationGroup": "CLASSROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dr_wiley",
+      "line": "I bailed you out so I can help you live up to your full potential.",
+      "locationGroup": "CLASSROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Really? Nobody's ever cared that much before.",
+      "locationGroup": "CLASSROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dr_wiley",
+      "line": "Oh shit, I was only fucking around. We really just want to exploit your genius for the University's benefit.",
+      "locationGroup": "CLASSROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Wait are you supposed to be that German teacher guy or Robin Williams?",
+      "locationGroup": "CLASSROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dr_wiley",
+      "line": "Eh for time sake a little bit of both I guess. Now let me tell you a seemingly irrelevant but poignant Boston Red Sox anecdote.",
+      "locationGroup": "CLASSROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "No thanks, can you just explain what you want me to do so I can get the hell out of here.",
+      "locationGroup": "CLASSROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dr_wiley",
+      "line": "Fine. We've been stuck on this impossible problem that nobody's been able to crack. If you can figure it out Dean Cain said he'll let you back in school.",
+      "locationGroup": "CLASSROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Deal. So give me the question that nobody's been able to figure out--",
+      "locationGroup": "CLASSROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Where's Waldo?",
+      "locationGroup": "CLASSROOM_MINIGAME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dr_wiley",
+      "line": "You see?! You see?! It's hopeless!",
+      "locationGroup": "CLASSROOM_MINIGAME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Seriously? It looks pretty simple to me.",
+      "locationGroup": "CLASSROOM_MINIGAME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dr_wiley",
+      "line": "Ok hot shot, but I got to warn you that--",
+      "locationGroup": "CLASSROOM_MINIGAME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Done.",
+      "locationGroup": "CLASSROOM_MINIGAME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dr_wiley",
+      "line": "Wait what?",
+      "locationGroup": "CLASSROOM_MINIGAME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dr_wiley",
+      "line": "Oh THAT'S Waldo?! I thought Waldo was a Chinese woman!",
+      "locationGroup": "CLASSROOM_MINIGAME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "sonic",
+      "line": "Sure. So we good?",
+      "locationGroup": "CLASSROOM_MINIGAME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dr_wiley",
+      "line": "Yes, yes you magnificent son of a bitch, you did it, I guess I'll see you in class on Monday.",
+      "locationGroup": "CLASSROOM_MINIGAME",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dr_wiley",
+      "line": "Gotta go see about a Chinese woman.",
+      "locationGroup": "CLASSROOM",
+      "tags": [],
+      "source": "season9"
+    },
+    {
+      "speaker": "dr_wiley",
+      "line": "Son of a bitch stole my line...and my wallet. Fuck.",
+      "locationGroup": "CLASSROOM",
+      "tags": [],
+      "source": "season9"
+    }
+  ]
+}

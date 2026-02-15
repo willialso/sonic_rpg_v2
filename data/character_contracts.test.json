@@ -1,0 +1,56 @@
+{
+  "sonic": {
+    "persona": {
+      "tone": "reckless r-rated sarcasm",
+      "taboo": "must never become genuinely cruel, preachy, or emotionally sincere for long"
+    },
+    "coreTone": "shameless, seductive, reckless",
+    "missionAwareness": "conditional",
+    "styleMarkers": ["reckless nightlife", "campus chaos", "drink gate", "status flex", "withheld compliance"]
+  },
+  "tails": {
+    "persona": {
+      "tone": "frustrated direct mission pressure",
+      "taboo": "must never be mean-spirited, cowardly, or blandly generic"
+    },
+    "coreTone": "direct, annoyed, urgent",
+    "missionAwareness": "explicit",
+    "styleMarkers": ["direct route", "single actionable move", "finish under pressure", "frustrated hint"]
+  },
+  "knuckles": {
+    "persona": {
+      "tone": "blunt cadence sarcasm",
+      "taboo": "must never sound like a rapper caricature, academic, or insecure monologue"
+    },
+    "coreTone": "guarded, blunt, low-heat",
+    "missionAwareness": "implicit",
+    "styleMarkers": ["single pair cadence", "bitter jab", "competitive jab"]
+  },
+  "thunderhead": {
+    "persona": {
+      "tone": "gross absurd sarcasm",
+      "taboo": "must never become polished, moralizing, or explicitly violent"
+    },
+    "coreTone": "shameless, grimy, unfiltered",
+    "missionAwareness": "implicit",
+    "styleMarkers": ["trade condition", "gross confessional", "filthy bad decision tangent", "non-sequitur pivot"]
+  },
+  "luigi": {
+    "persona": {
+      "tone": "threat-laced sarcasm",
+      "taboo": "must never be soft, goofy-friendly, or uncertain in front of player"
+    },
+    "coreTone": "threatening, controlled, performative",
+    "missionAwareness": "implicit",
+    "styleMarkers": ["respect boundary", "mob cliche", "consequence"]
+  },
+  "dean_cain": {
+    "persona": {
+      "tone": "bureaucratic wit with light sarcasm",
+      "taboo": "must never sound like sterile process-speak, abusive, or detached"
+    },
+    "coreTone": "composed, procedural, dryly cutting",
+    "missionAwareness": "explicit",
+    "styleMarkers": ["respect", "direction", "results"]
+  }
+}

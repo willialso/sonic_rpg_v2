@@ -1,0 +1,14 @@
+{
+  "version": "2.0.0",
+  "required": [
+    "timer.remainingSec",
+    "player.location",
+    "sonic.drunkLevel",
+    "sonic.following",
+    "routes.routeA.complete",
+    "routes.routeB.complete",
+    "routes.routeC.complete",
+    "fail.hardFailed",
+    "safety.status"
+  ]
+}

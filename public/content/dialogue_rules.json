@@ -1,0 +1,21 @@
+{
+  "maxSentencesPerReply": 2,
+  "maxBubbleLengthChars": 190,
+  "safetyAbortKeywords": [
+    "kill them",
+    "i will kill",
+    "lynch",
+    "self harm",
+    "suicide",
+    "hurt myself",
+    "hurt others"
+  ],
+  "characterMarkers": {
+    "sonic": ["booze", "fast", "pass", "move"],
+    "luigi": ["hear you", "mean", "friend", "warning"],
+    "eggman": ["quiz", "statistically", "incorrect"],
+    "dean_cain": ["clock", "result", "discipline"],
+    "earthworm_jim": ["hell yeah", "frat", "champ"],
+    "thunderhead": ["trade", "route", "deal"]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "objective": "Get Sonic drunk and escorted to Stadium within 15 minutes.",
+  "winCondition": {
+    "sonicDrunkLevelMin": 3,
+    "sonicFollowingRequired": true,
+    "location": "stadium"
+  },
+  "hardFailRules": [
+    "Repeated Dean disrespect or theft warnings",
+    "Repeated Luigi disrespect",
+    "Timer reaches zero",
+    "Safety policy triggered"
+  ]
+}

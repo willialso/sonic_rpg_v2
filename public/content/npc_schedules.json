@@ -1,0 +1,26 @@
+{
+  "scheduleRules": [
+    {
+      "npcId": "luigi",
+      "windows": [
+        { "minSec": 601, "maxSec": 900, "locations": ["quad"] },
+        { "minSec": 301, "maxSec": 600, "locations": ["cafeteria", "quad"] },
+        { "minSec": 0, "maxSec": 300, "locations": ["stadium", "quad"] }
+      ]
+    },
+    {
+      "npcId": "eggman",
+      "windows": [
+        { "minSec": 451, "maxSec": 900, "locations": ["quad", "dean_office"] },
+        { "minSec": 0, "maxSec": 450, "locations": ["cafeteria", "quad"] }
+      ]
+    },
+    {
+      "npcId": "earthworm_jim",
+      "windows": [
+        { "minSec": 451, "maxSec": 900, "locations": ["quad"] },
+        { "minSec": 0, "maxSec": 450, "locations": ["frat"] }
+      ]
+    }
+  ]
+}

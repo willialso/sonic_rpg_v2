@@ -1,0 +1,64 @@
+{
+  "locations": [
+    {
+      "id": "dean_office",
+      "name": "Dean's Office",
+      "description": "Administrative hub. High discipline risk, high value clues.",
+      "exits": ["quad"]
+    },
+    {
+      "id": "quad",
+      "name": "Campus Quad",
+      "description": "Traffic center with rotating NPC encounters.",
+      "exits": ["dean_office", "eggman_classroom", "frat"]
+    },
+    {
+      "id": "eggman_classroom",
+      "name": "Eggman's Classroom",
+      "description": "Overheated lecture hall where Eggman grandstands and wastes your time.",
+      "exits": ["quad", "cafeteria"]
+    },
+    {
+      "id": "frat",
+      "name": "Frat House",
+      "description": "Beer pong route and social volatility.",
+      "exits": ["quad", "sorority"]
+    },
+    {
+      "id": "sorority",
+      "name": "Sorority",
+      "description": "Rumors, distractions, and tunnel access.",
+      "exits": ["frat", "tunnel", "cafeteria"]
+    },
+    {
+      "id": "tunnel",
+      "name": "Tunnel",
+      "description": "Thunderhead's trade zone and Asswine route.",
+      "exits": ["sorority"]
+    },
+    {
+      "id": "cafeteria",
+      "name": "Cafeteria",
+      "description": "Ingredient pickups and route utility.",
+      "exits": ["sorority", "dorms", "eggman_classroom"]
+    },
+    {
+      "id": "dorms",
+      "name": "Dorm Hall",
+      "description": "Hallway routes toward Sonic's room.",
+      "exits": ["cafeteria", "dorm_room"]
+    },
+    {
+      "id": "dorm_room",
+      "name": "Dorm Room",
+      "description": "Private room for drink handoff and escort setup.",
+      "exits": ["dorms", "stadium"]
+    },
+    {
+      "id": "stadium",
+      "name": "Stadium Gate",
+      "description": "Final mission check.",
+      "exits": ["dorm_room"]
+    }
+  ]
+}
