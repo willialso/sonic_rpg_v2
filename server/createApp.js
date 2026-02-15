@@ -65,8 +65,8 @@ export function createApp(orchestrator) {
 
   if (fs.existsSync(indexHtmlPath)) {
     app.use(express.static(distDir));
-    app.get("*", (req, res, next) => {
-      if (req.path.startsWith("/api/")) {
+    app.use((req, res, next) => {
+      if (req.method !== "GET" || req.path.startsWith("/api/")) {
         next();
         return;
       }
