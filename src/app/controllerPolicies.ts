@@ -1,6 +1,5 @@
 import {
   DEAN_FAKE_ID_LIMIT,
-  LUIGI_CONTRABAND_LIMIT,
   WARNING_LIMITS,
   shouldDeanExpelForFakeId,
   shouldDeanExpelForWarnings,
