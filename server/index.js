@@ -43,7 +43,8 @@ async function main() {
   await orchestrator.init();
   console.log("Dialogue orchestrator ready.");
 
-  const host = process.env.API_HOST || "127.0.0.1";
+  // Render and other PaaS runtimes require binding to 0.0.0.0.
+  const host = process.env.API_HOST || "0.0.0.0";
   const server = http.createServer(async (req, res) => {
     const method = req.method || "GET";
     const url = new URL(req.url || "/", `http://${host}:${config.apiPort}`);
