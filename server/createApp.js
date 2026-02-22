@@ -9,6 +9,11 @@ export function createApp(orchestrator) {
   const indexHtmlPath = path.join(distDir, "index.html");
   app.use(express.json({ limit: "1mb" }));
 
+  // Silence browser default favicon probe when no .ico is packaged.
+  app.get("/favicon.ico", (req, res) => {
+    res.status(204).end();
+  });
+
   app.post("/api/dialogue", async (req, res) => {
     const validation = validateDialogueRequest(req.body || {});
     if (!validation.ok) {
