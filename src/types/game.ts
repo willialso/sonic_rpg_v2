@@ -65,6 +65,7 @@ export interface PlayerAction {
     | "END_STRIP_POKER_SESSION"
     | "ASK_EGGMAN_QUIZ"
     | "DECLINE_EGGMAN_QUIZ"
+    | "PLAY_EGGMAN_LAB_ROUND"
     | "SEARCH_DEAN_DESK"
     | "SEARCH_QUAD"
     | "SEARCH_EGGMAN_CLASSROOM"
@@ -75,6 +76,11 @@ export interface PlayerAction {
     | "SEARCH_DORMS"
     | "SEARCH_DORM_ROOM"
     | "SEARCH_STADIUM"
+    | "USE_CAMPUS_MAP"
+    | "USE_GATE_STAMP"
+    | "USE_MYSTERY_MEAT"
+    | "USE_SECURITY_SCHEDULE"
+    | "USE_RA_WHISTLE"
     | "GET_MYSTERY_MEAT"
     | "GET_SUPER_DEAN_BEANS"
     | "TAKE_FOUND_ITEM"
@@ -89,6 +95,8 @@ export interface PlayerAction {
     | "ANSWER_THUNDERHEAD"
     | "GIVE_WHISKEY"
     | "GIVE_ASSWINE"
+    | "USE_ITEM_ON_TARGET"
+    | "USE_FURRY_HANDCUFFS"
     | "ESCORT_SONIC"
     | "STADIUM_ENTRY"
     | "GET_HINT";
@@ -136,6 +144,8 @@ export interface GameStateData {
     drunkLevel: number;
     following: boolean;
     location: LocationId;
+    patience: number;
+    cooldownMoves: number;
   };
   routes: Record<RouteId, { complete: boolean; progress: number }>;
   fail: {
@@ -180,6 +190,9 @@ export interface GameStateData {
     };
     restrictions: {
       sororityBanned: boolean;
+      fratBanned: boolean;
+      fratChallengeForced: boolean;
+      fratLastSafeLocation: LocationId;
     };
     analytics: {
       soggyBiscuitTriggered: boolean;

@@ -12,7 +12,8 @@ export function removeInventory(state: GameStateData, item: string): void {
 
 export function revealSearchCache(state: GameStateData, location: LocationId, items: string[]): string[] {
   const existing = state.world.searchCaches[location];
-  if (existing && existing.length > 0) return existing;
+  // Once a location cache exists (even empty), keep it authoritative for this run.
+  if (existing !== undefined) return existing;
   state.world.searchCaches[location] = [...items];
   return state.world.searchCaches[location] ?? [];
 }

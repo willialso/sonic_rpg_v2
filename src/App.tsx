@@ -1,7 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useGameController } from "./app/useGameController";
+import { seededRoll } from "./app/actions/minigameActions";
 import type { LocationId, NpcId } from "./types/game";
+import { ESCORT_READY_DRUNK_LEVEL, WARNING_LIMITS, warningMeter } from "./gameplay/progressionRules";
 import { resolveBackgroundImage, resolveCharacterImage } from "./assets/AssetManifest";
+import asswineIcon from "./assets/items/items_assswine.png";
+import beansIcon from "./assets/items/items_beans.png";
+import campusMapIcon from "./assets/items/items_campus_map.png";
+import energyShotIcon from "./assets/items/items_energy_shot.png";
+import handcuffsIcon from "./assets/items/items_fuzzy_handcuffs.png";
+import glitterIcon from "./assets/items/items_glitter.png";
+import meatIcon from "./assets/items/items_meat.png";
+import scheduleIcon from "./assets/items/items_schedule.png";
+import sludgeIcon from "./assets/items/items_sludge.png";
+import stampIcon from "./assets/items/items_stamp.png";
+import studentIdIcon from "./assets/items/student_id.png";
+import warmBeerIcon from "./assets/items/items_warm_beer.png";
+import whiskeyIcon from "./assets/items/items_whiskey.png";
+import whistleIcon from "./assets/items/items_whistle.png";
 import { ScenePanel } from "./components/game/ScenePanel";
 import { PresenceBar } from "./components/game/PresenceBar";
 import { BottomActionStrip } from "./components/game/BottomActionStrip";
@@ -10,6 +26,7 @@ import "./App.css";
 type UiAction =
   | { type: "RESET_GAME" }
   | { type: "MOVE"; target: LocationId }
+  | { type: "FORCE_MOVE"; target: LocationId }
   | { type: "START_DIALOGUE"; npcId: NpcId; auto?: boolean }
   | { type: "PLAY_BEER_PONG_SCORE"; cupsHit: number; matchup: BeerMatchup }
   | { type: "PLAY_BEER_PONG_SHOT"; shot: "safe" | "bank" | "hero" }
@@ -17,6 +34,15 @@ type UiAction =
   | { type: "PLAY_STRIP_POKER_ROUND" }
   | { type: "START_STRIP_POKER_SESSION" }
   | { type: "END_STRIP_POKER_SESSION" }
+  | { type: "ASK_EGGMAN_QUIZ" }
+  | { type: "DECLINE_EGGMAN_QUIZ" }
+  | {
+      type: "PLAY_EGGMAN_LAB_ROUND";
+      catalyst: "red" | "green" | "blue";
+      heat: "low" | "mid" | "high";
+      stir: "pulse" | "steady" | "whip";
+      scansUsed: number;
+    }
   | { type: "PLAY_BEER_PONG_FRAT" }
   | { type: "PLAY_BEER_PONG_SONIC" }
   | { type: "PLAY_SOGGY_BISCUIT" }
@@ -30,6 +56,11 @@ type UiAction =
   | { type: "SEARCH_DORMS" }
   | { type: "SEARCH_DORM_ROOM" }
   | { type: "SEARCH_STADIUM" }
+  | { type: "USE_CAMPUS_MAP" }
+  | { type: "USE_GATE_STAMP" }
+  | { type: "USE_MYSTERY_MEAT" }
+  | { type: "USE_SECURITY_SCHEDULE" }
+  | { type: "USE_RA_WHISTLE" }
   | { type: "GET_MYSTERY_MEAT" }
   | { type: "GET_SUPER_DEAN_BEANS" }
   | { type: "TAKE_FOUND_ITEM"; location: LocationId; item: string }
@@ -44,6 +75,8 @@ type UiAction =
   | { type: "ANSWER_THUNDERHEAD"; answer: string }
   | { type: "GIVE_WHISKEY" }
   | { type: "GIVE_ASSWINE" }
+  | { type: "USE_FURRY_HANDCUFFS" }
+  | { type: "USE_ITEM_ON_TARGET"; item: string; target: NpcId }
   | { type: "ESCORT_SONIC" }
   | { type: "STADIUM_ENTRY" }
   | { type: "GET_HINT" }
@@ -55,22 +88,81 @@ type ActionButtonDef = {
   action: UiAction;
   priority: number;
   group?: "immediate" | "move" | "use" | "risky";
+  disabled?: boolean;
+  badge?: string;
 };
 
 function titleCase(input: string): string {
   return input.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
-function npcToneClass(npc: NpcId): string {
-  if (npc === "dean_cain" || npc === "eggman" || npc === "luigi") return "tone-authority";
-  if (npc === "sonic" || npc === "tails" || npc === "knuckles") return "tone-hero";
-  if (npc === "frat_boys" || npc === "sorority_girls") return "tone-crowd";
-  if (npc === "thunderhead" || npc === "earthworm_jim") return "tone-chaos";
-  return "tone-neutral";
-}
-
 type NoticeState = { title: string; body: string } | null;
 type SearchLootState = { location: LocationId; message: string } | null;
+type TopToastKind = "rumor" | "status";
+type TopToastState = { id: string; text: string; kind: TopToastKind } | null;
+const ITEM_HELP: Record<string, { desc: string; useHint: string; targetHint?: string; riskHint?: string }> = {
+  "Student ID": { desc: "Campus clearance pass.", useHint: "Needed for key checks and entry." },
+  "Dean Whiskey": { desc: "Heavy liquor stash.", useHint: "Use in Dorm Room to push Sonic up.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Carrying contraband can trigger warnings." },
+  Asswine: { desc: "Thunderhead trade reward.", useHint: "Fast drunk boost in Dorm Room.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Trade setup costs time." },
+  "Furry Handcuffs": { desc: "High-risk control item.", useHint: "Use on Sonic at drunk level 3+.", targetHint: "Target: Sonic when escort-ready.", riskHint: "Wrong target can hard-fail." },
+  "Frat Bong": { desc: "High-risk contraband.", useHint: "Do not carry near enforcement.", riskHint: "Can cause confiscation or expulsion." },
+  "Spare Socks": { desc: "Strip poker buffer.", useHint: "Burn to avoid one forfeit.", targetHint: "Target: Strip Poker side pot.", riskHint: "Single-use item." },
+  "RA Whistle": { desc: "Fake authority tool.", useHint: "Best in Dorms to reduce Luigi pressure.", targetHint: "Target: Luigi pressure in residential lanes.", riskHint: "Using at Frat escalates fast." },
+  "Lace Undies": { desc: "Sorority contraband.", useHint: "Top Thunderhead trade item.", targetHint: "Target: Thunderhead in Tunnel.", riskHint: "Getting caught means a ban." },
+  "Sorority Mascara": { desc: "Sorority contraband.", useHint: "Valid Thunderhead trade item.", targetHint: "Target: Thunderhead in Tunnel.", riskHint: "Theft can trigger ejection + ban." },
+  "Sorority Composite": { desc: "Sorority contraband.", useHint: "Valid Thunderhead trade item.", targetHint: "Target: Thunderhead in Tunnel.", riskHint: "High social penalty if caught." },
+  "Hairbrush": { desc: "Low-value filler.", useHint: "Not valid for Thunderhead trade.", riskHint: "Bad trade wastes time." },
+  "Warm Beer": { desc: "Mix base item.", useHint: "Use or mix in Dorm Room.", targetHint: "Target: Sonic or mix recipes.", riskHint: "Weak alone; best when mixed." },
+  "Super Dean Beans": { desc: "Volatile ingredient.", useHint: "Mix for high-impact sludge.", targetHint: "Target: mix path in Dorm Room.", riskHint: "Can backfire hard." },
+  "Expired Energy Shot": { desc: "High-variance stim.", useHint: "Use only when gambling.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Can lower progress and raise pressure." },
+  "Glitter Flask": { desc: "Mix container.", useHint: "Needed for Glitter Bomb Brew.", targetHint: "Target: mix path.", riskHint: "No direct value alone." },
+  "Glitter Bomb Brew": { desc: "Chaotic mixed drink.", useHint: "Use in Dorm Room for swingy gain.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Can spike Dean warning." },
+  "Turbo Sludge": { desc: "Heavy mixed brew.", useHint: "Big spike attempt in Dorm Room.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Big backfire risk." },
+  "Campus Map": { desc: "Route intel.", useHint: "Use to reveal search lanes.", targetHint: "Target: route planning.", riskHint: "Costs time to use." },
+  "Lost Lanyard": { desc: "Early clue item.", useHint: "Minor hunt support.", targetHint: "Target: early progression.", riskHint: "Low late-game value." },
+  "Lecture Notes": { desc: "Flavor intel scrap.", useHint: "Low impact utility.", riskHint: "Can clutter inventory." },
+  "Remote Battery": { desc: "Minor utility part.", useHint: "Side item only.", riskHint: "No core route impact." },
+  "Pocket Flashlight": { desc: "Tunnel helper.", useHint: "Minor tunnel support.", riskHint: "Low mission impact." },
+  "Rusty Token": { desc: "Tunnel relic.", useHint: "Flavor-only pickup.", riskHint: "Low route value." },
+  "Gate Stamp": { desc: "Gate credential.", useHint: "Use at Stadium; better with Student ID.", riskHint: "Without ID, can add Dean warning." },
+  "Security Schedule": { desc: "Guard timing intel.", useHint: "Best used at Stadium.", targetHint: "Target: stadium timing and entry.", riskHint: "Using elsewhere burns time." },
+  "Ping Pong Paddle": { desc: "Frat flavor item.", useHint: "Not required for progression.", riskHint: "Stealing can raise hostility." },
+  "Party Wristband": { desc: "Frat trinket.", useHint: "Low impact utility.", riskHint: "Mostly inventory noise." },
+  "Extra Sock": { desc: "Spare clothing scrap.", useHint: "Low impact backup item.", riskHint: "Minimal route value." },
+  "Laundry Detergent": { desc: "Dorm supply.", useHint: "Low priority item.", riskHint: "Mostly inventory noise." },
+  "Mystery Meat": { desc: "Cafeteria wildcard.", useHint: "Use on Sonic in Dorm Room.", riskHint: "Can help or backfire." }
+};
+const ITEM_ICONS: Partial<Record<string, string>> = {
+  "Student ID": studentIdIcon,
+  "Dean Whiskey": whiskeyIcon,
+  Asswine: asswineIcon,
+  "Furry Handcuffs": handcuffsIcon,
+  "RA Whistle": whistleIcon,
+  "Warm Beer": warmBeerIcon,
+  "Super Dean Beans": beansIcon,
+  "Expired Energy Shot": energyShotIcon,
+  "Glitter Flask": glitterIcon,
+  "Glitter Bomb Brew": glitterIcon,
+  "Turbo Sludge": sludgeIcon,
+  "Campus Map": campusMapIcon,
+  "Gate Stamp": stampIcon,
+  "Security Schedule": scheduleIcon,
+  "Mystery Meat": meatIcon
+};
+const DEFAULT_ITEM_ICON = `data:image/svg+xml;utf8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#6e86ff"/>
+        <stop offset="100%" stop-color="#3f4fb5"/>
+      </linearGradient>
+    </defs>
+    <rect x="8" y="8" width="104" height="104" rx="18" fill="url(#g)" stroke="#f7d66d" stroke-width="6"/>
+    <circle cx="60" cy="44" r="16" fill="#f7d66d" opacity="0.92"/>
+    <rect x="52" y="58" width="16" height="30" rx="7" fill="#f7d66d" opacity="0.92"/>
+    <rect x="48" y="90" width="24" height="10" rx="5" fill="#f7d66d" opacity="0.92"/>
+  </svg>`
+)}`;
 type PongBall = { x: number; y: number; vx: number; vy: number; spin: number; arc: number; active: boolean };
 type PongCup = { x: number; y: number; r: number; hit: boolean; wobble: number; dip: number };
 type SplashParticle = { x: number; y: number; vx: number; vy: number; life: number; size: number };
@@ -128,6 +220,13 @@ type StripPokerDeal = {
   winningOpponentHand: string;
   edgeNote: string;
 } | null;
+type StripRiskMode = "safe" | "balanced" | "bluff";
+type EggmanCatalyst = "red" | "green" | "blue";
+type EggmanHeat = "low" | "mid" | "high";
+type EggmanStir = "pulse" | "steady" | "whip";
+type EggmanLabProtocol = { catalyst: EggmanCatalyst; heat: EggmanHeat; stir: EggmanStir };
+type EggmanHintText = Partial<Record<keyof EggmanLabProtocol, string>>;
+type EggmanLabFx = "perfect" | "good" | "fail" | "meltdown" | null;
 
 const CARD_SUITS = ["♠", "♥", "♦", "♣"] as const;
 const CARD_RANKS: Array<{ rank: string; value: number }> = [
@@ -137,6 +236,16 @@ const CARD_RANKS: Array<{ rank: string; value: number }> = [
   { rank: "A", value: 14 }
 ];
 const STRIP_POKER_CLOTHING_STAKES = ["Shirt", "Pants", "Shoes", "Socks", "Underwear"] as const;
+const EGGMAN_CATALYSTS: EggmanCatalyst[] = ["red", "green", "blue"];
+const EGGMAN_HEATS: EggmanHeat[] = ["low", "mid", "high"];
+const EGGMAN_STIRS: EggmanStir[] = ["pulse", "steady", "whip"];
+
+function resolveEggmanProtocol(seed: string, round: number): EggmanLabProtocol {
+  const catalyst = EGGMAN_CATALYSTS[Math.floor(seededRoll(`${seed}:eggman:${round}:catalyst`) * EGGMAN_CATALYSTS.length)];
+  const heat = EGGMAN_HEATS[Math.floor(seededRoll(`${seed}:eggman:${round}:heat`) * EGGMAN_HEATS.length)];
+  const stir = EGGMAN_STIRS[Math.floor(seededRoll(`${seed}:eggman:${round}:stir`) * EGGMAN_STIRS.length)];
+  return { catalyst, heat, stir };
+}
 function hashSeed(input: string): number {
   let h = 2166136261 >>> 0;
   for (let i = 0; i < input.length; i += 1) {
@@ -144,6 +253,10 @@ function hashSeed(input: string): number {
     h = Math.imul(h, 16777619);
   }
   return h >>> 0;
+}
+
+function seededFloat(input: string): number {
+  return hashSeed(input) / 4294967295;
 }
 
 function shuffledDeck(seedKey: string): StripCard[] {
@@ -224,6 +337,9 @@ function App() {
     floorY: 520,
     cupRadius: 16
   };
+  const BEER_GRAVITY = 0.16;
+  const BEER_LAUNCH_SCALE = 0.145;
+  const BEER_SPIN_ACCEL = 0.028;
   const { state, content, ready, performAction, getNpcsAtCurrentLocation } = useGameController();
   const [activeNpc, setActiveNpc] = useState<NpcId | null>(null);
   const [activeNpcFocusAtMs, setActiveNpcFocusAtMs] = useState(0);
@@ -235,6 +351,17 @@ function App() {
   const [stripPokerOpen, setStripPokerOpen] = useState(false);
   const [stripPokerDeal, setStripPokerDeal] = useState<StripPokerDeal>(null);
   const [stripPokerBusy, setStripPokerBusy] = useState(false);
+  const [stripRiskMode, setStripRiskMode] = useState<StripRiskMode>("balanced");
+  const [eggmanLabOpen, setEggmanLabOpen] = useState(false);
+  const [eggmanLabBusy, setEggmanLabBusy] = useState(false);
+  const [eggmanLabRound, setEggmanLabRound] = useState(1);
+  const [eggmanScansLeft, setEggmanScansLeft] = useState(2);
+  const [eggmanMix, setEggmanMix] = useState<EggmanLabProtocol>({ catalyst: "red", heat: "mid", stir: "steady" });
+  const [eggmanScanHints, setEggmanScanHints] = useState<EggmanHintText>({});
+  const [eggmanHeatValue, setEggmanHeatValue] = useState(50);
+  const [eggmanStirPower, setEggmanStirPower] = useState(34);
+  const [eggmanDoses, setEggmanDoses] = useState<Record<EggmanCatalyst, number>>({ red: 0, green: 0, blue: 0 });
+  const [eggmanLabFx, setEggmanLabFx] = useState<EggmanLabFx>(null);
   const [beerAngle, setBeerAngle] = useState(48);
   const [beerPower, setBeerPower] = useState(62);
   const [beerThrowsLeft, setBeerThrowsLeft] = useState(3);
@@ -249,15 +376,22 @@ function App() {
   const [cupMetricPulse, setCupMetricPulse] = useState(false);
   const [shotMetricFlash, setShotMetricFlash] = useState(false);
   const [notice, setNotice] = useState<NoticeState>(null);
+  const [topToast, setTopToast] = useState<TopToastState>(null);
   const [searchLoot, setSearchLoot] = useState<SearchLootState>(null);
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const [beerMatchup, setBeerMatchup] = useState<BeerMatchup>("frat");
   const [locationSplash, setLocationSplash] = useState<LocationSplash>(null);
   const [hintCooldownUntilMs, setHintCooldownUntilMs] = useState(0);
   const [showBeerLauncherTip, setShowBeerLauncherTip] = useState(false);
+  const [beerPointerMode, setBeerPointerMode] = useState<"aim" | "launcher" | null>(null);
+  const [beerControlStep, setBeerControlStep] = useState<"position" | "aim">("position");
+  const [orientationAgendaOpen, setOrientationAgendaOpen] = useState(false);
+  const [orientationAgendaName, setOrientationAgendaName] = useState("Student");
+  const [campusMapOpen, setCampusMapOpen] = useState(false);
   const [showLandingPage, setShowLandingPage] = useState(true);
   const [landingClosing, setLandingClosing] = useState(false);
   const [soggySequenceStage, setSoggySequenceStage] = useState<SoggySequenceStage>(null);
+  const [selectedActionItem, setSelectedActionItem] = useState<string | null>(null);
   const beerCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const beerRafRef = useRef<number | null>(null);
   const beerBallRef = useRef<PongBall>({ x: 36, y: 152, vx: 0, vy: 0, spin: 0, arc: 0, active: false });
@@ -279,6 +413,19 @@ function App() {
   const lastBounceAtRef = useRef(0);
   const cupNearPulseRef = useRef<number[]>([0, 0, 0, 0, 0, 0]);
   const prevLocationRef = useRef<LocationId | null>(null);
+  const prevUnlockSnapshotRef = useRef<Record<string, boolean> | null>(null);
+  const lastMissionIntakeEventRef = useRef<string>("");
+  const lastRumorEventRef = useRef<string>("");
+  const lastRumorToastAtRef = useRef(0);
+  const toastQueueRef = useRef<Array<{ id: string; text: string; kind: TopToastKind }>>([]);
+  const nextToastReadyAtRef = useRef(0);
+  const suppressLocationSplashUntilRef = useRef(0);
+  const lastForcedRelocationEventRef = useRef<string>("");
+  const pendingForcedRelocationTargetRef = useRef<LocationId | null>(null);
+  const latestForcedRelocationEvent = useMemo(
+    () => [...(state?.world.events ?? [])].reverse().find((entry) => entry.startsWith("FORCED_RELOCATE::")) ?? "",
+    [state?.world.events]
+  );
   const beerTipSeenRef = useRef(false);
   const beerTauntSnapshotRef = useRef<{ cupsCleared: number; throwsLeft: number; inFlight: boolean } | null>(null);
   const beerTauntLastAtRef = useRef(0);
@@ -321,10 +468,14 @@ function App() {
   const isSoggySequenceActive = soggySequenceStage !== null;
 
   const runAction = useCallback(async (action: UiAction, silent = false) => {
+    if (action.type !== "TAKE_FOUND_ITEM") {
+      setSearchLoot(null);
+    }
+    setCampusMapOpen(false);
     const result = await performAction(action);
     if (!silent && action.type !== "SUBMIT_DIALOGUE" && action.type !== "START_DIALOGUE" && action.type !== "MOVE") {
       setNotice({
-        title: result.ok ? "Update" : "Blocked",
+        title: result.ok ? "Done" : "Blocked",
         body: result.message
       });
     }
@@ -388,7 +539,7 @@ function App() {
       } catch {
         setNotice({
           title: "Refresh Failed",
-          body: "Could not contact dev refresh endpoint."
+          body: "Dev refresh endpoint unavailable"
         });
       }
       return { ok: true, message: "Persona refresh requested." };
@@ -449,6 +600,10 @@ function App() {
     return presentNpcsRaw.includes(engagedNpc) ? presentNpcsRaw : [...presentNpcsRaw, engagedNpc];
   }, [engagedNpc, presentNpcsRaw]);
   const clockText = `${Math.floor((state?.timer.remainingSec ?? 0) / 60).toString().padStart(2, "0")}:${((state?.timer.remainingSec ?? 0) % 60).toString().padStart(2, "0")}`;
+  const resolveNpcImage = useCallback((npc: NpcId) => {
+    if (!content) return "";
+    return resolveCharacterImage(content.assetManifest, npc, "neutral");
+  }, [content]);
   const npcHasFreshLine = useCallback((npc: NpcId) => {
     if (!state) return false;
     const target = titleCase(npc).toLowerCase();
@@ -461,16 +616,23 @@ function App() {
     });
   }, [state]);
   const focusNpcConversation = useCallback(async (npc: NpcId) => {
+    if (isAwaitingNpcReply) return;
+    setSearchLoot(null);
     setActiveNpcFocusAtMs(Date.now());
     setActiveNpc(npc);
     if (engagedNpc === npc) return;
     if (npcHasFreshLine(npc)) return;
-    await runAction({ type: "START_DIALOGUE", npcId: npc }, true);
-  }, [engagedNpc, npcHasFreshLine, runAction]);
+    setIsAwaitingNpcReply(true);
+    try {
+      await runAction({ type: "START_DIALOGUE", npcId: npc }, true);
+    } finally {
+      setIsAwaitingNpcReply(false);
+    }
+  }, [engagedNpc, isAwaitingNpcReply, npcHasFreshLine, runAction]);
   const hintSignalStrong = useMemo(() => {
     if (!state) return false;
     if (state.timer.remainingSec < 180) return true;
-    if (state.sonic.drunkLevel >= 3 && !state.sonic.following) return true;
+    if (state.sonic.drunkLevel >= ESCORT_READY_DRUNK_LEVEL && !state.sonic.following) return true;
     if (state.sonic.drunkLevel < 2 && !state.routes.routeA.complete) return true;
     if (!state.player.inventory.includes("Dean Whiskey")) return true;
     if (!state.player.inventory.includes("Asswine") && !state.routes.routeC.complete) return true;
@@ -479,12 +641,12 @@ function App() {
   const hintCooldownSec = Math.max(0, Math.ceil((hintCooldownUntilMs - Date.now()) / 1000));
   const canUseHint = !isResolved && hintCooldownSec === 0 && hintSignalStrong;
   const hintButtonNote = isResolved
-    ? "Run is resolved."
+    ? "Run ended."
     : hintCooldownSec > 0
       ? `Hint ready in ${hintCooldownSec}s`
       : hintSignalStrong
-        ? "Fresh context available."
-        : "No strong hint signal right now.";
+        ? "Hint available."
+        : "No urgent hint.";
 
   useEffect(() => {
     if (!beerGameOpen) {
@@ -531,7 +693,7 @@ function App() {
       const detail = (event as CustomEvent<{ message?: string }>).detail;
       const message = detail?.message || "Dialogue request validation failed.";
       setNotice({
-        title: "Dialogue API Validation",
+        title: "Dialogue",
         body: message
       });
     };
@@ -549,13 +711,20 @@ function App() {
       return;
     }
     if (prevLocationRef.current !== current) {
+      setActiveNpc(null);
+      setActiveNpcFocusAtMs(0);
+      setPlayerInput("");
+      if (Date.now() < suppressLocationSplashUntilRef.current) {
+        prevLocationRef.current = current;
+        return;
+      }
       const locationTitle = content.locations.find((l) => l.id === current)?.name ?? titleCase(current);
       const occupants = state.world.presentNpcs[current];
       setLocationSplash({
         locationId: current,
         title: locationTitle,
-        subtitle: "New location",
-        occupants: occupants.length > 0 ? occupants.map((npc) => titleCase(npc)).join(" • ") : "Quiet right now"
+        subtitle: "Now here",
+        occupants: occupants.length > 0 ? occupants.map((npc) => titleCase(npc)).join(" • ") : "Quiet"
       });
       prevLocationRef.current = current;
     }
@@ -566,6 +735,138 @@ function App() {
     const id = window.setTimeout(() => setLocationSplash(null), 1800);
     return () => window.clearTimeout(id);
   }, [locationSplash]);
+
+  useEffect(() => {
+    if (!state) return;
+    const latestEvent = state.world.events[state.world.events.length - 1] ?? "";
+    if (!latestEvent.startsWith("MISSION_INTAKE::")) return;
+    if (lastMissionIntakeEventRef.current === latestEvent) return;
+    const [, rawName = "Student"] = latestEvent.split("::");
+    setOrientationAgendaName(rawName || "Student");
+    setOrientationAgendaOpen(true);
+    lastMissionIntakeEventRef.current = latestEvent;
+  }, [state]);
+
+  useEffect(() => {
+    if (!latestForcedRelocationEvent) return;
+    if (lastForcedRelocationEventRef.current === latestForcedRelocationEvent) return;
+    lastForcedRelocationEventRef.current = latestForcedRelocationEvent;
+    const [, targetRaw = "quad", titleRaw = "Ejected", encodedBody = "You were removed from this location."] = latestForcedRelocationEvent.split("::");
+    const target = targetRaw as LocationId;
+    const title = titleRaw || "Ejected";
+    const body = decodeURIComponent(encodedBody || "You were removed from this location.");
+    setNotice({ title, body });
+    pendingForcedRelocationTargetRef.current = target;
+    setActiveNpc(null);
+    setActiveNpcFocusAtMs(0);
+    setPlayerInput("");
+    suppressLocationSplashUntilRef.current = Date.now() + 2600;
+    const relocateId = window.setTimeout(() => {
+      void runAction({ type: "FORCE_MOVE", target }, true);
+      pendingForcedRelocationTargetRef.current = null;
+      window.setTimeout(() => setNotice(null), 500);
+    }, 1800);
+    return () => window.clearTimeout(relocateId);
+  }, [latestForcedRelocationEvent, runAction]);
+
+  const queueTopToast = useCallback((text: string, kind: TopToastKind) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    if (topToast && topToast.text === trimmed && topToast.kind === kind) return;
+    const queuedLast = toastQueueRef.current[toastQueueRef.current.length - 1];
+    if (queuedLast && queuedLast.text === trimmed && queuedLast.kind === kind) return;
+    const item = { id: `${kind}:${Date.now()}:${Math.random().toString(16).slice(2, 7)}`, text: trimmed, kind };
+    toastQueueRef.current.push(item);
+    if (!topToast && Date.now() >= nextToastReadyAtRef.current) {
+      const next = toastQueueRef.current.shift() ?? null;
+      if (next) setTopToast(next);
+    }
+  }, [topToast]);
+
+  useEffect(() => {
+    if (!state) return;
+    const latestEvent = state.world.events[state.world.events.length - 1] ?? "";
+    if (!latestEvent.startsWith("Rumor update:")) return;
+    if (latestEvent === lastRumorEventRef.current) return;
+    lastRumorEventRef.current = latestEvent;
+    const now = Date.now();
+    if (now - lastRumorToastAtRef.current < 12000) return;
+    const rumorLocation = latestEvent.toLowerCase().match(/around (.+?)\./)?.[1] ?? "";
+    const playerLocationName = state.player.location.replace(/_/g, " ").toLowerCase();
+    const sonicHere = (state.world.presentNpcs[state.player.location] ?? []).includes("sonic");
+    const inSonicDialogue = activeNpc === "sonic";
+    if (sonicHere && inSonicDialogue && rumorLocation && rumorLocation !== playerLocationName) {
+      return;
+    }
+    lastRumorToastAtRef.current = now;
+    queueTopToast(latestEvent, "rumor");
+  }, [activeNpc, queueTopToast, state]);
+
+  useEffect(() => {
+    if (!state) return;
+    const unlocks = state.world.actionUnlocks;
+    const prev = prevUnlockSnapshotRef.current;
+    if (!prev) {
+      prevUnlockSnapshotRef.current = { ...unlocks };
+      return;
+    }
+    const labels: Partial<Record<keyof typeof unlocks, string>> = {
+      beerPongFrat: "Unlocked: Beer Pong (Frat)",
+      beerPongSonic: "Unlocked: Challenge Sonic",
+      searchDeanDesk: "Unlocked: Search Dean Desk",
+      searchQuad: "Unlocked: Search Quad",
+      searchEggmanClassroom: "Unlocked: Search Classroom",
+      searchFratHouse: "Unlocked: Search Frat",
+      searchSororityHouse: "Unlocked: Search Sorority",
+      searchTunnel: "Unlocked: Search Tunnel",
+      searchCafeteria: "Unlocked: Search Cafeteria",
+      searchDorms: "Unlocked: Search Dorm Hall",
+      tradeThunderhead: "Unlocked: Thunderhead Trade",
+      giveWhiskey: "Unlocked: Give Whiskey",
+      giveAsswine: "Unlocked: Give Asswine",
+      escortSonic: "Unlocked: Escort Sonic",
+      stadiumEntry: "Unlocked: Stadium Entry",
+      searchStadium: "Unlocked: Search Gate"
+    };
+    const newlyUnlocked = (Object.keys(unlocks) as Array<keyof typeof unlocks>)
+      .filter((key) => !prev[key] && unlocks[key])
+      .map((key) => labels[key] ?? `${titleCase(key)} unlocked`);
+    if (newlyUnlocked.length > 0) {
+      queueTopToast(newlyUnlocked[0], "status");
+    }
+    prevUnlockSnapshotRef.current = { ...unlocks };
+  }, [queueTopToast, state]);
+
+  useEffect(() => {
+    const suppressTopToast = Boolean(
+      notice
+      || orientationAgendaOpen
+      || campusMapOpen
+      || beerGameOpen
+      || eggmanLabOpen
+      || stripPokerOpen
+      || searchLoot
+      || locationSplash
+      || isSoggySequenceActive
+      || showLandingPage
+      || landingClosing
+    );
+    if (suppressTopToast) return;
+    if (!topToast) {
+      if (Date.now() < nextToastReadyAtRef.current) return;
+      const promoteId = window.setTimeout(() => {
+        if (Date.now() < nextToastReadyAtRef.current) return;
+        const next = toastQueueRef.current.shift() ?? null;
+        if (next) setTopToast(next);
+      }, 120);
+      return () => window.clearTimeout(promoteId);
+    }
+    const id = window.setTimeout(() => {
+      setTopToast(null);
+      nextToastReadyAtRef.current = Date.now() + 500;
+    }, topToast.kind === "rumor" ? 4600 : 3200);
+    return () => window.clearTimeout(id);
+  }, [beerGameOpen, campusMapOpen, eggmanLabOpen, isSoggySequenceActive, landingClosing, locationSplash, notice, orientationAgendaOpen, searchLoot, showLandingPage, stripPokerOpen, topToast]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -584,6 +885,11 @@ function App() {
       }
     }, 3200);
     return () => window.clearTimeout(hideId);
+  }, [beerGameOpen]);
+
+  useEffect(() => {
+    if (beerGameOpen) return;
+    setBeerPointerMode(null);
   }, [beerGameOpen]);
 
   useEffect(() => {
@@ -654,6 +960,7 @@ function App() {
     setBeerInFlight(false);
     setDraggingAim(false);
     setDraggingLauncher(false);
+    setBeerControlStep("position");
     setBeerAngle(20);
     setBeerPower(62);
   }, [PONG.spawn.y, PONG.table.h, PONG.table.w, PONG.table.x, PONG.table.y, beerMatchup, modeConfig]);
@@ -759,18 +1066,6 @@ function App() {
       ctx.lineTo(bl.x, bl.y);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.12)";
-      ctx.lineWidth = 1;
-      for (let gy = t.y + 10; gy < t.y + t.h; gy += 12) {
-        ctx.beginPath();
-        const k = (gy - t.y) / t.h;
-        const left = tl.x + ((bl.x - tl.x) * k);
-        const right = tr.x + ((br.x - tr.x) * k);
-        ctx.moveTo(left, gy);
-        ctx.lineTo(right, gy);
-        ctx.stroke();
-      }
-
       ctx.strokeStyle = "rgba(255,255,255,0.98)";
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -783,9 +1078,17 @@ function App() {
       ctx.lineWidth = 2.6;
       const midLeft = { x: (tl.x + bl.x) / 2, y: (tl.y + bl.y) / 2 };
       const midRight = { x: (tr.x + br.x) / 2, y: (tr.y + br.y) / 2 };
+      const midTop = { x: (tl.x + tr.x) / 2, y: (tl.y + tr.y) / 2 };
+      const midBottom = { x: (bl.x + br.x) / 2, y: (bl.y + br.y) / 2 };
       ctx.beginPath();
       ctx.moveTo(midLeft.x, midLeft.y);
       ctx.lineTo(midRight.x, midRight.y);
+      ctx.stroke();
+      ctx.lineWidth = 1.6;
+      ctx.strokeStyle = "rgba(255,255,255,0.78)";
+      ctx.beginPath();
+      ctx.moveTo(midTop.x, midTop.y + 3);
+      ctx.lineTo(midBottom.x, midBottom.y - 3);
       ctx.stroke();
       const netY = t.y + (t.h / 2);
       ctx.fillStyle = "rgba(236,243,255,0.22)";
@@ -801,16 +1104,17 @@ function App() {
 
       // Single curved predictive guide while aiming.
       if (!beerInFlight) {
-        const vx0 = Math.cos((beerAngle * Math.PI) / 180) * (beerPower * 0.145);
-        const vy0 = -Math.sin((beerAngle * Math.PI) / 180) * (beerPower * 0.145);
-        const arcPeak = Math.max(18, Math.min(62, beerPower * 0.52));
+        const vx0 = Math.cos((beerAngle * Math.PI) / 180) * (beerPower * BEER_LAUNCH_SCALE);
+        const vy0 = -Math.sin((beerAngle * Math.PI) / 180) * (beerPower * BEER_LAUNCH_SCALE);
+        const spin0 = beerBallRef.current.spin || 0;
+        const arcPeak = Math.max(18, Math.min(62, (beerPower * 0.52)));
         ctx.beginPath();
         ctx.moveTo(launchOrigin.x, launchOrigin.y);
         for (let i = 1; i <= 20; i += 1) {
-          const tStep = i * 1.2;
-          const px = launchOrigin.x + (vx0 * tStep);
-          const baseY = launchOrigin.y + (vy0 * tStep) + (0.5 * 0.16 * tStep * tStep);
-          const progress = Math.max(0, Math.min(1, (px - launchOrigin.x) / (PONG.table.w * 0.84)));
+          const tStep = i * 1.0;
+          const px = launchOrigin.x + (vx0 * tStep) + (0.5 * spin0 * BEER_SPIN_ACCEL * tStep * tStep);
+          const baseY = launchOrigin.y + (vy0 * tStep) + (0.5 * BEER_GRAVITY * tStep * tStep);
+          const progress = Math.max(0, Math.min(1, tStep / 20));
           const py = baseY - (Math.sin(progress * Math.PI) * arcPeak);
           if (py > (PONG.table.y + PONG.table.h + 8)) break;
           ctx.lineTo(px, py);
@@ -977,8 +1281,8 @@ function App() {
       const now = Date.now();
       const timeScale = now < slowMotionUntilRef.current ? 0.45 : 1;
       if (b.active) {
-        b.vy += 0.16 * timeScale;
-        b.vx += (b.spin * 0.028) * timeScale;
+        b.vy += BEER_GRAVITY * timeScale;
+        b.vx += (b.spin * BEER_SPIN_ACCEL) * timeScale;
         b.x += b.vx * timeScale;
         b.y += b.vy * timeScale;
         b.vx *= (1 - (0.003 * timeScale));
@@ -1125,21 +1429,21 @@ function App() {
     beerBallRef.current = {
       x: launchOrigin.x,
       y: launchOrigin.y,
-      vx: Math.cos(rad) * (power * 0.145),
-      vy: -Math.sin(rad) * (power * 0.145),
+      vx: Math.cos(rad) * (power * BEER_LAUNCH_SCALE),
+      vy: -Math.sin(rad) * (power * BEER_LAUNCH_SCALE),
       spin: override?.spin ?? 0,
       arc: Math.max(18, Math.min(62, (power * 0.52))),
       active: true
     };
     {
-      const vx0 = Math.cos(rad) * (power * 0.145);
-      const vy0 = -Math.sin(rad) * (power * 0.145);
+      const vx0 = Math.cos(rad) * (power * BEER_LAUNCH_SCALE);
+      const vy0 = -Math.sin(rad) * (power * BEER_LAUNCH_SCALE);
       const arcPeak = Math.max(18, Math.min(62, (power * 0.52)));
       const points: TrailPoint[] = [];
       for (let i = 1; i <= 24; i += 1) {
         const tStep = i * 0.95;
         const px = launchOrigin.x + (vx0 * tStep);
-        const baseY = launchOrigin.y + (vy0 * tStep) + (0.5 * 0.16 * tStep * tStep);
+        const baseY = launchOrigin.y + (vy0 * tStep) + (0.5 * BEER_GRAVITY * tStep * tStep);
         const progress = Math.max(0, Math.min(1, (px - launchOrigin.x) / (PONG.table.w * 0.84)));
         const py = baseY - (Math.sin(progress * Math.PI) * arcPeak);
         if (py > (PONG.table.y + PONG.table.h + 6)) break;
@@ -1149,6 +1453,7 @@ function App() {
     }
     setBeerInFlight(true);
     setBeerThrowsLeft((prev) => Math.max(0, prev - 1));
+    setBeerControlStep("position");
     playPongTone(250 + (power * 1.2), 55, "sawtooth");
     camPulseUntilRef.current = Date.now() + 90;
     camKickRef.current = Math.max(camKickRef.current, 1);
@@ -1174,10 +1479,10 @@ function App() {
       : memory?.won
         ? [
             { speaker: "Diesel", text: `You just posted ${memory.cupsHit} cups. Run it back.` },
-            { speaker: "Provoloney Tony", text: `Previous round was ${memory.accuracy}% accuracy. Pressure's on now.` }
+            { speaker: "Provolone Toney", text: `Previous round was ${memory.accuracy}% accuracy. Pressure's on now.` }
           ]
         : [
-            { speaker: "Erection Bill", text: "Last round you blinked. Don't blink this one." },
+            { speaker: "Provolone Toney", text: "Last round you blinked. Don't blink this one." },
             { speaker: "Diesel", text: `Reset. Last game was ${memory?.cupsHit ?? 0} cups. Earn your bounce-back.` }
           ];
 
@@ -1215,18 +1520,18 @@ function App() {
       ],
       sink: [
         { speaker: "Diesel", text: "That's one. Keep stacking." },
-        { speaker: "Erection Bill", text: "Okay, that release wasn't tragic." },
-        { speaker: "Provoloney Tony", text: "There it is. Real shot shape." }
+        { speaker: "Provolone Toney", text: "Okay, that release wasn't tragic." },
+        { speaker: "Provolone Toney", text: "There it is. Real shot shape." }
       ],
       miss: [
-        { speaker: "Erection Bill", text: "You threw that like a resignation letter." },
+        { speaker: "Provolone Toney", text: "You threw that like a resignation letter." },
         { speaker: "Diesel", text: "Miss noted. Next rep cleaner." },
-        { speaker: "Provoloney Tony", text: "That arc looked nervous." }
+        { speaker: "Provolone Toney", text: "That arc looked nervous." }
       ],
       clutch: [
         { speaker: "Diesel", text: "Last throws. Stay composed." },
-        { speaker: "Erection Bill", text: "Clutch reps now. No tourist energy." },
-        { speaker: "Provoloney Tony", text: "Hit this and I stop doubting your form." }
+        { speaker: "Provolone Toney", text: "Clutch reps now. No tourist energy." },
+        { speaker: "Provolone Toney", text: "Hit this and I stop doubting your form." }
       ],
       idle: [
         { speaker: "Frat Boys", text: "Crowd's waiting. Send it." },
@@ -1351,7 +1656,7 @@ function App() {
       playerHand: evalHand(playerCards).name,
       winningOpponentName: "",
       winningOpponentHand: "",
-      edgeNote: "Pick up to 3 cards to discard."
+      edgeNote: "Pick up to 3 cards to discard. Strategy: Balanced."
     });
   }, [state?.meta.seed]);
 
@@ -1386,7 +1691,11 @@ function App() {
       const playerEval = evalHand(nextPlayer);
       const opponentNames = prev.opponentNames.length > 0 ? prev.opponentNames : [titleCase(prev.guestId)];
       let opponentPool = [...remainingDeck];
-      const forcedWinner = pickWinningHandFromPool(opponentPool, nextPlayer, `${state?.meta.seed ?? "seed"}:strip:force:${prev.guestId}:${prev.round}`);
+      const forceChance = stripRiskMode === "safe" ? 0.58 : stripRiskMode === "bluff" ? 0.76 : 0.68;
+      const shouldForceWinner = seededFloat(`${state?.meta.seed ?? "seed"}:strip:force-roll:${prev.guestId}:${prev.round}:${stripRiskMode}`) <= forceChance;
+      const forcedWinner = shouldForceWinner
+        ? pickWinningHandFromPool(opponentPool, nextPlayer, `${state?.meta.seed ?? "seed"}:strip:force:${prev.guestId}:${prev.round}:${stripRiskMode}`)
+        : null;
       const opponents: StripOpponent[] = [];
       if (forcedWinner) {
         const forcedEval = evalHand(forcedWinner);
@@ -1419,13 +1728,19 @@ function App() {
         ? winners.sort((a, b) => compareHands(a.cards, b.cards)).at(-1)
         : resolvedOpponents[0];
       const strongestEval = strongest ? evalHand(strongest.cards) : null;
+      const rankGap = Math.max(0, (strongestEval?.rank ?? 0) - playerEval.rank);
+      const telemetryHint = rankGap >= 2
+        ? "Telemetry: table is hot; switch to Safe next hand."
+        : rankGap === 1
+          ? "Telemetry: close loss; Balanced line is stable."
+          : "Telemetry: window open; Bluff line can pressure the table.";
       const edgeNote = strongest && strongestEval
         ? strongestEval.rank === playerEval.rank
-          ? `${strongest.name} ties your hand class and wins on kicker.`
+          ? `${strongest.name} ties your hand class and wins on kicker. ${telemetryHint}`
           : strongestEval.rank >= playerEval.rank + 2
-            ? `${strongest.name} jumps two tiers ahead at showdown.`
-            : `${strongest.name} edges your hand by one tier.`
-        : "House edge holds.";
+            ? `${strongest.name} jumps two tiers ahead at showdown. ${telemetryHint}`
+            : `${strongest.name} edges your hand by one tier. ${telemetryHint}`
+        : `House edge holds. ${telemetryHint}`;
       return {
         ...prev,
         playerCards: nextPlayer,
@@ -1439,7 +1754,132 @@ function App() {
         edgeNote
       };
     });
-  }, [state?.meta.seed]);
+  }, [state?.meta.seed, stripRiskMode]);
+
+  const autoPickStripDiscards = useCallback((mode: StripRiskMode) => {
+    setStripRiskMode(mode);
+    setStripPokerDeal((prev) => {
+      if (!prev || prev.stage !== "deal") return prev;
+      const sortedByValue = prev.playerCards
+        .map((card, idx) => ({ idx, value: card.value }))
+        .sort((a, b) => a.value - b.value);
+      const counts = new Map<number, number>();
+      prev.playerCards.forEach((c) => counts.set(c.value, (counts.get(c.value) ?? 0) + 1));
+      let picks: number[];
+      if (mode === "safe") {
+        picks = sortedByValue
+          .filter(({ idx, value }) => (counts.get(prev.playerCards[idx].value) ?? 0) < 2 && value < 11)
+          .slice(0, 2)
+          .map(({ idx }) => idx);
+      } else if (mode === "bluff") {
+        picks = sortedByValue.slice(0, 3).map(({ idx }) => idx);
+      } else {
+        picks = sortedByValue
+          .filter(({ idx }) => (counts.get(prev.playerCards[idx].value) ?? 0) < 2)
+          .slice(0, 3)
+          .map(({ idx }) => idx);
+      }
+      return { ...prev, selectedDiscard: picks };
+    });
+  }, []);
+
+  const openEggmanLab = useCallback(() => {
+    const round = (state?.world.minigames.loreRound ?? 0) + 1;
+    setEggmanLabRound(round);
+    setEggmanScansLeft(2);
+    setEggmanMix({ catalyst: "red", heat: "mid", stir: "steady" });
+    setEggmanScanHints({});
+    setEggmanHeatValue(50);
+    setEggmanStirPower(34);
+    setEggmanDoses({ red: 0, green: 0, blue: 0 });
+    setEggmanLabFx(null);
+    setEggmanLabBusy(false);
+    setEggmanLabOpen(true);
+  }, [state?.world.minigames.loreRound]);
+
+  const runEggmanScan = useCallback((slot: keyof EggmanLabProtocol) => {
+    if (!state) return;
+    if (eggmanScansLeft <= 0) return;
+    const protocol = resolveEggmanProtocol(state.meta.seed, eggmanLabRound);
+    const hintBySlot: Record<keyof EggmanLabProtocol, string> = {
+      catalyst: protocol.catalyst === "red"
+        ? "Flavor skews warm."
+        : protocol.catalyst === "green"
+          ? "Flavor skews herbal."
+          : "Flavor skews cool.",
+      heat: protocol.heat === "low"
+        ? "Keep flame below mid."
+        : protocol.heat === "mid"
+          ? "Flame should stay near center."
+          : "Flame should run hot.",
+      stir: protocol.stir === "pulse"
+        ? "Use a light cadence."
+        : protocol.stir === "steady"
+          ? "Use a balanced cadence."
+          : "Use an aggressive cadence."
+    };
+    setEggmanScanHints((prev) => ({ ...prev, [slot]: hintBySlot[slot] }));
+    setEggmanScansLeft((prev) => Math.max(0, prev - 1));
+  }, [eggmanLabRound, eggmanScansLeft, state]);
+
+  const submitEggmanLabRound = useCallback(async () => {
+    if (!state || eggmanLabBusy) return;
+    setEggmanLabBusy(true);
+    const protocol = resolveEggmanProtocol(state.meta.seed, eggmanLabRound);
+    const score = Number(eggmanMix.catalyst === protocol.catalyst)
+      + Number(eggmanMix.heat === protocol.heat)
+      + Number(eggmanMix.stir === protocol.stir);
+    const fxState: EggmanLabFx = score === 3 ? "perfect" : score === 2 ? "good" : score === 1 ? "fail" : "meltdown";
+    setEggmanLabFx(fxState);
+    await new Promise<void>((resolve) => {
+      window.setTimeout(() => resolve(), 760);
+    });
+    const scansUsed = 2 - eggmanScansLeft;
+    const result = await runAction({
+      type: "PLAY_EGGMAN_LAB_ROUND",
+      catalyst: eggmanMix.catalyst,
+      heat: eggmanMix.heat,
+      stir: eggmanMix.stir,
+      scansUsed
+    }, true);
+    setEggmanLabBusy(false);
+    setEggmanLabOpen(false);
+    setEggmanLabFx(null);
+    if (!result.gameOver) {
+      setNotice({
+        title: result.ok ? "Done" : "Blocked",
+        body: result.message
+      });
+    }
+  }, [eggmanLabBusy, eggmanLabRound, eggmanMix.catalyst, eggmanMix.heat, eggmanMix.stir, eggmanScansLeft, runAction, state]);
+
+  const eggmanDoseTotal = eggmanDoses.red + eggmanDoses.green + eggmanDoses.blue;
+  const eggmanBeakerFill = Math.min(100, eggmanDoseTotal * 10);
+  const eggmanFluidColor = eggmanMix.catalyst === "red"
+    ? "rgba(255, 116, 92, 0.84)"
+    : eggmanMix.catalyst === "green"
+      ? "rgba(122, 239, 141, 0.84)"
+      : "rgba(93, 174, 255, 0.84)";
+  const eggmanBubbleSpeedSec = Math.max(1.2, 2.9 - ((eggmanHeatValue / 100) * 1.2) - ((eggmanStirPower / 100) * 0.8));
+
+  useEffect(() => {
+    const dominant: EggmanCatalyst = eggmanDoses.green >= eggmanDoses.red && eggmanDoses.green >= eggmanDoses.blue
+      ? "green"
+      : eggmanDoses.blue >= eggmanDoses.red && eggmanDoses.blue >= eggmanDoses.green
+        ? "blue"
+        : "red";
+    const heat: EggmanHeat = eggmanHeatValue < 34 ? "low" : eggmanHeatValue < 67 ? "mid" : "high";
+    const stir: EggmanStir = eggmanStirPower < 34 ? "pulse" : eggmanStirPower < 67 ? "steady" : "whip";
+    setEggmanMix({ catalyst: dominant, heat, stir });
+  }, [eggmanDoses.blue, eggmanDoses.green, eggmanDoses.red, eggmanHeatValue, eggmanStirPower]);
+
+  useEffect(() => {
+    if (!eggmanLabOpen || eggmanLabBusy) return;
+    const id = window.setTimeout(() => {
+      setEggmanStirPower((prev) => Math.max(0, prev - 3));
+    }, 700);
+    return () => window.clearTimeout(id);
+  }, [eggmanLabBusy, eggmanLabOpen, eggmanStirPower]);
 
   useEffect(() => {
     if (!stripPokerDeal || stripPokerDeal.stage !== "dealing") return;
@@ -1552,14 +1992,15 @@ function App() {
     ? [...locationTurns]
       .reverse()
       .find((turn) => {
-        if (turn.speaker === "You" || turn.npcId !== engagedNpc) return false;
+        if (turn.speaker === "You" || turn.npcId !== engagedNpc || turn.text.trim() === "...") return false;
         if (!activeNpcFocusAtMs) return true;
         const createdAtMs = turn.createdAt ? Date.parse(turn.createdAt) : 0;
         return createdAtMs >= activeNpcFocusAtMs;
       })
     : undefined;
   const popupNpcId: NpcId | null = engagedNpc;
-  const popupDialogueText = latestNpcTurn?.text ?? (engagedNpc ? "..." : "");
+  const popupTyping = Boolean(engagedNpc && isAwaitingNpcReply);
+  const popupDialogueText = popupTyping ? "" : (latestNpcTurn?.text ?? "");
   const popupDisplaySpeaker = latestNpcTurn?.displaySpeaker ?? (popupNpcId ? titleCase(popupNpcId) : "");
   const popupPoseState = latestNpcTurn?.poseKey ?? "neutral";
   const popupCharacterImage = popupNpcId && content
@@ -1575,26 +2016,67 @@ function App() {
   const shouldShowDialoguePopup = Boolean(
     engagedNpc
     && popupNpcId
-    && popupDialogueText
+    && (popupDialogueText || popupTyping)
     && !hudMenuOpen
     && !actionMenuOpen
     && !beerGameOpen
+    && !eggmanLabOpen
     && !stripPokerOpen
     && !notice
-    && !searchLoot
     && !locationSplash
     && !isSoggySequenceActive
   );
-  const scenePopupPlacement = engagedNpc || playerInput.trim().length > 0 ? "upper" : "lower";
-  const scenePopupTextPosition = scenePopupPlacement === "upper" ? "above" : "below";
+  const scenePopupPlacement: "upper" = "upper";
+  const scenePopupTextPosition: "above" = "above";
   const stripPokerLosses = state.world.minigames.stripPokerLosses ?? 0;
   const stripPokerNextStake = STRIP_POKER_CLOTHING_STAKES[Math.min(stripPokerLosses, STRIP_POKER_CLOTHING_STAKES.length - 1)];
   const stripPokerStakesRemaining = Math.max(0, STRIP_POKER_CLOTHING_STAKES.length - stripPokerLosses);
   const currentSearchCache = searchLoot ? (state.world.searchCaches[searchLoot.location] ?? []) : [];
+  const suppressTopToast = Boolean(
+    notice
+    || orientationAgendaOpen
+    || beerGameOpen
+    || eggmanLabOpen
+    || stripPokerOpen
+    || searchLoot
+    || locationSplash
+    || isSoggySequenceActive
+    || showLandingPage
+    || landingClosing
+  );
   const deanInOffice = state.world.presentNpcs.dean_office.includes("dean_cain");
   const sororityOccupants = state.world.presentNpcs.sorority;
   const sororityBanned = state.world.restrictions.sororityBanned;
   const sororityPokerEligible = sororityOccupants.includes("sorority_girls");
+  const showMissionTracker = false;
+  const routeSnapshots = [
+    {
+      id: "A",
+      label: "Beer Pong Route",
+      complete: state.routes.routeA.complete,
+      note: state.routes.routeA.complete ? "Route done." : "Win rounds to raise Sonic drunk level."
+    },
+    {
+      id: "B",
+      label: "Dean Whiskey Route",
+      complete: state.routes.routeB.complete,
+      note: state.player.inventory.includes("Dean Whiskey") ? "Bottle ready. Use in Dorm Room." : "Search Dean Desk when office is clear."
+    },
+    {
+      id: "C",
+      label: "Tunnel Trade Route",
+      complete: state.routes.routeC.complete,
+      note: state.player.inventory.includes("Asswine") ? "Asswine ready." : "Trade Sorority contraband for Asswine."
+    },
+    {
+      id: "D",
+      label: "Handcuffs Route",
+      complete: state.sonic.following && !state.player.inventory.includes("Furry Handcuffs"),
+      note: state.player.inventory.includes("Furry Handcuffs")
+        ? "Use in Dorm Room when Sonic is ready."
+        : "Search Sorority (when clear) for Handcuffs."
+    }
+  ];
 
   const routeActionButtons: ActionButtonDef[] = [];
   const unlocks = state.world.actionUnlocks;
@@ -1606,10 +2088,16 @@ function App() {
       priority: state.sonic.drunkLevel < 3 ? 91 : 50
     });
   }
-  if (presentNpcs.includes("sonic") && !state.sonic.following) {
+  const sonicPresentAtCurrentLocation = (state.world.presentNpcs[state.player.location] ?? []).includes("sonic");
+  if (
+    state.player.location === "frat"
+    && sonicPresentAtCurrentLocation
+    && !state.sonic.following
+    && !state.world.restrictions.fratBanned
+  ) {
     routeActionButtons.push({
       key: "PLAY_BEER_PONG_MINIGAME_SONIC",
-      label: state.player.location === "frat" ? "Challenge Sonic" : "Challenge Sonic (Go to Frat)",
+      label: "Challenge Sonic",
       action: { type: "PLAY_BEER_PONG_SHOT", shot: "hero" },
       priority: state.sonic.drunkLevel < 4 ? 89 : 52
     });
@@ -1638,10 +2126,24 @@ function App() {
       priority: 74
     });
   }
+  if (state.player.location === "eggman_classroom" && (state.world.presentNpcs.eggman_classroom ?? []).includes("eggman")) {
+    routeActionButtons.push({
+      key: "ASK_EGGMAN_QUIZ",
+      label: "Run Eggman Lab",
+      action: { type: "ASK_EGGMAN_QUIZ" },
+      priority: 77
+    });
+    routeActionButtons.push({
+      key: "DECLINE_EGGMAN_QUIZ",
+      label: "Skip Lab",
+      action: { type: "DECLINE_EGGMAN_QUIZ" },
+      priority: 22
+    });
+  }
   if (state.player.location === "frat" && unlocks.searchFratHouse) {
     routeActionButtons.push({
       key: "SEARCH_FRAT_HOUSE",
-      label: "Search Frat House",
+      label: "Search Frat",
       action: { type: "SEARCH_FRAT_HOUSE" },
       priority: 72
     });
@@ -1649,7 +2151,7 @@ function App() {
   if (state.player.location === "frat") {
     routeActionButtons.push({
       key: "PLAY_SOGGY_BISCUIT",
-      label: "Play Soggy Biscuit",
+      label: "Play Soggy",
       action: { type: "PLAY_SOGGY_BISCUIT" },
       priority: 12
     });
@@ -1665,7 +2167,7 @@ function App() {
   if (state.player.location === "sorority" && !sororityBanned && !state.world.presentNpcs.sorority.includes("sorority_girls")) {
     routeActionButtons.push({
       key: "SEARCH_SORORITY_HOUSE",
-      label: "Search Sorority House",
+      label: "Search Sorority",
       action: { type: "SEARCH_SORORITY_HOUSE" },
       priority: 72
     });
@@ -1673,7 +2175,7 @@ function App() {
   if (state.player.location === "sorority" && !sororityBanned && sororityPokerEligible) {
     routeActionButtons.push({
       key: "STRIP_POKER_MINIGAME",
-      label: "Play Strip Poker",
+      label: "Play Poker",
       action: { type: "PLAY_STRIP_POKER_ROUND" },
       priority: 83
     });
@@ -1690,7 +2192,7 @@ function App() {
     if (unlocks.tradeThunderhead) {
       routeActionButtons.push({
         key: "TRADE_THUNDERHEAD",
-        label: "Offer Trade",
+        label: "Trade",
         action: { type: "TRADE_THUNDERHEAD" },
         priority: state.player.inventory.includes("Lace Undies") ? 95 : 43
       });
@@ -1699,7 +2201,7 @@ function App() {
   if (state.player.location === "dorm_room") {
     routeActionButtons.push({
       key: "SEARCH_DORM_ROOM",
-      label: "Search Dorm Room",
+      label: "Search Room",
       action: { type: "SEARCH_DORM_ROOM" },
       priority: 88
     });
@@ -1708,7 +2210,8 @@ function App() {
         key: "GIVE_ASSWINE",
         label: "Give Asswine",
         action: { type: "GIVE_ASSWINE" },
-        priority: state.player.inventory.includes("Asswine") ? 99 : 40
+        priority: state.player.inventory.includes("Asswine") ? 99 : 40,
+        disabled: !sonicPresentAtCurrentLocation
       });
     }
     if (unlocks.giveWhiskey) {
@@ -1716,7 +2219,8 @@ function App() {
         key: "GIVE_WHISKEY",
         label: "Give Whiskey",
         action: { type: "GIVE_WHISKEY" },
-        priority: state.player.inventory.includes("Dean Whiskey") ? 94 : 38
+        priority: state.player.inventory.includes("Dean Whiskey") ? 94 : 38,
+        disabled: !sonicPresentAtCurrentLocation
       });
     }
     if (unlocks.escortSonic) {
@@ -1724,23 +2228,26 @@ function App() {
         key: "ESCORT_SONIC",
         label: "Escort Sonic",
         action: { type: "ESCORT_SONIC" },
-        priority: state.sonic.drunkLevel >= 3 && !state.sonic.following ? 100 : 36
+        priority: state.sonic.drunkLevel >= 3 && !state.sonic.following ? 100 : 36,
+        disabled: !sonicPresentAtCurrentLocation
       });
     }
     if (state.player.inventory.includes("Super Dean Beans")) {
       routeActionButtons.push({
         key: "USE_SUPER_DEAN_BEANS",
-        label: "Use Super Dean Beans",
+        label: "Use Beans",
         action: { type: "USE_SUPER_DEAN_BEANS" },
-        priority: 74
+        priority: 74,
+        disabled: !sonicPresentAtCurrentLocation
       });
     }
     if (state.player.inventory.includes("Expired Energy Shot")) {
       routeActionButtons.push({
         key: "USE_EXPIRED_ENERGY_SHOT",
-        label: "Use Expired Energy Shot",
+        label: "Use Energy Shot",
         action: { type: "USE_EXPIRED_ENERGY_SHOT" },
-        priority: 41
+        priority: 41,
+        disabled: !sonicPresentAtCurrentLocation
       });
     }
     if (state.player.inventory.includes("Warm Beer")) {
@@ -1748,13 +2255,14 @@ function App() {
         key: "USE_WARM_BEER",
         label: "Use Warm Beer",
         action: { type: "USE_WARM_BEER" },
-        priority: 66
+        priority: 66,
+        disabled: !sonicPresentAtCurrentLocation
       });
     }
     if (state.player.inventory.includes("Glitter Flask") && state.player.inventory.includes("Warm Beer")) {
       routeActionButtons.push({
         key: "MIX_GLITTER_WARM_BEER",
-        label: "Mix Glitter + Warm Beer",
+        label: "Mix Glitter Brew",
         action: { type: "MIX_GLITTER_WARM_BEER" },
         priority: 64
       });
@@ -1762,7 +2270,7 @@ function App() {
     if (state.player.inventory.includes("Super Dean Beans") && state.player.inventory.includes("Warm Beer")) {
       routeActionButtons.push({
         key: "MIX_BEANS_WARM_BEER",
-        label: "Mix Beans + Warm Beer",
+        label: "Mix Turbo Sludge",
         action: { type: "MIX_BEANS_WARM_BEER" },
         priority: 63
       });
@@ -1770,9 +2278,10 @@ function App() {
     if (state.player.inventory.includes("Glitter Bomb Brew")) {
       routeActionButtons.push({
         key: "USE_GLITTER_BOMB_BREW",
-        label: "Use Glitter Bomb Brew",
+        label: "Use Glitter Brew",
         action: { type: "USE_GLITTER_BOMB_BREW" },
-        priority: 73
+        priority: 73,
+        disabled: !sonicPresentAtCurrentLocation
       });
     }
     if (state.player.inventory.includes("Turbo Sludge")) {
@@ -1780,30 +2289,62 @@ function App() {
         key: "USE_TURBO_SLUDGE",
         label: "Use Turbo Sludge",
         action: { type: "USE_TURBO_SLUDGE" },
-        priority: 72
+        priority: 72,
+        disabled: !sonicPresentAtCurrentLocation
+      });
+    }
+    if (state.player.inventory.includes("Mystery Meat")) {
+      routeActionButtons.push({
+        key: "USE_MYSTERY_MEAT",
+        label: "Use Mystery Meat",
+        action: { type: "USE_MYSTERY_MEAT" },
+        priority: 42,
+        disabled: !sonicPresentAtCurrentLocation
       });
     }
   }
   if (state.player.location === "dorms" && unlocks.searchDorms) {
     routeActionButtons.push({
       key: "SEARCH_DORMS",
-      label: "Search Dorm Hall",
+      label: "Search Hall",
       action: { type: "SEARCH_DORMS" },
       priority: 67
+    });
+  }
+  if (state.player.inventory.includes("Furry Handcuffs")) {
+    const handcuffTargets = presentNpcs.filter((npc) =>
+      npc === "sonic" || npc === "dean_cain" || npc === "sorority_girls" || npc === "frat_boys"
+    );
+    handcuffTargets.forEach((target) => {
+      const highValue = target === "sonic" && state.sonic.drunkLevel >= ESCORT_READY_DRUNK_LEVEL && !state.sonic.following;
+      routeActionButtons.push({
+        key: `USE_ITEM_FURRY_HANDCUFFS_${target}`,
+        label: `Cuff ${titleCase(target)}`,
+        action: { type: "USE_ITEM_ON_TARGET", item: "Furry Handcuffs", target },
+        priority: highValue ? 98 : 26
+      });
     });
   }
   if (state.player.location === "stadium" && (unlocks.stadiumEntry || state.sonic.following)) {
     routeActionButtons.push({
       key: "STADIUM_ENTRY",
-      label: "Attempt Stadium Entry",
+      label: "Enter Stadium",
       action: { type: "STADIUM_ENTRY" },
-      priority: state.sonic.following && state.sonic.drunkLevel >= 3 ? 100 : 60
+      priority: state.sonic.following && state.sonic.drunkLevel >= ESCORT_READY_DRUNK_LEVEL ? 100 : 60
+    });
+  }
+  if (state.player.location === "stadium" && state.player.inventory.includes("Gate Stamp")) {
+    routeActionButtons.push({
+      key: "USE_GATE_STAMP",
+      label: "Use Gate Stamp",
+      action: { type: "USE_GATE_STAMP" },
+      priority: state.player.inventory.includes("Student ID") ? 78 : 34
     });
   }
   if (state.player.location === "stadium" && unlocks.searchStadium) {
     routeActionButtons.push({
       key: "SEARCH_STADIUM",
-      label: "Search Gate Area",
+      label: "Search Gate",
       action: { type: "SEARCH_STADIUM" },
       priority: 66
     });
@@ -1813,44 +2354,101 @@ function App() {
       item.priority += 5;
     });
   }
+  if (state.player.inventory.includes("Security Schedule")) {
+    routeActionButtons.push({
+      key: "USE_SECURITY_SCHEDULE",
+      label: "Use Schedule",
+      action: { type: "USE_SECURITY_SCHEDULE" },
+      priority: state.player.location === "stadium" ? 79 : 35
+    });
+  }
+  if (state.player.inventory.includes("RA Whistle")) {
+    routeActionButtons.push({
+      key: "USE_RA_WHISTLE",
+      label: "Use RA Whistle",
+      action: { type: "USE_RA_WHISTLE" },
+      priority: state.player.location === "dorms" || state.player.location === "dorm_room" ? 53 : 24
+    });
+  }
+  if (state.player.inventory.includes("Campus Map")) {
+    routeActionButtons.push({
+      key: "USE_CAMPUS_MAP",
+      label: "Use Map",
+      action: { type: "USE_CAMPUS_MAP" },
+      priority: 39
+    });
+  }
   routeActionButtons.sort((a, b) => b.priority - a.priority);
 
   const nextBestActionKey = routeActionButtons[0]?.key ?? null;
-  const moveActions: ActionButtonDef[] = exits.map((target) => ({
-    key: `MOVE_${target}`,
-    label: `Go ${titleCase(target)}`,
-    action: { type: "MOVE", target } as UiAction,
-    priority: 30,
-    group: "move"
-  }));
+  const moveActions: ActionButtonDef[] = exits.map((target) => {
+    const isFratBannedMove = target === "frat" && state.world.restrictions.fratBanned;
+    return {
+      key: `MOVE_${target}`,
+      label: `Go ${content?.locations.find((l) => l.id === target)?.name ?? titleCase(target)}`,
+      action: { type: "MOVE", target } as UiAction,
+      priority: 30,
+      group: "move",
+      disabled: isFratBannedMove,
+      badge: isFratBannedMove ? "BANNED" : undefined
+    };
+  });
   const riskyKeys = new Set([
+    "USE_FURRY_HANDCUFFS",
     "USE_SUPER_DEAN_BEANS",
     "USE_EXPIRED_ENERGY_SHOT",
     "USE_WARM_BEER",
     "USE_GLITTER_BOMB_BREW",
     "USE_TURBO_SLUDGE",
+    "USE_MYSTERY_MEAT",
+    "USE_GATE_STAMP",
+    "USE_RA_WHISTLE",
     "STADIUM_ENTRY"
   ]);
   const immediateActions: ActionButtonDef[] = routeActionButtons.slice(0, 2).map((a) => ({ ...a, group: "immediate" }));
   const immediateSet = new Set(immediateActions.map((a) => a.key));
   const remainingRouteActions = routeActionButtons.filter((a) => !immediateSet.has(a.key));
-  const useActions = remainingRouteActions.filter((a) => a.key.startsWith("USE_") || a.key.startsWith("MIX_")).map((a) => ({ ...a, group: "use" as const }));
   const riskyActions = remainingRouteActions.filter((a) => riskyKeys.has(a.key)).map((a) => ({ ...a, group: "risky" as const }));
-  const useSet = new Set(useActions.map((a) => a.key));
-  const riskySet = new Set(riskyActions.map((a) => a.key));
+  const targetedRiskyActions = remainingRouteActions
+    .filter((a) => a.key.startsWith("USE_ITEM_FURRY_HANDCUFFS_"))
+    .map((a) => ({ ...a, group: "risky" as const }));
+  const riskyActionsAll = [...riskyActions, ...targetedRiskyActions];
+  const riskySet = new Set(riskyActionsAll.map((a) => a.key));
   const immediateSetAll = new Set(immediateActions.map((a) => a.key));
   const groupedActionRows: Array<{ title: string; items: ActionButtonDef[] }> = [
-    { title: "Immediate", items: immediateActions },
+    { title: "Top", items: immediateActions },
     { title: "Move", items: moveActions },
-    { title: "Use Item", items: useActions.filter((a) => !riskySet.has(a.key)) },
-    { title: "Risky", items: riskyActions },
+    { title: "Risk", items: riskyActionsAll },
     {
       title: "More",
       items: remainingRouteActions
-        .filter((a) => !useSet.has(a.key) && !riskySet.has(a.key) && !immediateSetAll.has(a.key))
+        .filter((a) => !riskySet.has(a.key) && !immediateSetAll.has(a.key))
         .map((a) => ({ ...a }))
     }
   ].filter((group) => group.items.length > 0);
+  const inventoryItems = [...state.player.inventory];
+  const itemActionMatchers: Array<{ test: (item: string) => boolean; match: (action: ActionButtonDef) => boolean }> = [
+    { test: (item) => item === "Dean Whiskey", match: (action) => action.action.type === "GIVE_WHISKEY" },
+    { test: (item) => item === "Asswine", match: (action) => action.action.type === "GIVE_ASSWINE" },
+    { test: (item) => item === "Furry Handcuffs", match: (action) => action.key.startsWith("USE_ITEM_FURRY_HANDCUFFS_") },
+    { test: (item) => item === "Warm Beer", match: (action) => action.action.type === "USE_WARM_BEER" || action.action.type === "MIX_GLITTER_WARM_BEER" || action.action.type === "MIX_BEANS_WARM_BEER" },
+    { test: (item) => item === "Super Dean Beans", match: (action) => action.action.type === "USE_SUPER_DEAN_BEANS" || action.action.type === "MIX_BEANS_WARM_BEER" },
+    { test: (item) => item === "Expired Energy Shot", match: (action) => action.action.type === "USE_EXPIRED_ENERGY_SHOT" },
+    { test: (item) => item === "Glitter Flask", match: (action) => action.action.type === "MIX_GLITTER_WARM_BEER" },
+    { test: (item) => item === "Glitter Bomb Brew", match: (action) => action.action.type === "USE_GLITTER_BOMB_BREW" },
+    { test: (item) => item === "Turbo Sludge", match: (action) => action.action.type === "USE_TURBO_SLUDGE" },
+    { test: (item) => item === "Campus Map", match: (action) => action.action.type === "USE_CAMPUS_MAP" },
+    { test: (item) => item === "Gate Stamp", match: (action) => action.action.type === "USE_GATE_STAMP" },
+    { test: (item) => item === "Mystery Meat", match: (action) => action.action.type === "USE_MYSTERY_MEAT" },
+    { test: (item) => item === "Security Schedule", match: (action) => action.action.type === "USE_SECURITY_SCHEDULE" },
+    { test: (item) => item === "RA Whistle", match: (action) => action.action.type === "USE_RA_WHISTLE" }
+  ];
+  const resolveItemActions = (item: string): ActionButtonDef[] => {
+    const matcher = itemActionMatchers.find((m) => m.test(item));
+    if (!matcher) return [];
+    return routeActionButtons.filter((a) => matcher.match(a));
+  };
+  const selectedItemActions = selectedActionItem ? resolveItemActions(selectedActionItem) : [];
   const getOpponentSeatStyle = (index: number, total: number): CSSProperties => {
     const normalizedTotal = Math.max(1, total);
     if (normalizedTotal === 1) {
@@ -1883,6 +2481,7 @@ function App() {
         popupCharacterImage={popupCharacterImage}
         popupDisplaySpeaker={popupDisplaySpeaker}
         popupDialogueText={popupDialogueText}
+        popupTyping={popupTyping}
         engagedNpc={engagedNpc}
         playerInput={playerInput}
         isAwaitingNpcReply={isAwaitingNpcReply}
@@ -1890,11 +2489,6 @@ function App() {
         titleCase={titleCase}
         onPlayerInputChange={setPlayerInput}
         onSubmitDialogue={submitDialogueLocked}
-        onDismissConversation={() => {
-          setActiveNpc(null);
-          setActiveNpcFocusAtMs(0);
-          setPlayerInput("");
-        }}
       />
 
       <PresenceBar
@@ -1902,16 +2496,40 @@ function App() {
         engagedNpc={engagedNpc}
         isResolved={isResolved || isSoggySequenceActive}
         titleCase={titleCase}
-        npcToneClass={npcToneClass}
+        resolveNpcImage={resolveNpcImage}
         onFocusNpc={(npc) => { void focusNpcConversation(npc); }}
       />
+
+      {showMissionTracker && (
+        <section className="mission-tracker" aria-label="Mission tracker">
+          <p className="mission-kicker">Objective</p>
+          <p className="mission-title">{state.mission.objective}</p>
+          <p className="mission-subtitle">{state.mission.subObjective}</p>
+          <div className="mission-stats">
+            <span>Sonic drunk: {state.sonic.drunkLevel}/4</span>
+            <span>Following: {state.sonic.following ? "yes" : "no"}</span>
+            <span>ID: {state.player.inventory.includes("Student ID") ? "ready" : "missing"}</span>
+            <span>Warnings — Dean {warningMeter(state.fail.warnings.dean, WARNING_LIMITS.dean)}, Luigi {warningMeter(state.fail.warnings.luigi, WARNING_LIMITS.luigi)}, Frat {warningMeter(state.fail.warnings.frat, WARNING_LIMITS.frat)}</span>
+          </div>
+          <div className="route-matrix">
+            {routeSnapshots.map((route) => (
+              <div key={`route-${route.id}`} className={`route-chip ${route.complete ? "complete" : ""}`}>
+                <strong>Route {route.id}</strong> {route.label} - {route.note}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <BottomActionStrip
         engagedNpc={engagedNpc}
         playerInput={playerInput}
         isResolved={isResolved || isSoggySequenceActive}
         clockText={clockText}
-        onOpenActions={() => setActionMenuOpen(true)}
+        onOpenActions={() => {
+          setSelectedActionItem(null);
+          setActionMenuOpen(true);
+        }}
         onOpenMenu={() => setHudMenuOpen(true)}
       />
 
@@ -1924,19 +2542,9 @@ function App() {
             </header>
             <div className="action-groups">
               <section className="action-group">
-                <h4>Mission</h4>
-                <p className="menu-inline-copy">{state.mission.objective}</p>
-                <p className="menu-inline-copy muted">Sonic: {state.sonic.drunkLevel}/4 • Following: {state.sonic.following ? "yes" : "no"}</p>
-              </section>
-              <section className="action-group">
-                <h4>Items</h4>
-                <div className="menu-chip-wrap">
-                  {state.player.inventory.length > 0 ? (
-                    state.player.inventory.map((item) => <span key={`inv-${item}`} className="menu-chip">{item}</span>)
-                  ) : (
-                    <span className="menu-chip menu-chip-muted">No items yet</span>
-                  )}
-                </div>
+                <h4>Status</h4>
+                <p className="menu-inline-copy muted">Sonic: {state.sonic.drunkLevel}/4 • Following: {state.sonic.following ? "yes" : "no"} • ID: {state.player.inventory.includes("Student ID") ? "ready" : "missing"}</p>
+                <p className="menu-inline-copy muted">Warn: Dean {warningMeter(state.fail.warnings.dean, WARNING_LIMITS.dean)} • Luigi {warningMeter(state.fail.warnings.luigi, WARNING_LIMITS.luigi)} • Frat {warningMeter(state.fail.warnings.frat, WARNING_LIMITS.frat)}</p>
               </section>
               <section className="action-group">
                 <h4>Utilities</h4>
@@ -1950,7 +2558,7 @@ function App() {
                       setHintCooldownUntilMs(Date.now() + 30000);
                     }}
                   >
-                    Hint
+                    Get Hint
                   </button>
                   <button onClick={async () => {
                     setHudMenuOpen(false);
@@ -1959,7 +2567,7 @@ function App() {
                     setPlayerInput("");
                     openLandingPage();
                     setHintCooldownUntilMs(0);
-                  }}>New Run</button>
+                  }}>Restart Run</button>
                 </div>
                 <p className="menu-inline-copy muted">{hintButtonNote}</p>
               </section>
@@ -1969,10 +2577,80 @@ function App() {
       )}
 
       {actionMenuOpen && (
-        <section className="modal-overlay action-sheet-overlay" onClick={() => setActionMenuOpen(false)}>
+        <section className="modal-overlay action-sheet-overlay" onClick={() => {
+          setActionMenuOpen(false);
+          setSelectedActionItem(null);
+        }}>
           <article className="modal-card action-sheet-card" onClick={(e) => e.stopPropagation()}>
             <h3>Actions</h3>
             <div className="action-groups">
+              <section className="action-group">
+                <h4>Items</h4>
+                <div className="menu-chip-wrap">
+                  {inventoryItems.length > 0 ? (
+                    inventoryItems.map((item) => (
+                      <button
+                        key={`action-item-${item}`}
+                        className={`menu-chip item-chip-button ${selectedActionItem === item ? "active-talk-btn" : ""}`}
+                        onClick={() => setSelectedActionItem(item)}
+                      >
+                        <img className="item-chip-icon" src={ITEM_ICONS[item] ?? DEFAULT_ITEM_ICON} alt="" />
+                        {item}
+                      </button>
+                    ))
+                  ) : (
+                    <span className="menu-chip menu-chip-muted">No items</span>
+                  )}
+                </div>
+                {selectedActionItem && (
+                  <div className="panel" style={{ marginTop: 8 }}>
+                    <p className="menu-inline-copy item-title-row">
+                      <img className="item-title-icon" src={ITEM_ICONS[selectedActionItem] ?? DEFAULT_ITEM_ICON} alt="" />
+                      <strong>{selectedActionItem}</strong>
+                    </p>
+                    <p className="menu-inline-copy muted">{ITEM_HELP[selectedActionItem]?.desc ?? "No description"}</p>
+                    <p className="menu-inline-copy muted">{ITEM_HELP[selectedActionItem]?.useHint ?? "Use when context fits"}</p>
+                    {ITEM_HELP[selectedActionItem]?.targetHint && (
+                      <p className="menu-inline-copy muted">{ITEM_HELP[selectedActionItem]?.targetHint}</p>
+                    )}
+                    {ITEM_HELP[selectedActionItem]?.riskHint && (
+                      <p className="menu-inline-copy muted">Risk: {ITEM_HELP[selectedActionItem]?.riskHint}</p>
+                    )}
+                    <div className="button-grid action-grid">
+                      {selectedItemActions.length > 0 ? (
+                        selectedItemActions.map((item) => (
+                          <button
+                            key={`use-selected-${item.key}`}
+                            disabled={isResolved || isSoggySequenceActive || Boolean(item.disabled)}
+                            onClick={async () => {
+                              setActionMenuOpen(false);
+                              await runAction(item.action);
+                            }}
+                          >
+                            {item.label}
+                          </button>
+                        ))
+                      ) : (
+                        <button disabled>
+                          No usable action here
+                        </button>
+                      )}
+                    </div>
+                    {selectedActionItem === "Campus Map" && (
+                      <div className="button-grid action-grid" style={{ marginTop: 8 }}>
+                        <button
+                          onClick={() => {
+                            setActionMenuOpen(false);
+                            setCampusMapOpen(true);
+                          }}
+                        >
+                          Open Map
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
               {groupedActionRows.map((group) => (
                 <section key={group.title} className="action-group">
                   <h4>{group.title}</h4>
@@ -1980,7 +2658,7 @@ function App() {
                     {group.items.map((item) => (
                       <button
                         key={item.key}
-                        disabled={isResolved || isSoggySequenceActive}
+                        disabled={isResolved || isSoggySequenceActive || Boolean(item.disabled)}
                         className={item.key === nextBestActionKey ? "next-best-action" : ""}
                         onClick={async () => {
                           if (item.key === "PLAY_SOGGY_BISCUIT") {
@@ -2015,6 +2693,16 @@ function App() {
                             setStripPokerOpen(true);
                             return;
                           }
+                          if (item.key === "ASK_EGGMAN_QUIZ") {
+                            setActionMenuOpen(false);
+                            const setup = await runAction({ type: "ASK_EGGMAN_QUIZ" }, true);
+                            if (!setup.ok) {
+                              setNotice({ title: "Blocked", body: setup.message });
+                              return;
+                            }
+                            openEggmanLab();
+                            return;
+                          }
                           setActionMenuOpen(false);
                           if (isSearchAction(item.action)) {
                             const searchResult = await runAction(item.action, true);
@@ -2024,8 +2712,9 @@ function App() {
                                 message: searchResult.message
                               });
                             } else {
+                              const caughtByFrat = /diesel caught you searching|banned from frat/i.test(searchResult.message);
                               setNotice({
-                                title: "Blocked",
+                                title: caughtByFrat ? "Caught" : "Blocked",
                                 body: searchResult.message
                               });
                             }
@@ -2039,20 +2728,205 @@ function App() {
                         }}
                       >
                         {item.label}
+                        {item.badge ? <span className="action-pill-label">{item.badge}</span> : null}
                       </button>
                     ))}
                   </div>
                 </section>
               ))}
             </div>
-            <button className="ghost" onClick={() => setActionMenuOpen(false)}>Close</button>
+            <button className="ghost" onClick={() => {
+              setActionMenuOpen(false);
+              setSelectedActionItem(null);
+            }}>Close</button>
+          </article>
+        </section>
+      )}
+
+      {eggmanLabOpen && (
+        <section
+          className="modal-overlay"
+          onClick={() => {
+            if (eggmanLabBusy || eggmanLabFx) return;
+            setEggmanLabOpen(false);
+            setEggmanLabFx(null);
+          }}
+        >
+          <article className="modal-card eggman-lab-card" onClick={(e) => e.stopPropagation()}>
+            <div className="eggman-lab-head">
+              <h3>Eggman Lab</h3>
+              <span className="eggman-lab-chip">Round {eggmanLabRound}</span>
+              <span className="eggman-lab-chip">Scans {eggmanScansLeft}/2</span>
+            </div>
+            <p className="muted">Target: synthetic taco-flavored weight-loss cough syrup.</p>
+            <div className="eggman-bench">
+              <div className="eggman-reagents">
+                <p className="eggman-lab-label">Reagents</p>
+                <div className="eggman-dose-row">
+                  <button disabled={eggmanLabBusy || eggmanDoseTotal >= 10} onClick={() => setEggmanDoses((prev) => ({ ...prev, red: prev.red + 1 }))}>
+                    Add Red
+                  </button>
+                  <span className="muted">Red dose: {eggmanDoses.red}</span>
+                </div>
+                <div className="eggman-dose-row">
+                  <button disabled={eggmanLabBusy || eggmanDoseTotal >= 10} onClick={() => setEggmanDoses((prev) => ({ ...prev, green: prev.green + 1 }))}>
+                    Add Green
+                  </button>
+                  <span className="muted">Green dose: {eggmanDoses.green}</span>
+                </div>
+                <div className="eggman-dose-row">
+                  <button disabled={eggmanLabBusy || eggmanDoseTotal >= 10} onClick={() => setEggmanDoses((prev) => ({ ...prev, blue: prev.blue + 1 }))}>
+                    Add Blue
+                  </button>
+                  <span className="muted">Blue dose: {eggmanDoses.blue}</span>
+                </div>
+                <button
+                  className="ghost"
+                  disabled={eggmanLabBusy}
+                  onClick={() => setEggmanDoses({ red: 0, green: 0, blue: 0 })}
+                >
+                  Reset Reagents
+                </button>
+                <div className="eggman-reagent-meters">
+                  <div className="eggman-meter eggman-meter-red">
+                    <div className="eggman-meter-fill" style={{ height: `${Math.min(100, eggmanDoses.red * 10)}%` }} />
+                  </div>
+                  <div className="eggman-meter eggman-meter-green">
+                    <div className="eggman-meter-fill" style={{ height: `${Math.min(100, eggmanDoses.green * 10)}%` }} />
+                  </div>
+                  <div className="eggman-meter eggman-meter-blue">
+                    <div className="eggman-meter-fill" style={{ height: `${Math.min(100, eggmanDoses.blue * 10)}%` }} />
+                  </div>
+                </div>
+              </div>
+              <div className="eggman-glassware">
+                <p className="eggman-lab-label">Erlenmeyer Flask</p>
+                <div className={`eggman-flask-wrap ${eggmanLabFx ? `eggman-fx-${eggmanLabFx}` : ""}`}>
+                  <div className="eggman-flask-neck" />
+                  <div className="eggman-beaker-shell">
+                    <div
+                      className="eggman-beaker-fluid"
+                      style={{ height: `${eggmanBeakerFill}%`, background: `linear-gradient(180deg, rgba(255,255,255,0.2), ${eggmanFluidColor})` }}
+                    >
+                      {Array.from({ length: 7 }).map((_, idx) => (
+                        <span
+                          key={`egg-bubble-${idx}`}
+                          className="eggman-bubble"
+                          style={{
+                            left: `${12 + (idx * 11)}%`,
+                            animationDuration: `${eggmanBubbleSpeedSec + (idx * 0.12)}s`,
+                            animationDelay: `${idx * 0.18}s`
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <div className="eggman-flask-glare" />
+                  </div>
+                  {eggmanLabFx && (
+                    <div className="eggman-fx-overlay">
+                      <span className="eggman-fx-label">
+                        {eggmanLabFx === "perfect"
+                          ? "Perfect Viscosity"
+                          : eggmanLabFx === "good"
+                            ? "Stable Batch"
+                            : eggmanLabFx === "fail"
+                              ? "Unstable Mix"
+                              : "Meltdown"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <p className="muted">Fill: {eggmanBeakerFill}%</p>
+                <p className="muted">Syrup profile: {titleCase(eggmanMix.catalyst)} taco note</p>
+              </div>
+              <div className="eggman-burner">
+                <p className="eggman-lab-label">Bunsen Burner</p>
+                <div className="eggman-flame-track">
+                  <div className="eggman-flame eggman-flame-outer" style={{ height: `${Math.max(10, eggmanHeatValue)}%`, opacity: 0.34 + (eggmanHeatValue / 170) }} />
+                  <div className="eggman-flame eggman-flame-inner" style={{ height: `${Math.max(8, eggmanHeatValue * 0.68)}%`, opacity: 0.45 + (eggmanHeatValue / 190) }} />
+                  <div className="eggman-burner-stem" />
+                  <div className="eggman-burner-base" />
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={eggmanHeatValue}
+                  disabled={eggmanLabBusy}
+                  onChange={(e) => setEggmanHeatValue(Number(e.target.value))}
+                />
+                <p className="muted">Heat: {titleCase(eggmanMix.heat)}</p>
+              </div>
+            </div>
+            <div className="eggman-lab-row">
+              <span className="eggman-lab-label">Flavor profile (from dominant reagent)</span>
+              <p className="muted">Current: {titleCase(eggmanMix.catalyst)}</p>
+              <button
+                className="ghost"
+                disabled={eggmanLabBusy || eggmanScansLeft <= 0 || Boolean(eggmanScanHints.catalyst)}
+                onClick={() => runEggmanScan("catalyst")}
+              >
+                Scan Flavor
+              </button>
+              {eggmanScanHints.catalyst && <p className="muted">Flavor hint: {eggmanScanHints.catalyst}</p>}
+            </div>
+            <div className="eggman-lab-row">
+              <span className="eggman-lab-label">Heat band (from burner)</span>
+              <p className="muted">Current: {titleCase(eggmanMix.heat)}</p>
+              <button
+                className="ghost"
+                disabled={eggmanLabBusy || eggmanScansLeft <= 0 || Boolean(eggmanScanHints.heat)}
+                onClick={() => runEggmanScan("heat")}
+              >
+                Scan Heat
+              </button>
+              {eggmanScanHints.heat && <p className="muted">Heat hint: {eggmanScanHints.heat}</p>}
+            </div>
+            <div className="eggman-lab-row">
+              <span className="eggman-lab-label">Viscosity pattern (from stir)</span>
+              <div className="button-grid action-grid">
+                <button
+                  disabled={eggmanLabBusy}
+                  onClick={() => setEggmanStirPower((prev) => Math.min(100, prev + 14))}
+                >
+                  Stir
+                </button>
+                <button
+                  className="ghost"
+                  disabled={eggmanLabBusy}
+                  onClick={() => setEggmanStirPower(34)}
+                >
+                  Reset Stir
+                </button>
+              </div>
+              <p className="muted">Stir power: {eggmanStirPower}% • Current: {titleCase(eggmanMix.stir)}</p>
+              <button
+                className="ghost"
+                disabled={eggmanLabBusy || eggmanScansLeft <= 0 || Boolean(eggmanScanHints.stir)}
+                onClick={() => runEggmanScan("stir")}
+              >
+                Scan Texture
+              </button>
+              {eggmanScanHints.stir && <p className="muted">Texture hint: {eggmanScanHints.stir}</p>}
+            </div>
+            <div className="button-grid action-grid">
+              <button disabled={eggmanLabBusy} onClick={async () => submitEggmanLabRound()}>
+                {eggmanLabBusy ? "Mixing..." : "Submit Mix"}
+              </button>
+              <button className="ghost" disabled={eggmanLabBusy || Boolean(eggmanLabFx)} onClick={() => {
+                setEggmanLabOpen(false);
+                setEggmanLabFx(null);
+              }}>
+                Close
+              </button>
+            </div>
           </article>
         </section>
       )}
 
       {searchLoot && (
-        <section className="modal-overlay" onClick={() => setSearchLoot(null)}>
-          <article className="modal-card search-loot-card" onClick={(e) => e.stopPropagation()}>
+        <section className="search-loot-toast" aria-live="polite">
+          <article className="modal-card search-loot-card">
             <h3>Search Results</h3>
             <p>{searchLoot.message}</p>
             <p className="muted">Your search turned up:</p>
@@ -2072,7 +2946,8 @@ function App() {
                       }
                     }}
                   >
-                    Take {item}
+                    <img className="loot-item-icon" src={ITEM_ICONS[item] ?? DEFAULT_ITEM_ICON} alt="" />
+                    <span>Take {item}</span>
                   </button>
                 ))}
               </div>
@@ -2080,6 +2955,24 @@ function App() {
               <p className="muted">Nothing left here.</p>
             )}
             <button className="ghost" onClick={() => setSearchLoot(null)}>Close</button>
+          </article>
+        </section>
+      )}
+
+      {campusMapOpen && (
+        <section className="modal-overlay" onClick={() => setCampusMapOpen(false)}>
+          <article className="modal-card campus-map-card" onClick={(e) => e.stopPropagation()}>
+            <h3>Campus Map</h3>
+            <p className="muted">Current location: {titleCase(state.player.location)}</p>
+            <div className="campus-map-grid">
+              {(content?.locations ?? []).map((location) => (
+                <div key={`map-${location.id}`} className={`campus-map-node ${location.id === state.player.location ? "active" : ""}`}>
+                  <p className="campus-map-title">{location.name}</p>
+                  <p className="campus-map-exits">Exits: {location.exits.map((exit) => titleCase(exit)).join(" • ") || "None"}</p>
+                </div>
+              ))}
+            </div>
+            <button className="ghost" onClick={() => setCampusMapOpen(false)}>Close</button>
           </article>
         </section>
       )}
@@ -2120,8 +3013,38 @@ function App() {
               </div>
             </div>
             {beerCountdown > 0 && <p className="beer-countdown">Rack reset... {beerCountdown}</p>}
+            <p className="beer-control-legend">
+              {beerControlStep === "position"
+                ? "Move Shot Positon"
+                : "Adjust Toss Arch"}
+              {beerPointerMode ? ` Mode: ${beerPointerMode === "launcher" ? "Repositioning launcher" : "Aiming shot"}` : ""}
+            </p>
+            <div className="beer-control-actions">
+              {beerControlStep === "position" ? (
+                <button
+                  className="beer-control-btn"
+                  disabled={beerInFlight || beerThrowsLeft <= 0 || beerCountdown > 0}
+                  onClick={() => setBeerControlStep("aim")}
+                >
+                  Lock Position
+                </button>
+              ) : (
+                <button
+                  className="beer-control-btn ghost"
+                  disabled={beerInFlight || beerThrowsLeft <= 0 || beerCountdown > 0}
+                  onClick={() => {
+                    setBeerControlStep("position");
+                    setBeerPointerMode(null);
+                    setDraggingAim(false);
+                    setDraggingLauncher(false);
+                  }}
+                >
+                  Move Shot Positon
+                </button>
+              )}
+            </div>
             {showBeerLauncherTip && (
-              <p className="beer-launcher-tip">Drag ball up/down to reposition shot.</p>
+              <p className="beer-launcher-tip">Tip: Move Shot Positon, Lock Position, then Adjust Toss Arch.</p>
             )}
             <canvas
               ref={beerCanvasRef}
@@ -2132,17 +3055,14 @@ function App() {
                 if (beerInFlight || beerThrowsLeft <= 0) return;
                 const canvas = beerCanvasRef.current;
                 if (!canvas) return;
-                const rect = canvas.getBoundingClientRect();
-                const px = ((e.clientX - rect.left) / rect.width) * canvas.width;
-                const py = ((e.clientY - rect.top) / rect.height) * canvas.height;
-                const nearLauncherBall = Math.hypot(px - launchOrigin.x, py - launchOrigin.y) <= 30;
-                const nearLauncherRail = Math.abs(px - launchOrigin.x) <= 28 && Math.abs(py - launcherY) <= 48;
-                if (nearLauncherBall || nearLauncherRail) {
+                if (beerControlStep === "position") {
                   setDraggingLauncher(true);
+                  setBeerPointerMode("launcher");
                   updateLauncherFromPointer(e.clientY);
                   return;
                 }
                 setDraggingAim(true);
+                setBeerPointerMode("aim");
                 flickStartRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
                 applyAimFromPointer(e.clientX, e.clientY);
               }}
@@ -2157,22 +3077,26 @@ function App() {
               onPointerUp={(e) => {
                 if (draggingLauncher) {
                   setDraggingLauncher(false);
+                  setBeerPointerMode(null);
                   flickStartRef.current = null;
                   return;
                 }
                 if (!draggingAim) return;
                 setDraggingAim(false);
+                setBeerPointerMode(null);
                 flickToLaunch(e.clientX, e.clientY);
                 flickStartRef.current = null;
               }}
               onPointerLeave={() => {
                 if (draggingLauncher) {
                   setDraggingLauncher(false);
+                  setBeerPointerMode(null);
                   flickStartRef.current = null;
                   return;
                 }
                 if (!draggingAim) return;
                 setDraggingAim(false);
+                setBeerPointerMode(null);
                 flickStartRef.current = null;
               }}
             />
@@ -2259,7 +3183,7 @@ function App() {
               )}
             </div>
             <p className="muted">
-              {stripPokerDeal.stage === "deal" ? "Select up to 3 cards, then draw." : "Showdown locked."}
+              {stripPokerDeal.stage === "deal" ? `Select up to 3 cards, then draw. Strategy: ${titleCase(stripRiskMode)}.` : "Showdown locked."}
               {stripPokerDeal.stage === "showdown" && stripPokerDeal.drawnCards.length > 0
                 ? ` | Drew: ${stripPokerDeal.drawnCards.map((c) => c.code).join(" ")}`
                 : ""}
@@ -2269,10 +3193,23 @@ function App() {
                 {stripPokerDeal.edgeNote}
               </p>
             )}
+            {stripPokerDeal.stage === "deal" && (
+              <div className="beer-control-actions">
+                <button className="beer-control-btn" onClick={() => autoPickStripDiscards("safe")} disabled={stripPokerBusy}>
+                  Auto Safe
+                </button>
+                <button className="beer-control-btn" onClick={() => autoPickStripDiscards("balanced")} disabled={stripPokerBusy}>
+                  Auto Balanced
+                </button>
+                <button className="beer-control-btn" onClick={() => autoPickStripDiscards("bluff")} disabled={stripPokerBusy}>
+                  Auto Bluff
+                </button>
+              </div>
+            )}
             <div className="button-grid strip-poker-actions">
               {stripPokerDeal.stage === "deal" ? (
                 <button onClick={drawStripPokerCards} disabled={stripPokerBusy}>
-                  Draw New Cards ({stripPokerDeal.selectedDiscard.length}/3 discard) - Stake: {stripPokerNextStake}
+                  Draw ({stripPokerDeal.selectedDiscard.length}/3) • Stake: {stripPokerNextStake}
                 </button>
               ) : stripPokerDeal.stage === "dealing" ? (
                 <button disabled>
@@ -2292,7 +3229,7 @@ function App() {
                   }}
                   disabled={stripPokerBusy}
                 >
-                  {stripPokerBusy ? "Dealing..." : "Play Another Hand"}
+                  {stripPokerBusy ? "Dealing..." : "Next Hand"}
                 </button>
               )}
               <button
@@ -2331,12 +3268,22 @@ function App() {
         </section>
       )}
 
+      {topToast && !suppressTopToast && (
+        <aside className={`top-toast top-toast-${topToast.kind}`} aria-live="polite">
+          {topToast.text}
+        </aside>
+      )}
+
       {(notice || isResolved) && !showLandingPage && !landingClosing && !isSoggySequenceActive && (
         <section className="modal-overlay">
-          <article className="modal-card">
+          <article className={`modal-card ${isResolved ? "official-notice-card" : "status-note-card"}`}>
             {isResolved ? (
               <>
-                <h2>{state.fail.hardFailed ? "Game Over" : "Mission Complete"}</h2>
+                <div className="official-letterhead">
+                  <p className="official-school">Console University</p>
+                  <p className="official-dept">Office of Dean Cain</p>
+                  <h2>{state.fail.hardFailed ? "Expulsion Notice" : "Mission Completion Record"}</h2>
+                </div>
                 {shouldShowExpelCard && (
                   <img
                     className="kickout-modal-image"
@@ -2344,20 +3291,31 @@ function App() {
                     alt="Expulsion notice"
                   />
                 )}
-                <p>{state.fail.hardFailed ? state.fail.reason : "Sonic reached Stadium under mission conditions."}</p>
+                <p className="official-body">{state.fail.hardFailed ? state.fail.reason : "Sonic reached Stadium under mission conditions."}</p>
                 <button onClick={async () => {
                   setActiveNpc(null);
                   setActiveNpcFocusAtMs(0);
                   setPlayerInput("");
                   setNotice(null);
                   openLandingPage();
-                }}>Start New Run</button>
+                }}>File New Run</button>
               </>
             ) : (
               <>
                 <h3>{notice?.title}</h3>
-                <p>{notice?.body}</p>
-                <button onClick={() => setNotice(null)}>Close</button>
+                <p className="official-body">{notice?.body}</p>
+                <button
+                  onClick={async () => {
+                    const forcedTarget = pendingForcedRelocationTargetRef.current;
+                    if (forcedTarget) {
+                      await runAction({ type: "FORCE_MOVE", target: forcedTarget }, true);
+                      pendingForcedRelocationTargetRef.current = null;
+                    }
+                    setNotice(null);
+                  }}
+                >
+                  Close
+                </button>
               </>
             )}
           </article>
@@ -2381,6 +3339,29 @@ function App() {
             <p className="location-splash-kicker">{locationSplash.subtitle}</p>
             <h3>{locationSplash.title}</h3>
             <p>{locationSplash.occupants}</p>
+          </article>
+        </section>
+      )}
+
+      {orientationAgendaOpen && (
+        <section className="modal-overlay" onClick={() => setOrientationAgendaOpen(false)}>
+          <article className="modal-card orientation-agenda-card" onClick={(e) => e.stopPropagation()}>
+            <div className="agenda-letterhead">
+              <p className="agenda-school">Console University</p>
+              <p className="agenda-dept">Office of Mission Intake & Student Operations</p>
+              <h3>Orientation Agenda</h3>
+              <p className="agenda-meta">Issued to: {orientationAgendaName} • Term: Fall Intake</p>
+            </div>
+            <p className="agenda-intro"><strong>Dean Cain:</strong> Find Sonic and escort him to Stadium with credentials intact. Keep pressure low, move fast, and avoid bans.</p>
+            <div className="agenda-grid">
+              <p><span className="agenda-check">✓</span><span className="agenda-item-text"><strong>Talk:</strong> Tap NPC markers for intel.</span></p>
+              <p><span className="agenda-check">✓</span><span className="agenda-item-text"><strong>Ask:</strong> Some clues unlock via prompts.</span></p>
+              <p><span className="agenda-check">✓</span><span className="agenda-item-text"><strong>Search:</strong> Sweep rooms for route items.</span></p>
+              <p><span className="agenda-check">✓</span><span className="agenda-item-text"><strong>Decide:</strong> Every item has risk and upside.</span></p>
+              <p><span className="agenda-check">✓</span><span className="agenda-item-text"><strong>Prep Sonic:</strong> Raise compliance, then escort.</span></p>
+              <p><span className="agenda-check">✓</span><span className="agenda-item-text"><strong>Complete:</strong> Enter Stadium with Student ID.</span></p>
+            </div>
+            <button onClick={() => setOrientationAgendaOpen(false)}>Acknowledge</button>
           </article>
         </section>
       )}

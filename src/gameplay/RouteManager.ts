@@ -1,4 +1,5 @@
 import type { GameStateData } from "../types/game";
+import { isEscortReady } from "./progressionRules";
 
 export class RouteManager {
   progressRouteA(state: GameStateData): void {
@@ -23,7 +24,7 @@ export class RouteManager {
   }
 
   canWin(state: GameStateData): boolean {
-    return state.sonic.drunkLevel >= 3
+    return isEscortReady(state.sonic.drunkLevel)
       && state.sonic.following
       && state.player.location === "stadium"
       && state.player.inventory.includes("Student ID");

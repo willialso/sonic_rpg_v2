@@ -1,7 +1,7 @@
 import type { DialogueTurn, GameStateData, LocationId, NpcId, NpcMemoryCard } from "../../types/game";
 
 const GROUP_SPEAKERS: Partial<Record<NpcId, string[]>> = {
-  frat_boys: ["Diesel", "Erection Bill", "Provoloney Tony", "Frat Boys"],
+  frat_boys: ["Diesel", "Provolone Toney", "Provoloney Tony", "Frat Boys"],
   sorority_girls: ["Apple", "Fedora", "Responsible Rachel", "Sorority Girls"]
 };
 
@@ -163,6 +163,18 @@ function polishTurnText(text = ""): string {
   return normalized;
 }
 
+function clampDialogueTextForBubble(text: string, npcId?: NpcId | "player"): string {
+  const normalized = String(text || "").trim();
+  if (!normalized) return "";
+  const maxSentences = npcId === "sorority_girls" ? 1 : 2;
+  const maxChars = npcId === "sorority_girls" ? 138 : npcId === "player" ? 190 : 170;
+  const chunks = splitSentenceChunks(normalized);
+  const sentenceCapped = (chunks.length ? chunks : [normalized]).slice(0, maxSentences).join(" ").trim();
+  if (sentenceCapped.length <= maxChars) return sentenceCapped;
+  const hard = sentenceCapped.slice(0, Math.max(16, maxChars - 1)).trimEnd();
+  return /[.!?]["')\]]*$/.test(hard) ? hard : `${hard}.`;
+}
+
 export function inferNpcPoseKey(
   npcId: NpcId,
   text: string,
@@ -201,10 +213,11 @@ export function createDialogueTurn(
   const now = new Date().toISOString();
   const npcId = options.npcId ?? (speaker === "You" ? "player" : undefined);
   const polished = polishTurnText(text);
+  const displaySafe = clampDialogueTextForBubble(polished || String(text || "").trim(), npcId);
   return {
     speaker,
     displaySpeaker: options.displaySpeaker,
-    text: polished || String(text || "").trim(),
+    text: displaySafe,
     npcId,
     locationId: state.player.location,
     createdAt: now,

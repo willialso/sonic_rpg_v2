@@ -1,9 +1,19 @@
 import type { GameStateData, NpcId } from "../types/game";
+import { ESCORT_READY_DRUNK_LEVEL, isEscortReady } from "../gameplay/progressionRules";
 
 function pickLine(lines: string[], seed: string): string {
   let hash = 0;
   for (let i = 0; i < seed.length; i += 1) hash = ((hash * 33) ^ seed.charCodeAt(i)) >>> 0;
   return lines[hash % lines.length];
+}
+
+function inferProgressBand(state: GameStateData): "intake" | "hunt_early" | "route_committed" | "endgame" {
+  if (!state.player.inventory.includes("Student ID")) return "intake";
+  if (state.timer.remainingSec < 180 || (state.sonic.following && isEscortReady(state.sonic.drunkLevel))) return "endgame";
+  if (state.routes.routeA.progress > 0 || state.routes.routeB.complete || state.routes.routeC.complete || state.sonic.drunkLevel >= 2) {
+    return "route_committed";
+  }
+  return "hunt_early";
 }
 
 export class ScriptedDialogueService {
@@ -36,7 +46,7 @@ export class ScriptedDialogueService {
       ],
       frat_boys: [
         "Diesel: House rule one, no spectators. Bring heat or bring snacks.",
-        "Erection Bill: Welcome to Frat. Reputation in, excuses out.",
+        "Provolone Toney: Welcome to Frat. Reputation in, excuses out.",
         "Frat Boys: Door's open, rank is not. Earn your seat."
       ],
       sorority_girls: [
@@ -60,9 +70,9 @@ export class ScriptedDialogueService {
         "Commit to one line and execute. Hesitation is just failure with extra steps."
       ],
       knuckles: [
-        "Trainin and gainin. Prove it.",
-        "Swingin and bringin. Keep up.",
-        "Movin and provin. Don't fold."
+        "Say what you need and keep it concrete.",
+        "Ask straight. I'll answer straight.",
+        "No fluff. What's your move?"
       ]
     };
     const returnGreetings: Record<NpcId, string[]> = {
@@ -91,7 +101,7 @@ export class ScriptedDialogueService {
       ],
       frat_boys: [
         "Diesel: Back in the house. Momentum talks, posture walks.",
-        "Erection Bill: Return visit logged. Performance still pending.",
+        "Provolone Toney: Return visit logged. Performance still pending.",
         "Frat Boys: Round two energy. Don't waste our music."
       ],
       sorority_girls: [
@@ -115,9 +125,9 @@ export class ScriptedDialogueService {
         "Progress now. One route, one move, done."
       ],
       knuckles: [
-        "Back already. Stridin and glidin. Move.",
-        "Round two. Trainin and gainin. Prove it.",
-        "Still here? Swingin and bringin. Go."
+        "Back again? Ask directly and move.",
+        "Round two. Keep it simple and I'll keep it useful.",
+        "Still here? Take your next shot and stop stalling."
       ]
     };
     const rows = encounterCount <= 0 ? firstEncounterGreetings[npcId] : returnGreetings[npcId];
@@ -128,6 +138,7 @@ export class ScriptedDialogueService {
   respond(npcId: NpcId, input: string, state: GameStateData, intentId = "generic"): string {
     const text = input.toLowerCase();
     const voiceSeed = `${state.timer.remainingSec}:${state.player.location}:${state.routes.routeA.progress}:${state.routes.routeB.progress}:${state.routes.routeC.progress}:${text.length}`;
+    const progressBand = inferProgressBand(state);
     if (npcId === "dean_cain") {
       if (state.player.inventory.includes("Exam Keycard")) {
         return state.fail.warnings.dean >= 2
@@ -225,6 +236,13 @@ export class ScriptedDialogueService {
     }
 
     if (npcId === "eggman") {
+      if (/(where.*sonic|sonic.*where|seen sonic|find sonic|locate sonic|track sonic)/i.test(text)) {
+        return pickLine([
+          `Sonic is rotating through ${state.sonic.location}. Intercept there, then force a challenge.`,
+          `Telemetry says Sonic is at ${state.sonic.location}. Move now before he rotates again.`,
+          `You want Sonic? Current sighting is ${state.sonic.location}. Stop asking, start moving.`
+        ], `${voiceSeed}:eggman:sonic-location`);
+      }
       if (intentId === "eggman_quiz_dynamic") {
         return pickLine([
           "Quiz mode: where does your run leak time first? Hint: Sorority loitering.",
@@ -254,12 +272,17 @@ export class ScriptedDialogueService {
         ], `${voiceSeed}:eggman:class`);
       }
       if (/(quiz|question|challenge)/i.test(text)) {
-        return "Quick quiz: where does time die? Sorority stalls. Avoid loops.";
+        return "Quiz answer: Campus loops kill runs. Ask, then act. If you have a lead, move immediately.";
       }
       if (/(hint|route|plan)/i.test(text)) {
-        return "Plan request noted. My recommendation is less panic, more competence, and maybe one adult decision.";
+        if (progressBand === "intake") return "You are still in paperwork tutorial. Get ID first, then ask me for route science.";
+        if (progressBand === "hunt_early") return "Route brief: Frat pressure route is fastest, Dean Whiskey is safer, Tunnel trade is highest setup cost.";
+        if (progressBand === "route_committed") return "You have enough data. Stop collecting trivia and execute your chosen route chain.";
+        return "Endgame protocol: no detours, no loops, move Sonic to Stadium now.";
       }
-      return "Statistically, I should be the main story here. Your subplot keeps interrupting.";
+      if (progressBand === "intake") return "Actionable clue: only one task matters right now - intake with Dean.";
+      if (progressBand === "endgame") return "Actionable clue: if Sonic is ready, escort now. If not, force one final drink and move.";
+      return "Actionable clue: do not camp one room. Rotate Quad -> Cafeteria -> Dorm Hall and watch rumor updates.";
     }
 
     if (npcId === "earthworm_jim") {
@@ -272,40 +295,43 @@ export class ScriptedDialogueService {
       if (/(id|student id|clearance)/i.test(text)) {
         return state.player.inventory.includes("Student ID")
           ? "Diesel: You got the badge, cool. Now earn respect at the table."
-          : "Erection Bill: No ID, no swagger. Go get official first.";
+          : "Provolone Toney: No ID, no swagger. Go get official first.";
       }
       if (/(where.*sonic|sonic.*where|seen sonic|find sonic)/i.test(text)) {
         if (state.world.presentNpcs[state.player.location]?.includes("sonic")) {
           return pickLine([
             "Diesel: He's right here. Ask less, play more.",
-            "Erection Bill: Sonic is in the room, genius. Challenge him or keep sightseeing.",
-            "Provoloney Tony: You found him. Now prove you're not just decorative."
+            "Provolone Toney: Sonic is in the room, genius. Challenge him or keep sightseeing.",
+            "Provolone Toney: You found him. Now prove you're not just decorative."
           ], `${voiceSeed}:frat:sonic-here`);
         }
         return pickLine([
-          "Diesel: Not here. Find him, challenge him, then drag him back to this table.",
-          "Erection Bill: You want Sonic? Track him first. Frat gets him after the challenge.",
-          "Provoloney Tony: Sonic pops in after you call him out. Until then, it's just us and your nerves."
+          "Diesel: Not here. Track rumors at Quad/Cafeteria/Dorm Hall, then challenge him and drag him back.",
+          "Provolone Toney: You want Sonic? Get two real clues first. Frat gets him after the challenge.",
+          "Provolone Toney: Sonic pops in after callout. Ask around campus and stop hard-camping one room."
         ], `${voiceSeed}:frat:sonic-away`);
       }
       if (/(search|snoop|stash|steal|bong)/i.test(text) && state.world.presentNpcs.frat.includes("frat_boys")) {
         return pickLine([
           "Diesel: Keep your hands off house stash unless you want the whole porch on you.",
-          "Erection Bill: You snoop in front of us again and we skip straight to consequences.",
-          "Provoloney Tony: You can look, but if you grab, we're all suddenly very cardio-positive."
+          "Provolone Toney: You snoop in front of us again and we skip straight to consequences.",
+          "Provolone Toney: You can look, but if you grab, we're all suddenly very cardio-positive."
         ], `${voiceSeed}:frat:stash-warning`);
       }
       if (/(beer|pong|challenge|prove)/i.test(text)) {
         return pickLine([
           "Diesel: Good. Cups up. No speeches.",
-          "Erection Bill: Prove it at the table, not with your mouth.",
-          "Provoloney Tony: If this goes bad I'm calling my mom, but yeah, let's run it."
+          "Provolone Toney: Prove it at the table, not with your mouth.",
+          "Provolone Toney: If this goes bad I'm calling my mom, but yeah, let's run it."
         ], `${voiceSeed}:frat:challenge`);
+      }
+      if (progressBand === "endgame") {
+        return "Diesel: Clock is bleeding. If Sonic is loaded, stop talking and move him to gate.";
       }
       return pickLine([
         "Diesel: No free passes in this house. Bring proof.",
-        "Erection Bill: Status is rented nightly. Pay in results.",
-        "Provoloney Tony: You look like a before photo. Let's fix that."
+        "Provolone Toney: Status is rented nightly. Pay in results.",
+        "Provolone Toney: You look like a before photo. Let's fix that."
       ], `${voiceSeed}:frat:general`);
     }
 
@@ -326,15 +352,15 @@ export class ScriptedDialogueService {
       }
       if (/(party|last night|handcuff|hookup)/i.test(text)) {
         return pickLine([
-          "Apple: Last night was chaos and we are editing that memory aggressively.",
-          "Fedora: We remember enough to be embarrassed for everyone.",
-          "Responsible Rachel: We do not litigate party history with strangers."
+          "Apple: Last night was chaos. If you're searching for leverage, do it when house traffic is low.",
+          "Fedora: Party archives are closed. But yes, people stash questionable gear in plain sight.",
+          "Responsible Rachel: We do not litigate party history. Also, don't get caught taking anything."
         ], `${voiceSeed}:sorority:party`);
       }
       return pickLine([
-        "Apple: We run this house by receipts and memory.",
-        "Fedora: You can stand there, just don't be weird.",
-        "Responsible Rachel: Keep it respectful and short."
+        "Apple: We run this house by receipts and memory. Helpful items exist; consequences exist too.",
+        "Fedora: You can stand there, just don't be weird. Move fast when the room clears out.",
+        "Responsible Rachel: Keep it respectful and short. If we catch theft, you are banned."
       ], `${voiceSeed}:sorority:general`);
     }
 
@@ -358,8 +384,8 @@ export class ScriptedDialogueService {
         ], `${voiceSeed}:thunderhead:reject`);
       }
       return pickLine([
-        "One rule: sorority contraband for Asswine. This economy is disgusting but efficient.",
-        "No lace-tier item, no bottle. Tunnel law, tunnel liturgy.",
+        "One rule: sorority contraband for Asswine. Mascara, lace, or composite all count.",
+        "No approved contraband, no bottle. Hairbrush and fake wristband are trash tier here.",
         "Bring the right sorority trophy and we do filthy commerce with ceremonial respect.",
         "I need a relic with scandal energy, not a normal object with a backstory.",
         "Trade terms are simple: shock me, then I pour."
@@ -367,6 +393,15 @@ export class ScriptedDialogueService {
     }
 
     if (npcId === "sonic") {
+      if (/(go to stadium|head to stadium|take.*stadium|escort.*stadium|stadium now|follow me)/i.test(text)) {
+        if (!isEscortReady(state.sonic.drunkLevel)) {
+          return `Stadium pitch is weak right now. Push me to drunk level ${ESCORT_READY_DRUNK_LEVEL}+ first, then we move.`;
+        }
+        if (state.sonic.following) {
+          return "I am already moving with you. Keep pace and point me at the gate.";
+        }
+        return "Fine, now we're talking. Keep this loud and keep me moving - no boring detours.";
+      }
       if (state.sonic.drunkLevel >= 3) {
         return pickLine(
           state.sonic.following
@@ -423,10 +458,16 @@ export class ScriptedDialogueService {
     }
 
     if (npcId === "tails") {
+      if (/(where.*sonic|sonic.*where|seen sonic|find sonic|locate sonic|track sonic)/i.test(text)) {
+        return `Latest solid lead: Sonic at ${state.sonic.location}. Intercept, pressure, then convert to movement.`;
+      }
       if (/(id|student id|clearance)/i.test(text)) {
         return state.player.inventory.includes("Student ID")
           ? "Good, you have Student ID. Gate excuses are gone, so route execution is all that matters."
           : "No Student ID means no clean stadium entry. Fix that now.";
+      }
+      if (progressBand === "intake") {
+        return "Dean first. Name intake, Student ID, then route hunting. Anything else is wasted clock.";
       }
       if (state.timer.remainingSec < 240) {
         return pickLine([
@@ -435,10 +476,17 @@ export class ScriptedDialogueService {
           "Time is nearly gone. One move, then finish. Yes, I am judging your pace."
         ], `${voiceSeed}:tails:late`);
       }
+      if (progressBand === "route_committed") {
+        return pickLine([
+          "You've committed. Convert setup to movement: dose Sonic, escort, gate.",
+          "No more scavenger loops. Your route is built - execute in sequence.",
+          "You're at the midpoint. One mistake is recoverable; two ends the run."
+        ], `${voiceSeed}:tails:committed`);
+      }
       return pickLine([
-        "Best guess: push one route and force Sonic movement now.",
-        "Booze leverage is ugly but efficient. Use it and move.",
-        "Commit to one plan and execute. Overthinking is just decorative failure."
+        "Best guess: build two clues first, then sweep Dorm Hall/Cafeteria for Sonic sightings.",
+        "Booze leverage is ugly but efficient. If Sonic is tipsy, escort immediately.",
+        "Commit to one route and execute. Frat for speed, Dean Whiskey for control, Tunnel for heavy effect."
       ], `${voiceSeed}:tails:normal`);
     }
 

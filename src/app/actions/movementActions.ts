@@ -13,9 +13,26 @@ export function syncSonicLocation(state: GameStateData): void {
   if (sonicAt) {
     state.sonic.location = sonicAt;
     if (previous !== sonicAt) {
+      const recentSonicTurn = [...state.dialogue.turns]
+        .reverse()
+        .find((turn) => turn.npcId === "sonic" || String(turn.speaker || "").toLowerCase() === "sonic");
+      const playerLocationHasSonic = sonicAt === state.player.location;
+      const recentTurnAtMs = recentSonicTurn?.createdAt ? Date.parse(recentSonicTurn.createdAt) : 0;
+      const activeSonicExchange = Boolean(
+        recentSonicTurn
+        && recentSonicTurn.locationId === state.player.location
+        && recentTurnAtMs > 0
+        && Date.now() - recentTurnAtMs < 7000
+      );
+      if (playerLocationHasSonic && activeSonicExchange) {
+        state.world.events.push("telemetry:rumor-suppressed");
+        if (state.world.events.length > 40) state.world.events = state.world.events.slice(-40);
+        return;
+      }
       const rumor = `Rumor update: Sonic was spotted around ${sonicAt.replace(/_/g, " ")}.`;
       if ((state.world.events[state.world.events.length - 1] || "") !== rumor) {
         state.world.events.push(rumor);
+        state.world.events.push("telemetry:rumor-emitted");
         if (state.world.events.length > 40) state.world.events = state.world.events.slice(-40);
       }
     }

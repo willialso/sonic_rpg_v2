@@ -5,7 +5,7 @@ type Props = {
   engagedNpc: NpcId | null;
   isResolved: boolean;
   titleCase: (input: string) => string;
-  npcToneClass: (npc: NpcId) => string;
+  resolveNpcImage: (npc: NpcId) => string;
   onFocusNpc: (npc: NpcId) => void;
 };
 
@@ -14,28 +14,31 @@ export function PresenceBar({
   engagedNpc,
   isResolved,
   titleCase,
-  npcToneClass,
+  resolveNpcImage,
   onFocusNpc
 }: Props) {
   return (
-    <section className="presence-bar" aria-label="Location presence">
-      <span className="presence-label">Here now:</span>
+    <section className="presence-bar presence-markers" aria-label="Nearby people">
       {presentNpcs.length > 0 && (
-        <div className="presence-chips">
-          {presentNpcs.map((npc) => (
+        <div className="presence-marker-row">
+          {presentNpcs.map((npc, idx) => (
             <button
               key={`chip-${npc}`}
-              className={engagedNpc === npc ? "presence-chip active-talk-btn" : "presence-chip"}
+              className={engagedNpc === npc ? "presence-marker active-talk-btn" : "presence-marker"}
               onClick={() => onFocusNpc(npc)}
               disabled={isResolved}
+              title={`Tap to talk: ${titleCase(npc)}`}
+              style={{ animationDelay: `${idx * 70}ms` }}
             >
-              <span className={`npc-dot ${npcToneClass(npc)}`} aria-hidden="true" />
-              {titleCase(npc)}
+              <span className="presence-pin" aria-hidden="true">●</span>
+              <img src={resolveNpcImage(npc)} alt="" className="presence-avatar" />
+              <span className="presence-marker-name">{titleCase(npc)}</span>
+              <span className="presence-marker-tip">Tap to talk</span>
             </button>
           ))}
         </div>
       )}
-      {presentNpcs.length === 0 && <span className="presence-empty">No one here</span>}
+      {presentNpcs.length === 0 && <span className="presence-empty">No one in sight. Move or search for clues.</span>}
     </section>
   );
 }

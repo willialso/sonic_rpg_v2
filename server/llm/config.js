@@ -4,7 +4,8 @@ const ROOT = process.cwd();
 const DATA_DIR = path.join(ROOT, "data");
 
 export const config = {
-  apiPort: Number(process.env.PORT || process.env.API_PORT || 8787),
+  // Prefer explicit API_PORT so unrelated PORT env vars do not break local proxy routing.
+  apiPort: Number(process.env.API_PORT || process.env.PORT || 8787),
   llmPipelineVersion: String(process.env.LLM_PIPELINE_VERSION || "v3").toLowerCase(),
   debug: process.env.LLM_DEBUG === "1",
   primaryProvider: (process.env.PRIMARY_PROVIDER || "openai").toLowerCase(),

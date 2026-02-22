@@ -10,9 +10,21 @@ interface DynamicDialogueOptions {
   maxBubbleLengthChars?: number;
 }
 
+function clampDialogueText(raw: string, maxSentences: number, maxChars: number): string {
+  const normalized = String(raw || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+  const chunks = normalized.match(/[^.!?]+[.!?]+(?:["')\]]+)?|[^.!?]+$/g) ?? [normalized];
+  const sentenceCapped = chunks.slice(0, Math.max(1, maxSentences)).join(" ").trim();
+  if (sentenceCapped.length <= maxChars) return sentenceCapped;
+  const hard = sentenceCapped.slice(0, Math.max(16, maxChars - 1)).trimEnd();
+  return /[.!?]$/.test(hard) ? hard : `${hard}.`;
+}
+
 export class DynamicDialogueService {
   private readonly fallback = new FallbackDialogueBank();
   private readonly options: DynamicDialogueOptions;
+  private backendCooldownUntilMs = 0;
+  private backendFailureNotified = false;
 
   constructor(options: DynamicDialogueOptions = {}) {
     this.options = options;
@@ -24,7 +36,8 @@ export class DynamicDialogueService {
     const recentTurns = request.state.dialogue.turns.slice(-8);
     const recentEvents = request.state.world.events.slice(-10);
     const inventory = request.state.player.inventory;
-    const playerAskedMission = /mission|stadium|route|escort|follow|objective|what now/i.test(request.input || "");
+    const playerAskedMission = /mission|stadium|route|escort|follow|objective|what now|go to stadium|head to stadium|take.*stadium/i.test(request.input || "");
+    const playerAskedSonicLocation = /where.*sonic|sonic.*where|seen sonic|find sonic|locate sonic|track sonic/i.test(request.input || "");
     const playerRecentlyMentioned = (needle: RegExp): boolean =>
       recentTurns.some((turn) => String(turn.speaker || "").toLowerCase() === "you" && needle.test(turn.text || ""));
     const currentContext = {
@@ -42,7 +55,8 @@ export class DynamicDialogueService {
       has_asswine: inventory.includes("Asswine"),
       sonic_present_here: (request.state.world.presentNpcs[request.state.player.location] ?? []).includes("sonic"),
       nearby_npcs: request.state.world.presentNpcs[request.state.player.location] ?? [],
-      max_bubble_length_chars: this.options.maxBubbleLengthChars ?? 190,
+      player_asked_sonic_location: playerAskedSonicLocation,
+      max_bubble_length_chars: this.options.maxBubbleLengthChars ?? 170,
       max_sentences_per_reply: this.options.maxSentencesPerReply ?? 2,
       recent_events: recentEvents,
       already_answered: {
@@ -54,7 +68,9 @@ export class DynamicDialogueService {
     };
     const includeMissionContext = contract.missionAwareness === "explicit"
       || (contract.missionAwareness === "conditional"
-        && (request.npcId === "sonic" ? playerAskedMission : (request.state.sonic.following || playerAskedMission)));
+        && (request.npcId === "sonic"
+          ? (playerAskedMission || playerAskedSonicLocation)
+          : (request.state.sonic.following || playerAskedMission || playerAskedSonicLocation)));
     const missionProgression = includeMissionContext
       ? {
           objective: request.state.mission.objective,
@@ -67,7 +83,7 @@ export class DynamicDialogueService {
         }
       : null;
     const rawMemoryCard = request.state.dialogue.npcMemory[request.npcId] ?? null;
-    const npcMemoryCard = request.npcId === "sonic" && !playerAskedMission && rawMemoryCard
+    const npcMemoryCard = request.npcId === "sonic" && !playerAskedMission && !playerAskedSonicLocation && rawMemoryCard
       ? {
           ...rawMemoryCard,
           lastAdvice: /(mission|stadium|route|escort|follow)/i.test(rawMemoryCard.lastAdvice || "")
@@ -75,6 +91,10 @@ export class DynamicDialogueService {
             : rawMemoryCard.lastAdvice
         }
       : rawMemoryCard;
+    const now = Date.now();
+    if (this.backendCooldownUntilMs > now) {
+      return { text: fallbackText, source: FALLBACK_SOURCE, safetyAbort: false };
+    }
     try {
       const response = await fetch("/api/dialogue", {
         method: "POST",
@@ -98,6 +118,15 @@ export class DynamicDialogueService {
         })
       });
       if (!response.ok) {
+        if (response.status >= 500) {
+          this.backendCooldownUntilMs = Date.now() + 30000;
+          if (!this.backendFailureNotified && typeof window !== "undefined") {
+            this.backendFailureNotified = true;
+            window.dispatchEvent(new CustomEvent("dialogue-validation-issue", {
+              detail: { message: "Dialogue service is temporarily unavailable (API error). In local dev, ensure the API server is running on :8787. Falling back to in-game lines." }
+            }));
+          }
+        }
         if (response.status === 400) {
           try {
             const payload = (await response.json()) as { issues?: string[]; error?: string };
@@ -121,15 +150,25 @@ export class DynamicDialogueService {
         }
         return { text: fallbackText, source: FALLBACK_SOURCE, safetyAbort: false };
       }
+      this.backendCooldownUntilMs = 0;
+      this.backendFailureNotified = false;
       const payload = (await response.json()) as {
         npc_text?: string;
         source?: DialogueResponse["source"];
         intent?: string;
         display_speaker?: string;
       };
-      const text = typeof payload.npc_text === "string" && payload.npc_text.trim().length > 0
+      const rawText = typeof payload.npc_text === "string" && payload.npc_text.trim().length > 0
         ? payload.npc_text.trim()
         : fallbackText;
+      const maxChars = request.npcId === "sorority_girls"
+        ? Math.min(138, currentContext.max_bubble_length_chars)
+        : currentContext.max_bubble_length_chars;
+      const maxSentences = request.npcId === "sorority_girls" ? 1 : currentContext.max_sentences_per_reply;
+      const text = clampDialogueText(rawText, maxSentences, maxChars);
+      if (request.npcId === "sorority_girls" && rawText.length > text.length && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("dialogue-telemetry", { detail: { type: "sorority-trimmed" } }));
+      }
       const source = payload.source ?? FALLBACK_SOURCE;
       return {
         text,
@@ -139,6 +178,13 @@ export class DynamicDialogueService {
         displaySpeaker: typeof payload.display_speaker === "string" ? payload.display_speaker : undefined
       };
     } catch {
+      this.backendCooldownUntilMs = Date.now() + 30000;
+      if (!this.backendFailureNotified && typeof window !== "undefined") {
+        this.backendFailureNotified = true;
+        window.dispatchEvent(new CustomEvent("dialogue-validation-issue", {
+          detail: { message: "Dialogue network call failed (API likely unreachable). In local dev, start web+API together via `npm run dev`. Using fallback dialogue for now." }
+        }));
+      }
       return { text: fallbackText, source: FALLBACK_SOURCE, safetyAbort: false };
     }
   }

@@ -102,6 +102,13 @@ function enforceKnucklesCadence(text = "", seed = "") {
   return normalizeOneSentence(`${pair} - ${compact}`);
 }
 
+function stripCadenceForNonKnuckles(text = "") {
+  return String(text || "")
+    .replace(/\b([a-z]{3,})in(?:g)?\s+and\s+([a-z]{3,})in(?:g)?\b/gi, "$1 / $2")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function seededPick(seed = "", values = []) {
   if (!values.length) return "";
   let h = 0;
@@ -136,13 +143,23 @@ function pushRecent(list = [], value = "", limit = 4) {
   return next.slice(-limit);
 }
 
-function enforceFratSonicSpecificity(text = "", playerInput = "", gameContext = {}) {
+function isSonicLocationQuery(input = "") {
+  return /(where.*sonic|sonic.*where|find sonic|seen sonic|locate sonic|track sonic)/i.test(String(input || ""));
+}
+
+function enforceSonicLocationSpecificity(text = "", playerInput = "", gameContext = {}, characterId = "") {
   const line = String(text || "").trim();
-  const input = String(playerInput || "").toLowerCase();
-  if (!/(where.*sonic|sonic.*where|find sonic|seen sonic)/i.test(input)) return line;
+  if (!isSonicLocationQuery(playerInput)) return line;
   if (/(sonic|here|not here|frat|dorm|cafeteria|quad|location|challenge|find)/i.test(line)) return line;
   const fallbackLocation = String(gameContext?.sonic_location || "campus");
-  return `Sonic is ${fallbackLocation}. Track him down, challenge him, then bring him to Frat.`;
+  const speaker = String(characterId || "").toLowerCase();
+  if (speaker === "sonic") {
+    return `You found me: I'm at ${fallbackLocation}. Bring a real play, then we talk Stadium.`;
+  }
+  if (speaker === "frat_boys") {
+    return `Sonic is ${fallbackLocation}. Track him, challenge him, then drag that chaos back to Frat.`;
+  }
+  return `Sonic is ${fallbackLocation}. Move there now, then pressure him toward Stadium.`;
 }
 
 function enforceFratNoFlatYesNo(text = "") {
@@ -252,7 +269,7 @@ function enforceSonicAnecdoteMode(text = "", playerInput = "", gameContext = {},
   const line = String(text || "").trim();
   const input = String(playerInput || "").toLowerCase();
   const askedMission = /(mission|stadium|route|escort|objective|what now|follow)/i.test(input);
-  if (askedMission) return { line, meta: null };
+  if (askedMission || isSonicLocationQuery(input)) return { line, meta: null };
   const recentStems = Array.isArray(styleMemory?.recentStems) ? styleMemory.recentStems : [];
   const sonicBragMarkers = /(yacht|jet|lawyer|insurance|rooftop|limo|studio|camera crew|cleanup|autograph)/i;
   if (sonicBragMarkers.test(line) && sonicHasNamedAnchor(line)) {
@@ -560,9 +577,13 @@ function enforceCharacterPostRules(characterId = "", text = "", context = {}) {
   const gameContext = context?.gameContext || {};
   const styleMemory = context?.styleMemory || null;
   let line = String(text || "").trim();
-  if (id === "knuckles") line = enforceKnucklesCadence(line, `${playerInput}:${gameContext.time_remaining_sec || 0}`);
+  line = enforceSonicLocationSpecificity(line, playerInput, gameContext, id);
+  if (id !== "knuckles") line = stripCadenceForNonKnuckles(line);
+  const playerNeedsDirectClue = /(clue|hint|where|how|what now|next move|route|what should i do|where should i go|find sonic|locate sonic)/i.test(playerInput);
+  if (id === "knuckles" && !playerNeedsDirectClue) {
+    line = enforceKnucklesCadence(line, `${playerInput}:${gameContext.time_remaining_sec || 0}`);
+  }
   if (id === "frat_boys") {
-    line = enforceFratSonicSpecificity(line, playerInput, gameContext);
     line = enforceFratNoFlatYesNo(line);
   }
   if (id === "sonic") {
@@ -579,6 +600,12 @@ function enforceCharacterPostRules(characterId = "", text = "", context = {}) {
   }
   if (id === "knuckles") {
     return fitBubbleLineWithLimit(sanitizeNpcText(line), { maxSentences: 1, maxChars });
+  }
+  if (id === "sorority_girls") {
+    return fitBubbleLineWithLimit(sanitizeNpcText(line), { maxSentences: 1, maxChars: Math.min(maxChars, 138) });
+  }
+  if (id === "tails" || id === "earthworm_jim") {
+    return fitBubbleLineWithLimit(sanitizeNpcText(line), { maxSentences: 1, maxChars: Math.min(maxChars, 160) });
   }
   return fitBubbleLineWithLimit(sanitizeNpcText(line), { maxSentences, maxChars });
 }

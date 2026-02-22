@@ -67,8 +67,21 @@ export class NPCPresenceSystem {
   }
 
   private placeSonic(state: GameStateData, p: PresenceMap): void {
+    if (state.sonic.cooldownMoves > 0) return;
     if (state.sonic.following) {
       this.pushWithCap(p, state.player.location, "sonic", 2);
+      return;
+    }
+
+    const clueContacts = ["tails", "eggman", "frat_boys", "thunderhead"]
+      .filter((npc) => state.dialogue.greetedNpcIds.includes(npc as NpcId)).length;
+    const hasProgressSignal = clueContacts >= 2
+      || state.routes.routeA.progress > 0
+      || state.routes.routeB.progress > 0
+      || state.routes.routeC.progress > 0
+      || state.player.inventory.includes("Campus Map")
+      || state.player.inventory.includes("Lost Lanyard");
+    if (!hasProgressSignal) {
       return;
     }
 

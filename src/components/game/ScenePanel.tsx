@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { ActionResult, LocationId, NpcId } from "../../types/game";
 
 type Props = {
@@ -9,6 +10,7 @@ type Props = {
   popupCharacterImage: string;
   popupDisplaySpeaker: string;
   popupDialogueText: string;
+  popupTyping: boolean;
   engagedNpc: NpcId | null;
   playerInput: string;
   isAwaitingNpcReply: boolean;
@@ -16,7 +18,6 @@ type Props = {
   titleCase: (input: string) => string;
   onPlayerInputChange: (value: string) => void;
   onSubmitDialogue: (action: { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string }) => Promise<ActionResult>;
-  onDismissConversation: () => void;
 };
 
 export function ScenePanel(props: Props) {
@@ -29,18 +30,26 @@ export function ScenePanel(props: Props) {
     popupCharacterImage,
     popupDisplaySpeaker,
     popupDialogueText,
+    popupTyping,
     engagedNpc,
     playerInput,
     isAwaitingNpcReply,
     isResolved,
     titleCase,
     onPlayerInputChange,
-    onSubmitDialogue,
-    onDismissConversation
+    onSubmitDialogue
   } = props;
+  const [loadedBackground, setLoadedBackground] = useState(sceneBackgroundImage);
+  useEffect(() => {
+    if (!sceneBackgroundImage) return;
+    if (sceneBackgroundImage === loadedBackground) return;
+    const img = new Image();
+    img.onload = () => setLoadedBackground(sceneBackgroundImage);
+    img.src = sceneBackgroundImage;
+  }, [loadedBackground, sceneBackgroundImage]);
   return (
     <section className={`scene scene-${locationId}`}>
-      <div className="scene-bg-image-layer" style={{ backgroundImage: `url("${sceneBackgroundImage}")` }} />
+      <div className="scene-bg-image-layer" style={{ backgroundImage: `url("${loadedBackground || sceneBackgroundImage}")` }} />
       {shouldShowDialoguePopup && (
         <div className={`scene-character-stage scene-character-stage-${scenePopupPlacement}`} aria-live="polite">
           <div className="scene-character-stage-dim" />
@@ -50,7 +59,7 @@ export function ScenePanel(props: Props) {
                 <img
                   src={popupCharacterImage}
                   alt={`${popupDisplaySpeaker} portrait`}
-                  className="scene-character-stage-portrait"
+                  className={`scene-character-stage-portrait ${engagedNpc === "thunderhead" ? "scene-character-stage-portrait-thunderhead" : ""}`}
                 />
               ) : (
                 <div className="scene-character-stage-portrait scene-character-stage-portrait-fallback" aria-hidden="true">
@@ -60,7 +69,11 @@ export function ScenePanel(props: Props) {
             </div>
             <div className="scene-character-stage-text-wrap">
               <p className="bubble bubble-npc scene-character-stage-text">
-                <strong>{popupDisplaySpeaker}:</strong> {popupDialogueText}
+                <strong>
+                  {popupDisplaySpeaker}
+                  {popupTyping && <span className="typing-wave" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>}
+                </strong>{" "}
+                {popupDialogueText}
               </p>
             </div>
           </article>
@@ -70,10 +83,6 @@ export function ScenePanel(props: Props) {
       <div className="scene-footer">
         {engagedNpc && (
           <>
-            <p className="active-speaker-badge">
-              Talking to {titleCase(engagedNpc)}
-              <button className="ghost dialogue-dismiss-btn" onClick={onDismissConversation} aria-label="Stop talking">x</button>
-            </p>
             <div className="dialogue-box">
               <input
                 value={playerInput}

@@ -17,6 +17,20 @@ export class IntentResolver {
     const encounterCount = state.dialogue.encounterCountByNpc[npcId] ?? 0;
     const location = state.player.location;
     const lowTime = state.timer.remainingSec <= 180;
+    const asksSonicLocation = /(where.*sonic|sonic.*where|seen sonic|find sonic|locate sonic|track sonic)/i.test(input);
+    const asksSonicStadiumMove = /(go to stadium|head to stadium|take.*stadium|escort.*stadium|follow.*stadium|move.*stadium|stadium now)/i.test(input);
+    const asksClueOrRoute = /(clue|hint|where should i|what now|next move|route|where to go|what should i do|how do i|help me)/i.test(input);
+
+    if (asksSonicLocation) {
+      return {
+        id: `${npcId}_sonic_location_dynamic`,
+        mode: "DYNAMIC_FOCUSED",
+        functionId: "GENERAL",
+        goal: "Answer Sonic's current location/status directly in one sentence, then add short in-character flavor.",
+        mustInclude: ["sonic location", "one concrete move"],
+        avoid: ["off-topic banter", "generic dodge", "long exposition"]
+      };
+    }
 
     if (npcId === "dean_cain") {
       if (/(idiot|stupid|trash|screw you|bite me|hate|fuck you)/i.test(input)) {
@@ -52,13 +66,13 @@ export class IntentResolver {
           avoid: ["meta wording", "generic social gossip", "empty bravado"]
         };
       }
-      if (/(stadium|escort|follow|move now)/i.test(input)) {
+      if (/(stadium|escort|follow|move now)/i.test(input) || asksSonicStadiumMove) {
         return {
           id: "sonic_progress_gate_dynamic",
           mode: "DYNAMIC_FOCUSED",
           functionId: "DRINK_GATE",
-          goal: "Answer movement status reluctantly with one arrogant joke and one short condition.",
-          mustInclude: ["status answer", "concrete action"],
+          goal: "Answer stadium movement status with one in-character condition and one concrete next action.",
+          mustInclude: ["status answer", "condition", "concrete action"],
           avoid: ["circular banter", "meta wording", "generic social gossip"]
         };
       }
@@ -73,6 +87,16 @@ export class IntentResolver {
     }
 
     if (npcId === "tails") {
+      if (asksClueOrRoute || asksSonicLocation) {
+        return {
+          id: "tails_clue_lane_dynamic",
+          mode: "DYNAMIC_FOCUSED",
+          functionId: "HELP_ROUTE",
+          goal: "Answer the player's ask directly with one concrete clue and one next move in Tails' practical voice.",
+          mustInclude: ["direct answer", "one concrete clue", "one next move"],
+          avoid: ["rhyming cadence", "question ending", "long lecture", "off-topic banter"]
+        };
+      }
       if (/(which route|what route|route\?|where should i go|what now)/i.test(input)) {
         return {
           id: "tails_route_answer_dynamic",
@@ -96,6 +120,16 @@ export class IntentResolver {
     }
 
     if (npcId === "knuckles") {
+      if (asksClueOrRoute || asksSonicLocation) {
+        return {
+          id: "knuckles_clue_lane_dynamic",
+          mode: "DYNAMIC_FOCUSED",
+          functionId: "GENERAL",
+          goal: "Give one blunt clue tied to the player's question, then one concrete move.",
+          mustInclude: ["direct clue", "concrete move"],
+          avoid: ["forced rhyme chains", "boilerplate taunt", "off-topic swagger"]
+        };
+      }
       return {
         id: "knuckles_pair_cadence_dynamic",
         mode: "DYNAMIC_FOCUSED",
@@ -107,6 +141,16 @@ export class IntentResolver {
     }
 
     if (npcId === "earthworm_jim") {
+      if (asksClueOrRoute || asksSonicLocation) {
+        return {
+          id: "earthworm_jim_clue_lane_dynamic",
+          mode: "DYNAMIC_FOCUSED",
+          functionId: "BOAST",
+          goal: "Provide a useful clue first, then one brief self-own flourish.",
+          mustInclude: ["short clue", "short self-own"],
+          avoid: ["long lecture", "meta tone", "vague dodging"]
+        };
+      }
       return {
         id: "earthworm_jim_dynamic_general",
         mode: "DYNAMIC_FOCUSED",
@@ -136,21 +180,21 @@ export class IntentResolver {
         id: "sorority_named_pack_dynamic",
         mode: "DYNAMIC_FOCUSED",
         functionId: "GENERAL",
-        goal: "Give catty social gatekeeping with one polished joke and short line.",
-        mustInclude: ["social gatekeeping", "short cutting joke"],
-        avoid: ["flat friendliness", "full spoiler dump"]
+        goal: "Give catty social gatekeeping with very short high-variance lines tied to the player's ask.",
+        mustInclude: ["social gatekeeping", "short cutting joke", "react to player ask"],
+        avoid: ["flat friendliness", "full spoiler dump", "repeating phrasing", "long lines"]
       };
     }
 
     if (npcId === "frat_boys") {
-      if (/(where.*sonic|sonic.*where|seen sonic|find sonic)/i.test(input)) {
+      if (/(idiot|stupid|loser|trash|pathetic|frat.*sucks|hate.*frat|fuck.*frat)/i.test(input)) {
         return {
-          id: "frat_sonic_location_dynamic",
+          id: "frat_disrespect_escalation_dynamic",
           mode: "DYNAMIC_FOCUSED",
           functionId: "GENERAL",
-          goal: "Answer Sonic location/status directly in one line, then add a short taunting frat beat.",
-          mustInclude: ["sonic location status", "short taunt"],
-          avoid: ["generic taunt only", "off-topic flexing", "long exposition", "flat yes/no question", "ready to opener"]
+          goal: "Escalate to a challenge with taunting house-energy consequences.",
+          mustInclude: ["challenge escalation", "short taunt"],
+          avoid: ["friendly reset", "passive tone"]
         };
       }
       return {

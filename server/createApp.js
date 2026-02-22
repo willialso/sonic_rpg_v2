@@ -23,10 +23,14 @@ export function createApp(orchestrator) {
       const payload = await orchestrator.execute(validation.value);
       res.json(payload);
     } catch (err) {
-      res.status(500).json({
-        ok: false,
-        error: "dialogue_execution_failed",
-        message: String(err?.message || "Unknown error")
+      // Keep dialogue lane resilient: return safe fallback instead of surfacing 500 to client.
+      console.error("Dialogue execution failed:", err);
+      res.json({
+        npc_text: String(validation.value?.fallback_text || "Stay sharp."),
+        intent: String(validation.value?.intent || "flavor"),
+        time_cost_seconds: 0,
+        suggested_state_effects: { fallback_reason: "server_execution_failed" },
+        source: "fallback"
       });
     }
   });

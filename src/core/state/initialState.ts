@@ -25,7 +25,9 @@ export function createInitialState(seed = "sonic-rpg-v2-seed"): GameStateData {
     sonic: {
       drunkLevel: 0,
       following: false,
-      location: "dorm_room"
+      location: "dorm_room",
+      patience: 2,
+      cooldownMoves: 0
     },
     routes: {
       routeA: { complete: false, progress: 0 },
@@ -95,7 +97,10 @@ export function createInitialState(seed = "sonic-rpg-v2-seed"): GameStateData {
         stripPokerTableLocked: false
       },
       restrictions: {
-        sororityBanned: false
+        sororityBanned: false,
+        fratBanned: false,
+        fratChallengeForced: false,
+        fratLastSafeLocation: "quad"
       },
       analytics: {
         soggyBiscuitTriggered: false

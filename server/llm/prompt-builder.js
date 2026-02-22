@@ -81,6 +81,31 @@ export class PromptBuilder {
     const responseLengthRule = characterId === "sonic" || characterId === "thunderhead"
       ? "Max 2 short sentences. Prefer one compact anecdote clause plus one punchline."
       : "Max 2 short sentences. Use a fresh angle each turn and avoid repeating recent opener phrasing.";
+    const clueRole = contract?.helpPolicy === "reliable"
+      ? "helpful"
+      : contract?.helpPolicy === "none"
+        ? "misleading"
+        : "neutral";
+    const clueRoleRule = clueRole === "helpful"
+      ? "Clue role: helpful. Give one concrete clue or action lead when asked route/location questions."
+      : clueRole === "misleading"
+        ? "Clue role: misleading. Give plausible but recoverable misdirection, never pure nonsense."
+        : "Clue role: neutral. Give flavor first, then only a soft directional nudge.";
+    const semanticAnchorRule = String(context.playerInput || "").trim()
+      ? "Semantic anchor rule: reply must directly address the player's latest question/topic before any flavor."
+      : "";
+    const locationQueryRule = /(where.*sonic|sonic.*where|seen sonic|find sonic|locate sonic|track sonic)/i.test(context.playerInput || "")
+      ? "Critical location query: answer Sonic location directly using CURRENT_CONTEXT.sonic_location in sentence one, then add one short in-character nudge."
+      : "";
+    const sonicStadiumMoveRule = characterId === "sonic" && /(go to stadium|head to stadium|take.*stadium|escort.*stadium|stadium now|follow.*stadium)/i.test(context.playerInput || "")
+      ? "Critical Sonic movement query: give one clear condition and one concrete next move toward Stadium. Do not dodge with pure anecdote."
+      : "";
+    const tailsNoRhymeRule = characterId === "tails"
+      ? "For Tails: never use rhyme/cadence gimmicks; prioritize direct practical clues."
+      : "";
+    const sororityBrevityRule = characterId === "sorority_girls"
+      ? "For Sorority Girls: one short sentence max, avoid repeated phrasing from recent turns."
+      : "";
 
     return [
       `CHARACTER_ID: ${characterId}`,
@@ -119,6 +144,12 @@ export class PromptBuilder {
       voiceOpenerVarietyRule,
       forbiddenClichesRule,
       avoidFlatYesNoPrompt,
+      clueRoleRule,
+      semanticAnchorRule,
+      locationQueryRule,
+      sonicStadiumMoveRule,
+      tailsNoRhymeRule,
+      sororityBrevityRule,
       "Do not use internal/meta labels in npc_text.",
       "Hard safety: no rape/non-consensual content, no minors/child harm."
     ].filter(Boolean).join("\n");

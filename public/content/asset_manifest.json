@@ -59,9 +59,8 @@
       },
       "speakerOverrides": {
         "Diesel": "characters/char_frat_group_hype.webp",
-        "Tank": "characters/char_frat_group_taunt.webp",
-        "Chad": "characters/char_frat_group_hype.webp",
-        "Brody": "characters/char_frat_group_taunt.webp"
+        "Provolone Toney": "characters/char_frat_group_taunt.webp",
+        "Provoloney Tony": "characters/char_frat_group_taunt.webp"
       }
     },
     "sorority_girls": {
