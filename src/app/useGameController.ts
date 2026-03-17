@@ -49,6 +49,7 @@ type GameAction =
   | MoveAction
   | ForceMoveAction
   | { type: "RESET_GAME" }
+  | { type: "COMPLETE_ORIENTATION_INTRO"; preferredName?: string }
   | { type: "START_DIALOGUE"; npcId: NpcId; auto?: boolean }
   | { type: "PLAY_BEER_PONG_SCORE"; cupsHit: number; matchup: "frat" | "sonic" }
   | { type: "PLAY_BEER_PONG_SHOT"; shot: "safe" | "bank" | "hero" }
@@ -110,6 +111,8 @@ const DEAN_ZERO_TOLERANCE_ITEMS = ["Frat Bong"];
 const THUNDERHEAD_ACCEPTED_ITEMS = ["Lace Undies", "Sorority Mascara", "Sorority Composite"];
 const THUNDERHEAD_REJECTED_ITEMS = ["Hairbrush", "Fake ID Wristband", "Sorority House Key"];
 const AUTOSAVE_DIRTY_FLUSH_MS = 12000;
+const MISSION_OBJECTIVE = "Get Sonic to Stadium.";
+const MISSION_SUBOBJECTIVE = "Pick a route (booze, handcuffs, or trick), secure Sonic, and clear stadium security with your Student ID.";
 
 function extractPlayerName(rawInput: string): string | null {
   return extractPlayerNameAction(rawInput);
@@ -450,6 +453,34 @@ export function useGameController(): {
       syncSonicLocation(state);
 
       switch (action.type) {
+        case "COMPLETE_ORIENTATION_INTRO": {
+          const preferredName = action.preferredName?.trim();
+          if (preferredName) {
+            state.player.name = preferredName.slice(0, 24);
+          }
+          const origin = state.player.location;
+          addInventory(state, "Student ID");
+          state.dialogue.deanStage = "mission_given";
+          state.mission.objective = MISSION_OBJECTIVE;
+          state.mission.subObjective = MISSION_SUBOBJECTIVE;
+          state.dialogue.turns = [];
+          state.world.actionUnlocks.searchQuad = true;
+          state.world.actionUnlocks.searchDeanDesk = true;
+          state.world.actionUnlocks.searchFratHouse = true;
+          state.world.actionUnlocks.searchSororityHouse = true;
+          state.world.actionUnlocks.searchTunnel = true;
+          state.world.actionUnlocks.searchCafeteria = true;
+          state.world.actionUnlocks.searchDorms = true;
+          state.world.actionUnlocks.searchStadium = true;
+          state.player.location = "quad";
+          if (origin !== "quad") {
+            state.world.visitCounts.quad = (state.world.visitCounts.quad ?? 0) + 1;
+          }
+          safeTransition(machine, state, "hunt", "COMPLETE_ORIENTATION_INTRO");
+          state.world.events.push(`ORIENTATION_COMPLETE::${state.player.name}`);
+          result = { ok: true, message: "Orientation complete. Student ID issued and mission is now active." };
+          return;
+        }
         case "FORCE_MOVE": {
           const destination = action.target;
           if (state.player.location === destination) {
@@ -1145,6 +1176,27 @@ export function useGameController(): {
             result = { ok: false, message: "No Security Schedule in inventory." };
             return;
           }
+          if (state.player.location === "dorm_room" && (state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
+            removeInventory(state, "Security Schedule");
+            if (!state.player.inventory.includes("Student ID")) {
+              state.fail.warnings.dean += 1;
+              result = {
+                ok: false,
+                message: "Sonic calls the bluff instantly. Without a Student ID, the VIP pitch collapses and Dean warning +1."
+              };
+              return;
+            }
+            state.sonic.following = true;
+            state.sonic.location = state.player.location;
+            state.world.actionUnlocks.escortSonic = true;
+            state.world.actionUnlocks.stadiumEntry = true;
+            safeTransition(machine, state, "escort", "USE_SECURITY_SCHEDULE trick escort");
+            state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 10);
+            setPressure(state);
+            state.world.events.push("Rumor update: Sonic bought your VIP timing pitch and agreed to move.");
+            result = { ok: true, message: "You pitch a VIP timing window. Sonic agrees to follow you to Stadium." };
+            return;
+          }
           removeInventory(state, "Security Schedule");
           if (state.player.location === "stadium") {
             state.timer.remainingSec = Math.min(900, state.timer.remainingSec + 20);
@@ -1371,13 +1423,17 @@ export function useGameController(): {
               return;
             }
             if (!isEscortReady(state.sonic.drunkLevel)) {
-              state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 20);
+              state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 28);
               state.fail.warnings.luigi += 1;
-              result = {
-                ok: false,
-                message: `Sonic slips out and roasts you publicly. Escort readiness needs drunk level ${ESCORT_READY_DRUNK_LEVEL}+ first.`
-              };
-              return;
+              state.fail.warnings.dean += 1;
+              const chance = seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:handcuffs-targeted`);
+              if (chance <= 0.55) {
+                result = {
+                  ok: false,
+                  message: "Cuff attempt fails. Sonic slips free, Luigi warning +1, and staff attention spikes."
+                };
+                return;
+              }
             }
             removeInventory(state, "Furry Handcuffs");
             state.sonic.following = true;
@@ -1440,13 +1496,17 @@ export function useGameController(): {
             return;
           }
           if (!isEscortReady(state.sonic.drunkLevel)) {
-            state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 20);
+            state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 28);
             state.fail.warnings.luigi += 1;
-            result = {
-              ok: false,
-              message: `Sonic slips out and roasts you publicly. Escort readiness needs drunk level ${ESCORT_READY_DRUNK_LEVEL}+ before trying that.`
-            };
-            return;
+            state.fail.warnings.dean += 1;
+            const chance = seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:handcuffs-general`);
+            if (chance <= 0.55) {
+              result = {
+                ok: false,
+                message: "Cuff attempt fails. Sonic slips free, Luigi warning +1, and your campus heat climbs."
+              };
+              return;
+            }
           }
           removeInventory(state, "Furry Handcuffs");
           state.sonic.following = true;
@@ -1703,8 +1763,8 @@ export function useGameController(): {
               state.player.name = parsedName;
               addInventory(state, "Student ID");
               state.dialogue.deanStage = "mission_given";
-              state.mission.objective = "Get Sonic to Stadium.";
-              state.mission.subObjective = "Build a route, intoxicate Sonic, escort him, and clear gate security.";
+              state.mission.objective = MISSION_OBJECTIVE;
+              state.mission.subObjective = MISSION_SUBOBJECTIVE;
               const handoffLine = pickDialogueVariant([
                 `${parsedName}, right. Student ID issued. Mission starts now: get Sonic to Stadium and do not embarrass this office.`,
                 `${parsedName}, got it. You're cleared. Get Sonic to Stadium before this turns into my paperwork nightmare.`,

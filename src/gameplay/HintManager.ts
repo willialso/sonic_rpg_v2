@@ -4,7 +4,7 @@ import { ESCORT_READY_DRUNK_LEVEL, isEscortReady } from "./progressionRules";
 export class HintManager {
   getHint(state: GameStateData): string {
     if (!state.player.inventory.includes("Student ID")) {
-      return "Step one is intake: tell Dean your first name and get Student ID activated.";
+      return "Step one is orientation intake: issue Student ID from briefing, then start clue collection.";
     }
     const clueNpcs: NpcId[] = ["tails", "eggman", "frat_boys", "thunderhead"];
     const clueContacts = clueNpcs.filter((npc) => state.dialogue.greetedNpcIds.includes(npc)).length;

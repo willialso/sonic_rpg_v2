@@ -25,6 +25,7 @@ import "./App.css";
 
 type UiAction =
   | { type: "RESET_GAME" }
+  | { type: "COMPLETE_ORIENTATION_INTRO"; preferredName?: string }
   | { type: "MOVE"; target: LocationId }
   | { type: "FORCE_MOVE"; target: LocationId }
   | { type: "START_DIALOGUE"; npcId: NpcId; auto?: boolean }
@@ -125,7 +126,7 @@ const ITEM_HELP: Record<string, { desc: string; useHint: string; targetHint?: st
   "Pocket Flashlight": { desc: "Tunnel helper.", useHint: "Minor tunnel support.", riskHint: "Low mission impact." },
   "Rusty Token": { desc: "Tunnel relic.", useHint: "Flavor-only pickup.", riskHint: "Low route value." },
   "Gate Stamp": { desc: "Gate credential.", useHint: "Use at Stadium; better with Student ID.", riskHint: "Without ID, can add Dean warning." },
-  "Security Schedule": { desc: "Guard timing intel.", useHint: "Best used at Stadium.", targetHint: "Target: stadium timing and entry.", riskHint: "Using elsewhere burns time." },
+  "Security Schedule": { desc: "Guard timing intel.", useHint: "Use at Stadium for gate timing or in Dorm Room to sell Sonic a VIP window.", targetHint: "Target: Sonic in Dorm Room or gate timing at Stadium.", riskHint: "Without Student ID, the VIP bluff backfires." },
   "Ping Pong Paddle": { desc: "Frat flavor item.", useHint: "Not required for progression.", riskHint: "Stealing can raise hostility." },
   "Party Wristband": { desc: "Frat trinket.", useHint: "Low impact utility.", riskHint: "Mostly inventory noise." },
   "Extra Sock": { desc: "Spare clothing scrap.", useHint: "Low impact backup item.", riskHint: "Minimal route value." },
@@ -387,6 +388,8 @@ function App() {
   const [beerControlStep, setBeerControlStep] = useState<"position" | "aim">("position");
   const [orientationAgendaOpen, setOrientationAgendaOpen] = useState(false);
   const [orientationAgendaName, setOrientationAgendaName] = useState("Student");
+  const [orientationIntroOpen, setOrientationIntroOpen] = useState(false);
+  const [orientationIntroSubmitting, setOrientationIntroSubmitting] = useState(false);
   const [campusMapOpen, setCampusMapOpen] = useState(false);
   const [showLandingPage, setShowLandingPage] = useState(true);
   const [landingClosing, setLandingClosing] = useState(false);
@@ -483,6 +486,8 @@ function App() {
   }, [performAction]);
   const openLandingPage = useCallback(() => {
     setLandingClosing(false);
+    setOrientationIntroOpen(false);
+    setOrientationIntroSubmitting(false);
     setShowLandingPage(true);
   }, []);
   const closeLandingPage = useCallback(async (mode: "continue" | "enroll") => {
@@ -492,10 +497,30 @@ function App() {
       if (mode === "enroll") {
         await runAction({ type: "RESET_GAME" }, true);
       }
+      setOrientationIntroOpen(false);
+      setOrientationIntroSubmitting(false);
       setShowLandingPage(false);
       setLandingClosing(false);
     }, 230);
   }, [landingClosing, runAction]);
+  const completeOrientationIntro = useCallback(async () => {
+    if (orientationIntroSubmitting) return;
+    setOrientationIntroSubmitting(true);
+    const result = await runAction({ type: "COMPLETE_ORIENTATION_INTRO" }, true);
+    setOrientationIntroSubmitting(false);
+    if (result.ok) {
+      setOrientationIntroOpen(false);
+      setNotice({
+        title: "Orientation Complete",
+        body: result.message
+      });
+      return;
+    }
+    setNotice({
+      title: "Orientation",
+      body: result.message
+    });
+  }, [orientationIntroSubmitting, runAction]);
   const clearSoggyTimers = useCallback(() => {
     if (soggyTimersRef.current.length === 0) return;
     soggyTimersRef.current.forEach((id) => window.clearTimeout(id));
@@ -689,6 +714,28 @@ function App() {
   }, [activeNpc, state]);
 
   useEffect(() => {
+    if (!state) return;
+    if (showLandingPage || landingClosing) return;
+    const needsOrientationIntro = state.phase === "onboarding" && !state.player.inventory.includes("Student ID");
+    if (needsOrientationIntro && !orientationIntroOpen) {
+      setOrientationIntroOpen(true);
+      setActionMenuOpen(false);
+      setHudMenuOpen(false);
+      setCampusMapOpen(false);
+      setOrientationAgendaOpen(false);
+    }
+    if (!needsOrientationIntro && orientationIntroOpen && !orientationIntroSubmitting) {
+      setOrientationIntroOpen(false);
+    }
+  }, [
+    landingClosing,
+    orientationIntroOpen,
+    orientationIntroSubmitting,
+    showLandingPage,
+    state
+  ]);
+
+  useEffect(() => {
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<{ message?: string }>).detail;
       const message = detail?.message || "Dialogue request validation failed.";
@@ -840,6 +887,7 @@ function App() {
   useEffect(() => {
     const suppressTopToast = Boolean(
       notice
+      || orientationIntroOpen
       || orientationAgendaOpen
       || campusMapOpen
       || beerGameOpen
@@ -866,7 +914,7 @@ function App() {
       nextToastReadyAtRef.current = Date.now() + 500;
     }, topToast.kind === "rumor" ? 4600 : 3200);
     return () => window.clearTimeout(id);
-  }, [beerGameOpen, campusMapOpen, eggmanLabOpen, isSoggySequenceActive, landingClosing, locationSplash, notice, orientationAgendaOpen, searchLoot, showLandingPage, stripPokerOpen, topToast]);
+  }, [beerGameOpen, campusMapOpen, eggmanLabOpen, isSoggySequenceActive, landingClosing, locationSplash, notice, orientationAgendaOpen, orientationIntroOpen, searchLoot, showLandingPage, stripPokerOpen, topToast]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2017,6 +2065,7 @@ function App() {
     engagedNpc
     && popupNpcId
     && (popupDialogueText || popupTyping)
+    && !orientationIntroOpen
     && !hudMenuOpen
     && !actionMenuOpen
     && !beerGameOpen
@@ -2034,6 +2083,7 @@ function App() {
   const currentSearchCache = searchLoot ? (state.world.searchCaches[searchLoot.location] ?? []) : [];
   const suppressTopToast = Boolean(
     notice
+    || orientationIntroOpen
     || orientationAgendaOpen
     || beerGameOpen
     || eggmanLabOpen
@@ -2048,7 +2098,7 @@ function App() {
   const sororityOccupants = state.world.presentNpcs.sorority;
   const sororityBanned = state.world.restrictions.sororityBanned;
   const sororityPokerEligible = sororityOccupants.includes("sorority_girls");
-  const showMissionTracker = false;
+  const showMissionTracker = !showLandingPage && !landingClosing;
   const routeSnapshots = [
     {
       id: "A",
@@ -2073,8 +2123,16 @@ function App() {
       label: "Handcuffs Route",
       complete: state.sonic.following && !state.player.inventory.includes("Furry Handcuffs"),
       note: state.player.inventory.includes("Furry Handcuffs")
-        ? "Use in Dorm Room when Sonic is ready."
+        ? "Use in Dorm Room. Best after prep, but high-risk attempts can still work."
         : "Search Sorority (when clear) for Handcuffs."
+    },
+    {
+      id: "E",
+      label: "VIP Trick Route",
+      complete: state.sonic.following && state.sonic.drunkLevel < ESCORT_READY_DRUNK_LEVEL,
+      note: state.player.inventory.includes("Security Schedule")
+        ? "Use Schedule in Dorm Room with Sonic to sell the VIP timing window."
+        : "Search Stadium/Gate area for Security Schedule and use it as leverage."
     }
   ];
 
@@ -2330,7 +2388,7 @@ function App() {
       key: "STADIUM_ENTRY",
       label: "Enter Stadium",
       action: { type: "STADIUM_ENTRY" },
-      priority: state.sonic.following && state.sonic.drunkLevel >= ESCORT_READY_DRUNK_LEVEL ? 100 : 60
+      priority: state.sonic.following ? 100 : 60
     });
   }
   if (state.player.location === "stadium" && state.player.inventory.includes("Gate Stamp")) {
@@ -2359,7 +2417,7 @@ function App() {
       key: "USE_SECURITY_SCHEDULE",
       label: "Use Schedule",
       action: { type: "USE_SECURITY_SCHEDULE" },
-      priority: state.player.location === "stadium" ? 79 : 35
+      priority: state.player.location === "stadium" ? 79 : (state.player.location === "dorm_room" && sonicPresentAtCurrentLocation ? 93 : 35)
     });
   }
   if (state.player.inventory.includes("RA Whistle")) {
@@ -2393,6 +2451,18 @@ function App() {
       badge: isFratBannedMove ? "BANNED" : undefined
     };
   });
+  const recommendedActions: ActionButtonDef[] = [];
+  routeActionButtons.slice(0, 2).forEach((item) => {
+    recommendedActions.push(item);
+  });
+  if (recommendedActions.length < 2) {
+    moveActions
+      .filter((item) => !item.disabled)
+      .slice(0, 2 - recommendedActions.length)
+      .forEach((item) => {
+        recommendedActions.push(item);
+      });
+  }
   const riskyKeys = new Set([
     "USE_FURRY_HANDCUFFS",
     "USE_SUPER_DEAN_BEANS",
@@ -2516,6 +2586,26 @@ function App() {
               <div key={`route-${route.id}`} className={`route-chip ${route.complete ? "complete" : ""}`}>
                 <strong>Route {route.id}</strong> {route.label} - {route.note}
               </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {!isResolved && !orientationIntroOpen && !showLandingPage && recommendedActions.length > 0 && (
+        <section className="mission-recommendations" aria-label="Recommended next steps">
+          <p className="mission-kicker">Recommended next steps</p>
+          <div className="button-grid mission-recommendation-grid">
+            {recommendedActions.map((item) => (
+              <button
+                key={`recommend-${item.key}`}
+                disabled={Boolean(item.disabled)}
+                className={item.key === nextBestActionKey ? "next-best-action" : ""}
+                onClick={async () => {
+                  await runAction(item.action);
+                }}
+              >
+                {item.label} {item.badge ? `(${item.badge})` : ""}
+              </button>
             ))}
           </div>
         </section>
@@ -3274,7 +3364,31 @@ function App() {
         </aside>
       )}
 
-      {(notice || isResolved) && !showLandingPage && !landingClosing && !isSoggySequenceActive && (
+      {orientationIntroOpen && (
+        <section className="modal-overlay">
+          <article className="modal-card orientation-video-card">
+            <div className="agenda-letterhead">
+              <p className="agenda-school">Console University</p>
+              <p className="agenda-dept">Mission Briefing Theater</p>
+              <h3>Orientation Briefing</h3>
+            </div>
+            <div className="orientation-video-placeholder" role="img" aria-label="Orientation video placeholder">
+              <p><strong>Placeholder:</strong> Intro cinematic will render here.</p>
+              <p className="muted">Drop in the finalized video asset and wire this panel to the real source.</p>
+            </div>
+            <div className="agenda-grid">
+              <p><span className="agenda-check">✓</span><span className="agenda-item-text"><strong>Objective:</strong> Get Sonic to Stadium before time expires.</span></p>
+              <p><span className="agenda-check">✓</span><span className="agenda-item-text"><strong>Routes:</strong> Booze route, handcuffs route, or social trick route.</span></p>
+              <p><span className="agenda-check">✓</span><span className="agenda-item-text"><strong>Rules:</strong> Keep Student ID valid and avoid warning spikes.</span></p>
+            </div>
+            <button disabled={orientationIntroSubmitting} onClick={async () => completeOrientationIntro()}>
+              {orientationIntroSubmitting ? "Issuing ID..." : "Issue ID and Start Mission"}
+            </button>
+          </article>
+        </section>
+      )}
+
+      {(notice || isResolved) && !orientationIntroOpen && !showLandingPage && !landingClosing && !isSoggySequenceActive && (
         <section className="modal-overlay">
           <article className={`modal-card ${isResolved ? "official-notice-card" : "status-note-card"}`}>
             {isResolved ? (

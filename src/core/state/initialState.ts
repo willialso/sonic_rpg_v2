@@ -19,8 +19,8 @@ export function createInitialState(seed = "sonic-rpg-v2-seed"): GameStateData {
       inventory: []
     },
     mission: {
-      objective: "Get cleared by Dean Cain.",
-      subObjective: "Tell Dean your name to receive your Student ID and mission."
+      objective: "Complete orientation and receive your mission.",
+      subObjective: "Watch the briefing to issue Student ID, then begin the Sonic hunt."
     },
     sonic: {
       drunkLevel: 0,
