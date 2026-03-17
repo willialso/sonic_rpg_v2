@@ -2295,6 +2295,31 @@ function App() {
         : "Search Stadium/Gate area for Security Schedule and use it as leverage."
     }
   ];
+  const latestSonicRumorEvent = [...state.world.events]
+    .reverse()
+    .find((entry) => entry.startsWith("Rumor update: Sonic was spotted around "));
+  const rumoredPlaceRaw = latestSonicRumorEvent
+    ? latestSonicRumorEvent.replace(/^Rumor update: Sonic was spotted around /, "").replace(/\.$/, "").trim()
+    : "";
+  const rumoredLocation: LocationId | null = (() => {
+    if (!rumoredPlaceRaw) return null;
+    const idMatch = content.locations.find((loc) => loc.id === rumoredPlaceRaw.toLowerCase().replace(/\s+/g, "_"));
+    if (idMatch) return idMatch.id;
+    const nameMatch = content.locations.find((loc) => loc.name.toLowerCase() === rumoredPlaceRaw.toLowerCase());
+    return nameMatch?.id ?? null;
+  })();
+  const rumoredLocationLabel = rumoredLocation
+    ? (content.locations.find((loc) => loc.id === rumoredLocation)?.name ?? titleCase(rumoredLocation))
+    : "";
+  const sonicIntelAtCurrent = Boolean(rumoredLocation && rumoredLocation === state.player.location);
+  const sonicIntelReachableNow = Boolean(rumoredLocation && exits.includes(rumoredLocation));
+  const sonicIntelGuidance = !rumoredLocation
+    ? "No recent sighting surfaced. Talk to clue NPCs and keep moving through social lanes."
+    : sonicIntelAtCurrent
+      ? "Sighting matches your current location. Talk to nearby NPCs or run escort setup now."
+      : sonicIntelReachableNow
+        ? "Sighting is one move away. Jump there now before the rotation changes."
+        : `Push toward ${rumoredLocationLabel}. Use route exits and avoid over-looting side areas.`;
 
   const routeActionButtons: ActionButtonDef[] = [];
   const unlocks = state.world.actionUnlocks;
@@ -2740,6 +2765,24 @@ function App() {
             <span>Following: {state.sonic.following ? "yes" : "no"}</span>
             <span>ID: {state.player.inventory.includes("Student ID") ? "ready" : "missing"}</span>
             <span>Warnings — Dean {warningMeter(state.fail.warnings.dean, WARNING_LIMITS.dean)}, Luigi {warningMeter(state.fail.warnings.luigi, WARNING_LIMITS.luigi)}, Frat {warningMeter(state.fail.warnings.frat, WARNING_LIMITS.frat)}</span>
+          </div>
+          <div className={`sonic-intel-card ${sonicIntelAtCurrent ? "on-target" : sonicIntelReachableNow ? "nearby" : "searching"}`}>
+            <p className="mission-kicker">Sonic Intel</p>
+            <p className="sonic-intel-line">
+              <strong>Last sighting:</strong>{" "}
+              {rumoredLocation ? rumoredLocationLabel : "No confirmed sighting yet"}
+            </p>
+            <p className="sonic-intel-line">{sonicIntelGuidance}</p>
+            {rumoredLocation && sonicIntelReachableNow && !isResolved && (
+              <button
+                className="next-best-action"
+                onClick={async () => {
+                  await runAction({ type: "MOVE", target: rumoredLocation });
+                }}
+              >
+                Go to {rumoredLocationLabel}
+              </button>
+            )}
           </div>
           <div className="route-matrix">
             {routeSnapshots.map((route) => (
