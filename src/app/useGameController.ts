@@ -1059,7 +1059,12 @@ export function useGameController(): {
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 12);
           setPressure(state);
           const found = revealSearchCache(state, "dorm_room", ["Warm Beer"]);
-          result = { ok: true, message: `You scan the room and spot: ${found.join(", ")}.` };
+          if (found.includes("Warm Beer") && takeFromSearchCache(state, "dorm_room", "Warm Beer")) {
+            addInventory(state, "Warm Beer");
+            result = { ok: true, message: "You found Warm Beer and grabbed it automatically. It is now in your inventory." };
+            return;
+          }
+          result = { ok: true, message: found.length > 0 ? `You scan the room and spot: ${found.join(", ")}.` : "You search the room, but there is nothing left to collect." };
           return;
         }
         case "SEARCH_STADIUM": {

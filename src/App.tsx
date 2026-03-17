@@ -587,10 +587,16 @@ function App() {
       setLatestHintAtMs(Date.now());
     }
     if (!silent && action.type !== "SUBMIT_DIALOGUE" && action.type !== "START_DIALOGUE" && action.type !== "MOVE") {
-      setNotice({
-        title: result.ok ? "Done" : "Blocked",
-        body: result.message
-      });
+      const shouldShowNotice = !result.ok
+        || action.type === "GET_HINT"
+        || action.type === "COMPLETE_ORIENTATION_INTRO"
+        || action.type === "STADIUM_ENTRY";
+      if (shouldShowNotice) {
+        setNotice({
+          title: result.ok ? (action.type === "GET_HINT" ? "Hint" : "Update") : "Blocked",
+          body: result.message || "No additional details."
+        });
+      }
     }
     return result;
   }, [performAction]);
@@ -2337,7 +2343,12 @@ function App() {
   const sororityOccupants = state.world.presentNpcs.sorority;
   const sororityBanned = state.world.restrictions.sororityBanned;
   const sororityPokerEligible = sororityOccupants.includes("sorority_girls");
-  const showMissionTracker = !showLandingPage && !landingClosing;
+  const showMissionTracker = false;
+  const showCompactMissionBar = !showLandingPage
+    && !landingClosing
+    && !orientationIntroOpen
+    && !starterRoutePanelOpen
+    && !isResolved;
   const routeSnapshots = [
     {
       id: "A",
@@ -2412,6 +2423,7 @@ function App() {
       : sonicIntelReachableNow
         ? "Sighting is one move away. Jump there now before the rotation changes."
         : `Push toward ${rumoredLocationLabel}. Use route exits and avoid over-looting side areas.`;
+  const compactSightingLabel = rumoredLocation ? rumoredLocationLabel : "No sighting";
   const latestHintAgeSec = latestHintAtMs > 0 ? Math.max(0, Math.floor((Date.now() - latestHintAtMs) / 1000)) : null;
   const latestHintAgeLabel = latestHintAgeSec === null
     ? ""
@@ -2928,6 +2940,39 @@ function App() {
         onFocusNpc={(npc) => { void focusNpcConversation(npc); }}
       />
 
+      {showCompactMissionBar && (
+        <section className="mission-compact-bar" aria-label="Mission status">
+          <p className="mission-compact-title">Mission: Get Sonic to Stadium</p>
+          <div className="mission-compact-stats">
+            <span>Drunk {state.sonic.drunkLevel}/4</span>
+            <span>Following {state.sonic.following ? "yes" : "no"}</span>
+            <span>Sighting {compactSightingLabel}</span>
+          </div>
+          <div className="mission-compact-actions">
+            {rumoredLocation && sonicIntelReachableNow && !isResolved && (
+              <button
+                className="next-best-action"
+                onClick={async () => {
+                  await runAction({ type: "MOVE", target: rumoredLocation });
+                }}
+              >
+                Go to {rumoredLocationLabel}
+              </button>
+            )}
+            <button
+              disabled={!canUseHint}
+              onClick={async () => {
+                if (!canUseHint) return;
+                await runAction({ type: "GET_HINT" });
+                setHintCooldownMs(Date.now() + HINT_COOLDOWN_MS);
+              }}
+            >
+              Get Hint
+            </button>
+          </div>
+        </section>
+      )}
+
       {showMissionTracker && (
         <section className="mission-tracker" aria-label="Mission tracker">
           <div className="mission-tracker-head">
@@ -3039,6 +3084,34 @@ function App() {
                 <h4>Status</h4>
                 <p className="menu-inline-copy muted">Sonic: {state.sonic.drunkLevel}/4 • Following: {state.sonic.following ? "yes" : "no"} • ID: {state.player.inventory.includes("Student ID") ? "ready" : "missing"}</p>
                 <p className="menu-inline-copy muted">Warn: Dean {warningMeter(state.fail.warnings.dean, WARNING_LIMITS.dean)} • Luigi {warningMeter(state.fail.warnings.luigi, WARNING_LIMITS.luigi)} • Frat {warningMeter(state.fail.warnings.frat, WARNING_LIMITS.frat)}</p>
+              </section>
+              <section className="action-group">
+                <h4>Mission Brief</h4>
+                <p className="menu-inline-copy"><strong>{state.mission.objective}</strong></p>
+                <p className="menu-inline-copy muted">{state.mission.subObjective}</p>
+                <div className={`sonic-intel-card ${sonicIntelAtCurrent ? "on-target" : sonicIntelReachableNow ? "nearby" : "searching"}`}>
+                  <div className="sonic-intel-head">
+                    <p className="mission-kicker">Sonic Intel</p>
+                    <span className={`sonic-intel-freshness ${sonicIntelFreshness.tone}`}>
+                      {sonicIntelFreshness.label}
+                    </span>
+                  </div>
+                  <p className="sonic-intel-line">
+                    <strong>Last sighting:</strong>{" "}
+                    {rumoredLocation ? rumoredLocationLabel : "No confirmed sighting yet"}
+                  </p>
+                  <p className="sonic-intel-line">{sonicIntelGuidance}</p>
+                </div>
+                {latestHintText && (
+                  <p className="menu-inline-copy muted">Last hint {latestHintAgeLabel ? `(${latestHintAgeLabel})` : ""}: {latestHintText}</p>
+                )}
+                <div className="route-matrix">
+                  {routeSnapshots.map((route) => (
+                    <div key={`menu-route-${route.id}`} className={`route-chip ${route.complete ? "complete" : ""}`}>
+                      <strong>Route {route.id}</strong> {route.label} - {route.note}
+                    </div>
+                  ))}
+                </div>
               </section>
               <section className="action-group">
                 <h4>Utilities</h4>
@@ -3229,10 +3302,18 @@ function App() {
                           if (isSearchAction(item.action)) {
                             const searchResult = await runAction(item.action, true);
                             if (searchResult.ok) {
-                              setSearchLoot({
-                                location: state.player.location,
-                                message: searchResult.message
-                              });
+                              const autoLooted = /grabbed automatically|already in your inventory|nothing left/i.test(searchResult.message);
+                              if (autoLooted) {
+                                setNotice({
+                                  title: "Search",
+                                  body: searchResult.message
+                                });
+                              } else {
+                                setSearchLoot({
+                                  location: state.player.location,
+                                  message: searchResult.message
+                                });
+                              }
                             } else {
                               const caughtByFrat = /diesel caught you searching|banned from frat/i.test(searchResult.message);
                               setNotice({
