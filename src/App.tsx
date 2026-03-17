@@ -2964,7 +2964,7 @@ function App() {
               onClick={async () => {
                 if (!canUseHint) return;
                 await runAction({ type: "GET_HINT" });
-                setHintCooldownMs(Date.now() + HINT_COOLDOWN_MS);
+                setHintCooldownUntilMs(Date.now() + 30000);
               }}
             >
               Get Hint
