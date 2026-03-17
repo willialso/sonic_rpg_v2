@@ -1738,7 +1738,9 @@ export function useGameController(): {
             .slice(-2)
             .some((turn) => String(turn.npcId || "") === action.npcId);
           if (!hasRecentNpcLine) {
-            if (action.npcId === "dean_cain" && (state.dialogue.deanStage === "intro_pending" || state.dialogue.deanStage === "name_pending")) {
+            const shouldUseScriptedGreeting = encounterCount === 0
+              || (action.npcId === "dean_cain" && (state.dialogue.deanStage === "intro_pending" || state.dialogue.deanStage === "name_pending"));
+            if (shouldUseScriptedGreeting) {
               const greet = dialogue.greeting(action.npcId, encounterCount, `${state.meta.seed}:${state.timer.remainingSec}:tap-open`);
               state.dialogue.turns.push(createDialogueTurn(action.npcId, greet.text, state, {
                 npcId: action.npcId,
@@ -1767,6 +1769,11 @@ export function useGameController(): {
         }
         case "SUBMIT_DIALOGUE": {
           const dialogueInput = isSystemDialogue ? action.input.replace(/^__SYSTEM__:\s*/i, "").trim() : action.input;
+          const npcPresentHere = (state.world.presentNpcs[state.player.location] ?? []).includes(action.npcId);
+          if (!isSystemDialogue && !npcPresentHere) {
+            result = { ok: false, message: `${formatNpcName(action.npcId)} is no longer here. Follow the latest Sonic Intel sighting and reconnect.` };
+            return;
+          }
           if (!state.dialogue.greetedNpcIds.includes(action.npcId)) {
             state.dialogue.greetedNpcIds.push(action.npcId);
             state.dialogue.encounterCountByNpc[action.npcId] = (state.dialogue.encounterCountByNpc[action.npcId] ?? 0) + 1;

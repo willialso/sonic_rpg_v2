@@ -487,6 +487,9 @@ function App() {
   const [orientationAgendaName, setOrientationAgendaName] = useState("Student");
   const [orientationIntroOpen, setOrientationIntroOpen] = useState(false);
   const [orientationIntroSubmitting, setOrientationIntroSubmitting] = useState(false);
+  const [missionTrackerCollapsed, setMissionTrackerCollapsed] = useState(false);
+  const [latestHintText, setLatestHintText] = useState("");
+  const [latestHintAtMs, setLatestHintAtMs] = useState(0);
   const [playtestLogCount, setPlaytestLogCount] = useState(0);
   const [campusMapOpen, setCampusMapOpen] = useState(false);
   const [showLandingPage, setShowLandingPage] = useState(true);
@@ -575,6 +578,10 @@ function App() {
     }
     setCampusMapOpen(false);
     const result = await performAction(action);
+    if (action.type === "GET_HINT" && result.message) {
+      setLatestHintText(result.message);
+      setLatestHintAtMs(Date.now());
+    }
     if (!silent && action.type !== "SUBMIT_DIALOGUE" && action.type !== "START_DIALOGUE" && action.type !== "MOVE") {
       setNotice({
         title: result.ok ? "Done" : "Blocked",
@@ -719,10 +726,7 @@ function App() {
   const beerThrowsTotal = activeMode.throws;
   const beerThrowsUsed = Math.max(0, beerThrowsTotal - beerThrowsLeft);
   const engagedNpc = activeNpc;
-  const presentNpcs = useMemo(() => {
-    if (!engagedNpc) return presentNpcsRaw;
-    return presentNpcsRaw.includes(engagedNpc) ? presentNpcsRaw : [...presentNpcsRaw, engagedNpc];
-  }, [engagedNpc, presentNpcsRaw]);
+  const presentNpcs = useMemo(() => presentNpcsRaw, [presentNpcsRaw]);
   const clockText = `${Math.floor((state?.timer.remainingSec ?? 0) / 60).toString().padStart(2, "0")}:${((state?.timer.remainingSec ?? 0) % 60).toString().padStart(2, "0")}`;
   const resolveNpcImage = useCallback((npc: NpcId) => {
     if (!content) return "";
@@ -938,6 +942,15 @@ function App() {
   }, [content, state]);
 
   useEffect(() => {
+    if (!state || !activeNpc) return;
+    const presentHere = state.world.presentNpcs[state.player.location] ?? [];
+    if (presentHere.includes(activeNpc)) return;
+    setActiveNpc(null);
+    setActiveNpcFocusAtMs(0);
+    setPlayerInput("");
+  }, [activeNpc, state]);
+
+  useEffect(() => {
     if (!locationSplash) return;
     const id = window.setTimeout(() => setLocationSplash(null), 1800);
     return () => window.clearTimeout(id);
@@ -1113,6 +1126,11 @@ function App() {
     }
     return undefined;
   }, []);
+
+  useEffect(() => {
+    if (!isCompactViewport) return;
+    setMissionTrackerCollapsed(true);
+  }, [isCompactViewport]);
 
   const resetBeerPhysicsGame = useCallback((matchup?: BeerMatchup) => {
     const mode = modeConfig[matchup ?? beerMatchup];
@@ -2333,6 +2351,12 @@ function App() {
       : sonicIntelReachableNow
         ? "Sighting is one move away. Jump there now before the rotation changes."
         : `Push toward ${rumoredLocationLabel}. Use route exits and avoid over-looting side areas.`;
+  const latestHintAgeSec = latestHintAtMs > 0 ? Math.max(0, Math.floor((Date.now() - latestHintAtMs) / 1000)) : null;
+  const latestHintAgeLabel = latestHintAgeSec === null
+    ? ""
+    : latestHintAgeSec < 60
+      ? `${latestHintAgeSec}s ago`
+      : `${Math.floor(latestHintAgeSec / 60)}m ago`;
 
   const routeActionButtons: ActionButtonDef[] = [];
   const unlocks = state.world.actionUnlocks;
@@ -2770,14 +2794,24 @@ function App() {
 
       {showMissionTracker && (
         <section className="mission-tracker" aria-label="Mission tracker">
-          <p className="mission-kicker">Objective</p>
+          <div className="mission-tracker-head">
+            <p className="mission-kicker">Objective</p>
+            <button
+              className="ghost mission-collapse-btn"
+              onClick={() => setMissionTrackerCollapsed((prev) => !prev)}
+            >
+              {missionTrackerCollapsed ? "Expand" : "Collapse"}
+            </button>
+          </div>
           <p className="mission-title">{state.mission.objective}</p>
-          <p className="mission-subtitle">{state.mission.subObjective}</p>
+          {!missionTrackerCollapsed && <p className="mission-subtitle">{state.mission.subObjective}</p>}
           <div className="mission-stats">
             <span>Sonic drunk: {state.sonic.drunkLevel}/4</span>
             <span>Following: {state.sonic.following ? "yes" : "no"}</span>
             <span>ID: {state.player.inventory.includes("Student ID") ? "ready" : "missing"}</span>
-            <span>Warnings — Dean {warningMeter(state.fail.warnings.dean, WARNING_LIMITS.dean)}, Luigi {warningMeter(state.fail.warnings.luigi, WARNING_LIMITS.luigi)}, Frat {warningMeter(state.fail.warnings.frat, WARNING_LIMITS.frat)}</span>
+            {!missionTrackerCollapsed && (
+              <span>Warnings — Dean {warningMeter(state.fail.warnings.dean, WARNING_LIMITS.dean)}, Luigi {warningMeter(state.fail.warnings.luigi, WARNING_LIMITS.luigi)}, Frat {warningMeter(state.fail.warnings.frat, WARNING_LIMITS.frat)}</span>
+            )}
           </div>
           <div className={`sonic-intel-card ${sonicIntelAtCurrent ? "on-target" : sonicIntelReachableNow ? "nearby" : "searching"}`}>
             <div className="sonic-intel-head">
@@ -2802,13 +2836,21 @@ function App() {
               </button>
             )}
           </div>
-          <div className="route-matrix">
-            {routeSnapshots.map((route) => (
-              <div key={`route-${route.id}`} className={`route-chip ${route.complete ? "complete" : ""}`}>
-                <strong>Route {route.id}</strong> {route.label} - {route.note}
-              </div>
-            ))}
-          </div>
+          {latestHintText && (
+            <div className="hint-memory-card">
+              <p className="mission-kicker">Last Hint {latestHintAgeLabel ? `(${latestHintAgeLabel})` : ""}</p>
+              <p className="sonic-intel-line">{latestHintText}</p>
+            </div>
+          )}
+          {!missionTrackerCollapsed && (
+            <div className="route-matrix">
+              {routeSnapshots.map((route) => (
+                <div key={`route-${route.id}`} className={`route-chip ${route.complete ? "complete" : ""}`}>
+                  <strong>Route {route.id}</strong> {route.label} - {route.note}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -2816,7 +2858,11 @@ function App() {
         <section className="mission-recommendations" aria-label="Recommended next steps">
           <p className="mission-kicker">Recommended next steps</p>
           <div className="button-grid mission-recommendation-grid">
-            {recommendedActions.map((item) => (
+            {recommendedActions.map((item) => {
+              const isMoveAction = item.action.type === "MOVE";
+              const moveLabelBase = item.label.replace(/^Go\s+/, "");
+              const actionLabel = isMoveAction ? `Go: ${moveLabelBase}` : `Do: ${item.label}`;
+              return (
               <button
                 key={`recommend-${item.key}`}
                 disabled={Boolean(item.disabled)}
@@ -2825,9 +2871,10 @@ function App() {
                   await runAction(item.action);
                 }}
               >
-                {item.label} {item.badge ? `(${item.badge})` : ""}
+                {actionLabel} {item.badge ? `(${item.badge})` : ""}
               </button>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}
