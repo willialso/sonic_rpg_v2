@@ -714,6 +714,11 @@ p, li, span, input, button {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.starter-route-card {
+  width: min(620px, 100%);
+  border-color: rgba(255, 210, 74, 0.72);
+}
+
 .bottom-actions-grid {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.9fr);
   min-width: 0;

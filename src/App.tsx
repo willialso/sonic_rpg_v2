@@ -25,6 +25,7 @@ import "./App.css";
 
 type UiAction =
   | { type: "RESET_GAME" }
+  | { type: "SET_TIMER_PAUSED"; paused: boolean }
   | { type: "COMPLETE_ORIENTATION_INTRO"; preferredName?: string }
   | { type: "MOVE"; target: LocationId }
   | { type: "FORCE_MOVE"; target: LocationId }
@@ -103,8 +104,8 @@ type TopToastKind = "rumor" | "status";
 type TopToastState = { id: string; text: string; kind: TopToastKind } | null;
 const ITEM_HELP: Record<string, { desc: string; useHint: string; targetHint?: string; riskHint?: string }> = {
   "Student ID": { desc: "Campus clearance pass.", useHint: "Needed for key checks and entry." },
-  "Dean Whiskey": { desc: "Heavy liquor stash.", useHint: "Use in Dorm Room to push Sonic up.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Carrying contraband can trigger warnings." },
-  Asswine: { desc: "Thunderhead trade reward.", useHint: "Fast drunk boost in Dorm Room.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Trade setup costs time." },
+  "Dean Whiskey": { desc: "Heavy liquor stash.", useHint: "Use where Sonic is present (Dorm Room gives stronger setup).", targetHint: "Target: Sonic at current location.", riskHint: "Carrying contraband can trigger warnings." },
+  Asswine: { desc: "Thunderhead trade reward.", useHint: "Fast drunk boost anywhere Sonic is present.", targetHint: "Target: Sonic at current location.", riskHint: "Trade setup costs time." },
   "Furry Handcuffs": { desc: "High-risk control item.", useHint: "Use on Sonic at drunk level 3+.", targetHint: "Target: Sonic when escort-ready.", riskHint: "Wrong target can hard-fail." },
   "Frat Bong": { desc: "High-risk contraband.", useHint: "Do not carry near enforcement.", riskHint: "Can cause confiscation or expulsion." },
   "Spare Socks": { desc: "Strip poker buffer.", useHint: "Burn to avoid one forfeit.", targetHint: "Target: Strip Poker side pot.", riskHint: "Single-use item." },
@@ -113,12 +114,12 @@ const ITEM_HELP: Record<string, { desc: string; useHint: string; targetHint?: st
   "Sorority Mascara": { desc: "Sorority contraband.", useHint: "Valid Thunderhead trade item.", targetHint: "Target: Thunderhead in Tunnel.", riskHint: "Theft can trigger ejection + ban." },
   "Sorority Composite": { desc: "Sorority contraband.", useHint: "Valid Thunderhead trade item.", targetHint: "Target: Thunderhead in Tunnel.", riskHint: "High social penalty if caught." },
   "Hairbrush": { desc: "Low-value filler.", useHint: "Not valid for Thunderhead trade.", riskHint: "Bad trade wastes time." },
-  "Warm Beer": { desc: "Mix base item.", useHint: "Use or mix in Dorm Room.", targetHint: "Target: Sonic or mix recipes.", riskHint: "Weak alone; best when mixed." },
+  "Warm Beer": { desc: "Mix base item.", useHint: "Use where Sonic is present or mix in Dorm Room.", targetHint: "Target: Sonic at current location or mix recipes.", riskHint: "Weak alone; best when mixed." },
   "Super Dean Beans": { desc: "Volatile ingredient.", useHint: "Mix for high-impact sludge.", targetHint: "Target: mix path in Dorm Room.", riskHint: "Can backfire hard." },
-  "Expired Energy Shot": { desc: "High-variance stim.", useHint: "Use only when gambling.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Can lower progress and raise pressure." },
+  "Expired Energy Shot": { desc: "High-variance stim.", useHint: "Use only when gambling.", targetHint: "Target: Sonic at current location.", riskHint: "Can lower progress and raise pressure." },
   "Glitter Flask": { desc: "Mix container.", useHint: "Needed for Glitter Bomb Brew.", targetHint: "Target: mix path.", riskHint: "No direct value alone." },
-  "Glitter Bomb Brew": { desc: "Chaotic mixed drink.", useHint: "Use in Dorm Room for swingy gain.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Can spike Dean warning." },
-  "Turbo Sludge": { desc: "Heavy mixed brew.", useHint: "Big spike attempt in Dorm Room.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Big backfire risk." },
+  "Glitter Bomb Brew": { desc: "Chaotic mixed drink.", useHint: "Use where Sonic is present for swingy gain.", targetHint: "Target: Sonic at current location.", riskHint: "Can spike Dean warning." },
+  "Turbo Sludge": { desc: "Heavy mixed brew.", useHint: "Big spike attempt where Sonic is present.", targetHint: "Target: Sonic at current location.", riskHint: "Big backfire risk." },
   "Campus Map": { desc: "Route intel.", useHint: "Use to reveal search lanes.", targetHint: "Target: route planning.", riskHint: "Costs time to use." },
   "Lost Lanyard": { desc: "Early clue item.", useHint: "Minor hunt support.", targetHint: "Target: early progression.", riskHint: "Low late-game value." },
   "Lecture Notes": { desc: "Flavor intel scrap.", useHint: "Low impact utility.", riskHint: "Can clutter inventory." },
@@ -131,7 +132,7 @@ const ITEM_HELP: Record<string, { desc: string; useHint: string; targetHint?: st
   "Party Wristband": { desc: "Frat trinket.", useHint: "Low impact utility.", riskHint: "Mostly inventory noise." },
   "Extra Sock": { desc: "Spare clothing scrap.", useHint: "Low impact backup item.", riskHint: "Minimal route value." },
   "Laundry Detergent": { desc: "Dorm supply.", useHint: "Low priority item.", riskHint: "Mostly inventory noise." },
-  "Mystery Meat": { desc: "Cafeteria wildcard.", useHint: "Use on Sonic in Dorm Room.", riskHint: "Can help or backfire." }
+  "Mystery Meat": { desc: "Cafeteria wildcard.", useHint: "Use on Sonic where present.", riskHint: "Can help or backfire." }
 };
 const ITEM_ICONS: Partial<Record<string, string>> = {
   "Student ID": studentIdIcon,
@@ -487,6 +488,8 @@ function App() {
   const [orientationAgendaName, setOrientationAgendaName] = useState("Student");
   const [orientationIntroOpen, setOrientationIntroOpen] = useState(false);
   const [orientationIntroSubmitting, setOrientationIntroSubmitting] = useState(false);
+  const [starterRoutePanelOpen, setStarterRoutePanelOpen] = useState(false);
+  const [starterRouteSubmitting, setStarterRouteSubmitting] = useState(false);
   const [missionTrackerCollapsed, setMissionTrackerCollapsed] = useState(false);
   const [latestHintText, setLatestHintText] = useState("");
   const [latestHintAtMs, setLatestHintAtMs] = useState(0);
@@ -536,6 +539,7 @@ function App() {
   const previousHudMetricsRef = useRef<{ cupsCleared: number; throwsUsed: number } | null>(null);
   const stripDealTimerRef = useRef<number | null>(null);
   const soggyTimersRef = useRef<number[]>([]);
+  const timerPauseSyncRef = useRef<boolean | null>(null);
   const lastCapturedResolvedSeedRef = useRef("");
   const beerRoundMemoryRef = useRef<Record<BeerMatchup, BeerRoundMemory | null>>({
     frat: null,
@@ -594,6 +598,8 @@ function App() {
     setLandingClosing(false);
     setOrientationIntroOpen(false);
     setOrientationIntroSubmitting(false);
+    setStarterRoutePanelOpen(false);
+    setStarterRouteSubmitting(false);
     setShowLandingPage(true);
   }, []);
   const closeLandingPage = useCallback(async (mode: "continue" | "enroll") => {
@@ -605,6 +611,8 @@ function App() {
       }
       setOrientationIntroOpen(false);
       setOrientationIntroSubmitting(false);
+      setStarterRoutePanelOpen(false);
+      setStarterRouteSubmitting(false);
       setShowLandingPage(false);
       setLandingClosing(false);
     }, 230);
@@ -616,10 +624,7 @@ function App() {
     setOrientationIntroSubmitting(false);
     if (result.ok) {
       setOrientationIntroOpen(false);
-      setNotice({
-        title: "Orientation Complete",
-        body: result.message
-      });
+      setStarterRoutePanelOpen(true);
       return;
     }
     setNotice({
@@ -627,6 +632,36 @@ function App() {
       body: result.message
     });
   }, [orientationIntroSubmitting, runAction]);
+  const beginStarterRoute = useCallback(async (route: "booze" | "intel" | "trick") => {
+    if (starterRouteSubmitting) return;
+    setStarterRouteSubmitting(true);
+    let resultMessage = "";
+    if (route === "booze") {
+      const move = await runAction({ type: "MOVE", target: "frat" }, true);
+      if (move.ok) {
+        await runAction({ type: "START_DIALOGUE", npcId: "frat_boys", auto: true }, true);
+        resultMessage = "Starter route set: Frat lane. Play beer pong early, then pivot to Sonic rumor sightings.";
+      } else {
+        resultMessage = move.message;
+      }
+    } else if (route === "intel") {
+      const search = await runAction({ type: "SEARCH_QUAD" }, true);
+      resultMessage = search.ok
+        ? "Starter route set: Intel lane. Quad search done. Follow Sonic Intel card and move fast."
+        : search.message;
+    } else {
+      const move = await runAction({ type: "MOVE", target: "eggman_classroom" }, true);
+      resultMessage = move.ok
+        ? "Starter route set: Trick lane. Move toward dorm-side map and prep Security Schedule + Sonic contact."
+        : move.message;
+    }
+    setStarterRouteSubmitting(false);
+    setStarterRoutePanelOpen(false);
+    setNotice({
+      title: "Quick Start Set",
+      body: resultMessage
+    });
+  }, [runAction, starterRouteSubmitting]);
   const clearSoggyTimers = useCallback(() => {
     if (soggyTimersRef.current.length === 0) return;
     soggyTimersRef.current.forEach((id) => window.clearTimeout(id));
@@ -767,14 +802,14 @@ function App() {
     return false;
   }, [state]);
   const hintCooldownSec = Math.max(0, Math.ceil((hintCooldownUntilMs - Date.now()) / 1000));
-  const canUseHint = !isResolved && hintCooldownSec === 0 && hintSignalStrong;
+  const canUseHint = !isResolved && hintCooldownSec === 0;
   const hintButtonNote = isResolved
     ? "Run ended."
     : hintCooldownSec > 0
       ? `Hint ready in ${hintCooldownSec}s`
       : hintSignalStrong
         ? "Hint available."
-        : "No urgent hint.";
+        : "Hint available (low urgency).";
   const exportCurrentRunTelemetry = useCallback(() => {
     if (!state) return;
     const summary = toPlaytestRunSummary(state);
@@ -897,6 +932,29 @@ function App() {
     orientationIntroSubmitting,
     showLandingPage,
     state
+  ]);
+
+  useEffect(() => {
+    const statusModalOpen = Boolean((notice || isResolved) && !showLandingPage && !landingClosing && !isSoggySequenceActive);
+    const shouldPauseTimer = showLandingPage
+      || landingClosing
+      || orientationIntroOpen
+      || orientationAgendaOpen
+      || starterRoutePanelOpen
+      || statusModalOpen;
+    if (timerPauseSyncRef.current === shouldPauseTimer) return;
+    timerPauseSyncRef.current = shouldPauseTimer;
+    void runAction({ type: "SET_TIMER_PAUSED", paused: shouldPauseTimer }, true);
+  }, [
+    isResolved,
+    isSoggySequenceActive,
+    landingClosing,
+    notice,
+    orientationAgendaOpen,
+    orientationIntroOpen,
+    runAction,
+    showLandingPage,
+    starterRoutePanelOpen
   ]);
 
   useEffect(() => {
@@ -1061,6 +1119,7 @@ function App() {
     const suppressTopToast = Boolean(
       notice
       || orientationIntroOpen
+      || starterRoutePanelOpen
       || orientationAgendaOpen
       || campusMapOpen
       || beerGameOpen
@@ -1087,7 +1146,7 @@ function App() {
       nextToastReadyAtRef.current = Date.now() + 500;
     }, topToast.kind === "rumor" ? 4600 : 3200);
     return () => window.clearTimeout(id);
-  }, [beerGameOpen, campusMapOpen, eggmanLabOpen, isSoggySequenceActive, landingClosing, locationSplash, notice, orientationAgendaOpen, orientationIntroOpen, searchLoot, showLandingPage, stripPokerOpen, topToast]);
+  }, [beerGameOpen, campusMapOpen, eggmanLabOpen, isSoggySequenceActive, landingClosing, locationSplash, notice, orientationAgendaOpen, orientationIntroOpen, searchLoot, showLandingPage, starterRoutePanelOpen, stripPokerOpen, topToast]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2244,6 +2303,7 @@ function App() {
     && popupNpcId
     && (popupDialogueText || popupTyping)
     && !orientationIntroOpen
+    && !starterRoutePanelOpen
     && !hudMenuOpen
     && !actionMenuOpen
     && !beerGameOpen
@@ -2262,6 +2322,7 @@ function App() {
   const suppressTopToast = Boolean(
     notice
     || orientationIntroOpen
+    || starterRoutePanelOpen
     || orientationAgendaOpen
     || beerGameOpen
     || eggmanLabOpen
@@ -2583,6 +2644,80 @@ function App() {
       });
     }
   }
+  if (state.player.location !== "dorm_room" && sonicPresentAtCurrentLocation) {
+    if (state.player.inventory.includes("Asswine")) {
+      routeActionButtons.push({
+        key: "GIVE_ASSWINE_ANYWHERE",
+        label: "Give Asswine",
+        action: { type: "GIVE_ASSWINE" },
+        priority: 92
+      });
+    }
+    if (state.player.inventory.includes("Dean Whiskey")) {
+      routeActionButtons.push({
+        key: "GIVE_WHISKEY_ANYWHERE",
+        label: "Give Whiskey",
+        action: { type: "GIVE_WHISKEY" },
+        priority: 88
+      });
+    }
+    if (state.player.inventory.includes("Warm Beer")) {
+      routeActionButtons.push({
+        key: "USE_WARM_BEER_ANYWHERE",
+        label: "Use Warm Beer",
+        action: { type: "USE_WARM_BEER" },
+        priority: 74
+      });
+    }
+    if (state.player.inventory.includes("Super Dean Beans")) {
+      routeActionButtons.push({
+        key: "USE_SUPER_DEAN_BEANS_ANYWHERE",
+        label: "Use Beans",
+        action: { type: "USE_SUPER_DEAN_BEANS" },
+        priority: 70
+      });
+    }
+    if (state.player.inventory.includes("Glitter Bomb Brew")) {
+      routeActionButtons.push({
+        key: "USE_GLITTER_BOMB_BREW_ANYWHERE",
+        label: "Use Glitter Brew",
+        action: { type: "USE_GLITTER_BOMB_BREW" },
+        priority: 69
+      });
+    }
+    if (state.player.inventory.includes("Turbo Sludge")) {
+      routeActionButtons.push({
+        key: "USE_TURBO_SLUDGE_ANYWHERE",
+        label: "Use Turbo Sludge",
+        action: { type: "USE_TURBO_SLUDGE" },
+        priority: 68
+      });
+    }
+    if (state.player.inventory.includes("Mystery Meat")) {
+      routeActionButtons.push({
+        key: "USE_MYSTERY_MEAT_ANYWHERE",
+        label: "Use Mystery Meat",
+        action: { type: "USE_MYSTERY_MEAT" },
+        priority: 44
+      });
+    }
+    if (state.player.inventory.includes("Expired Energy Shot")) {
+      routeActionButtons.push({
+        key: "USE_EXPIRED_ENERGY_SHOT_ANYWHERE",
+        label: "Use Energy Shot",
+        action: { type: "USE_EXPIRED_ENERGY_SHOT" },
+        priority: 40
+      });
+    }
+    if (unlocks.escortSonic) {
+      routeActionButtons.push({
+        key: "ESCORT_SONIC_ANYWHERE",
+        label: "Escort Sonic",
+        action: { type: "ESCORT_SONIC" },
+        priority: state.sonic.drunkLevel >= 3 && !state.sonic.following ? 98 : 34
+      });
+    }
+  }
   if (state.player.location === "dorms" && unlocks.searchDorms) {
     routeActionButtons.push({
       key: "SEARCH_DORMS",
@@ -2685,6 +2820,7 @@ function App() {
         recommendedActions.push(item);
       });
   }
+  const showRecommendationStrip = false;
   const riskyKeys = new Set([
     "USE_FURRY_HANDCUFFS",
     "USE_SUPER_DEAN_BEANS",
@@ -2854,7 +2990,7 @@ function App() {
         </section>
       )}
 
-      {!isResolved && !orientationIntroOpen && !showLandingPage && recommendedActions.length > 0 && (
+      {showRecommendationStrip && !isResolved && !orientationIntroOpen && !showLandingPage && recommendedActions.length > 0 && (
         <section className="mission-recommendations" aria-label="Recommended next steps">
           <p className="mission-kicker">Recommended next steps</p>
           <div className="button-grid mission-recommendation-grid">
@@ -3660,6 +3796,43 @@ function App() {
         </aside>
       )}
 
+      {starterRoutePanelOpen && (
+        <section className="modal-overlay">
+          <article className="modal-card starter-route-card">
+            <h3>Choose Your Starter Route</h3>
+            <p className="menu-inline-copy muted">
+              Pick one immediate path so you don't lose time in setup. You can pivot later.
+            </p>
+            <div className="button-grid action-grid">
+              <button
+                disabled={starterRouteSubmitting}
+                onClick={async () => {
+                  await beginStarterRoute("booze");
+                }}
+              >
+                Start Booze Route
+              </button>
+              <button
+                disabled={starterRouteSubmitting}
+                onClick={async () => {
+                  await beginStarterRoute("intel");
+                }}
+              >
+                Start Sonic Intel Route
+              </button>
+              <button
+                disabled={starterRouteSubmitting}
+                onClick={async () => {
+                  await beginStarterRoute("trick");
+                }}
+              >
+                Start Trick Route
+              </button>
+            </div>
+          </article>
+        </section>
+      )}
+
       {orientationIntroOpen && (
         <section className="modal-overlay">
           <article className="modal-card orientation-video-card">
@@ -3684,7 +3857,7 @@ function App() {
         </section>
       )}
 
-      {(notice || isResolved) && !orientationIntroOpen && !showLandingPage && !landingClosing && !isSoggySequenceActive && (
+      {(notice || isResolved) && !orientationIntroOpen && !starterRoutePanelOpen && !showLandingPage && !landingClosing && !isSoggySequenceActive && (
         <section className="modal-overlay">
           <article className={`modal-card ${isResolved ? "official-notice-card" : "status-note-card"}`}>
             {isResolved ? (
@@ -3743,7 +3916,7 @@ function App() {
         </section>
       )}
 
-      {locationSplash && (
+      {locationSplash && !notice && !orientationIntroOpen && !starterRoutePanelOpen && (
         <section className="location-splash-overlay" onClick={() => setLocationSplash(null)}>
           <article className="location-splash-card">
             <p className="location-splash-kicker">{locationSplash.subtitle}</p>

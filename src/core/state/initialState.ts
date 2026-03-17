@@ -10,7 +10,8 @@ export function createInitialState(seed = "sonic-rpg-v2-seed"): GameStateData {
       saveUpdatedAt: now
     },
     timer: {
-      remainingSec: 900
+      remainingSec: 900,
+      paused: false
     },
     phase: "onboarding",
     player: {

@@ -49,6 +49,7 @@ type GameAction =
   | MoveAction
   | ForceMoveAction
   | { type: "RESET_GAME" }
+  | { type: "SET_TIMER_PAUSED"; paused: boolean }
   | { type: "COMPLETE_ORIENTATION_INTRO"; preferredName?: string }
   | { type: "START_DIALOGUE"; npcId: NpcId; auto?: boolean }
   | { type: "PLAY_BEER_PONG_SCORE"; cupsHit: number; matchup: "frat" | "sonic" }
@@ -378,6 +379,7 @@ export function useGameController(): {
       let dirty = false;
       store.patch((state) => {
         if (state.phase === "resolved" || state.fail.hardFailed) return;
+        if (state.timer.paused) return;
         dirty = true;
         state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 1);
         setPressure(state);
@@ -463,6 +465,11 @@ export function useGameController(): {
       syncSonicLocation(state);
 
       switch (action.type) {
+        case "SET_TIMER_PAUSED": {
+          state.timer.paused = action.paused;
+          result = { ok: true, message: action.paused ? "Timer paused." : "Timer resumed." };
+          return;
+        }
         case "COMPLETE_ORIENTATION_INTRO": {
           const preferredName = action.preferredName?.trim();
           if (preferredName) {
@@ -1380,12 +1387,8 @@ export function useGameController(): {
           return;
         }
         case "GIVE_WHISKEY": {
-          if (state.player.location !== "dorm_room") {
-            result = { ok: false, message: "Give drinks in Dorm Room." };
-            return;
-          }
           if (!(state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
-            result = { ok: false, message: "Sonic is not here. You can only give this when Sonic is in Dorm Room." };
+            result = { ok: false, message: "Sonic is not here. Give this where Sonic is present." };
             return;
           }
           if (!state.player.inventory.includes("Dean Whiskey")) {
@@ -1393,17 +1396,15 @@ export function useGameController(): {
             return;
           }
           removeInventory(state, "Dean Whiskey");
-          state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 2);
-          result = { ok: true, message: "Sonic drank Dean Whiskey." };
+          const dose = state.player.location === "dorm_room" ? 2 : 1;
+          state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + dose);
+          if (state.sonic.drunkLevel >= 1) state.world.actionUnlocks.beerPongSonic = true;
+          result = { ok: true, message: dose >= 2 ? "Sonic drank Dean Whiskey. Heavy hit in the dorm setup." : "Sonic takes a quick swig. Better effect if you set him up in Dorm Room." };
           return;
         }
         case "GIVE_ASSWINE": {
-          if (state.player.location !== "dorm_room") {
-            result = { ok: false, message: "Give drinks in Dorm Room." };
-            return;
-          }
           if (!(state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
-            result = { ok: false, message: "Sonic is not here. You can only give this when Sonic is in Dorm Room." };
+            result = { ok: false, message: "Sonic is not here. Give this where Sonic is present." };
             return;
           }
           if (!state.player.inventory.includes("Asswine")) {
@@ -1411,8 +1412,10 @@ export function useGameController(): {
             return;
           }
           removeInventory(state, "Asswine");
-          state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 3);
-          result = { ok: true, message: "Sonic took Asswine and got heavily drunk." };
+          const dose = state.player.location === "dorm_room" ? 3 : 2;
+          state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + dose);
+          state.world.actionUnlocks.beerPongSonic = true;
+          result = { ok: true, message: dose >= 3 ? "Sonic took Asswine and got heavily drunk." : "Sonic drinks Asswine but wants a better setup before full commitment." };
           return;
         }
         case "USE_ITEM_ON_TARGET": {
@@ -1534,12 +1537,8 @@ export function useGameController(): {
           return;
         }
         case "USE_SUPER_DEAN_BEANS": {
-          if (state.player.location !== "dorm_room") {
-            result = { ok: false, message: "Use this in Dorm Room." };
-            return;
-          }
           if (!(state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
-            result = { ok: false, message: "Sonic is not here. Use this when Sonic is in Dorm Room." };
+            result = { ok: false, message: "Sonic is not here. Use this where Sonic is present." };
             return;
           }
           if (!state.player.inventory.includes("Super Dean Beans")) {
@@ -1559,12 +1558,8 @@ export function useGameController(): {
           return;
         }
         case "USE_EXPIRED_ENERGY_SHOT": {
-          if (state.player.location !== "dorm_room") {
-            result = { ok: false, message: "Use this in Dorm Room." };
-            return;
-          }
           if (!(state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
-            result = { ok: false, message: "Sonic is not here. Use this when Sonic is in Dorm Room." };
+            result = { ok: false, message: "Sonic is not here. Use this where Sonic is present." };
             return;
           }
           if (!state.player.inventory.includes("Expired Energy Shot")) {
@@ -1578,12 +1573,8 @@ export function useGameController(): {
           return;
         }
         case "USE_WARM_BEER": {
-          if (state.player.location !== "dorm_room") {
-            result = { ok: false, message: "Use this in Dorm Room." };
-            return;
-          }
           if (!(state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
-            result = { ok: false, message: "Sonic is not here. Use this when Sonic is in Dorm Room." };
+            result = { ok: false, message: "Sonic is not here. Use this where Sonic is present." };
             return;
           }
           if (!state.player.inventory.includes("Warm Beer")) {
@@ -1591,17 +1582,15 @@ export function useGameController(): {
             return;
           }
           removeInventory(state, "Warm Beer");
-          state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 1);
-          result = { ok: true, message: "Warm beer works. Not elegant, but effective." };
+          const dose = state.player.location === "dorm_room" ? 1 : 1;
+          state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + dose);
+          state.world.actionUnlocks.beerPongSonic = true;
+          result = { ok: true, message: state.player.location === "dorm_room" ? "Warm beer works. Not elegant, but effective." : "Warm beer lands. Sonic starts talking about a beer pong challenge." };
           return;
         }
         case "USE_GLITTER_BOMB_BREW": {
-          if (state.player.location !== "dorm_room") {
-            result = { ok: false, message: "Use this in Dorm Room." };
-            return;
-          }
           if (!(state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
-            result = { ok: false, message: "Sonic is not here. Use this when Sonic is in Dorm Room." };
+            result = { ok: false, message: "Sonic is not here. Use this where Sonic is present." };
             return;
           }
           if (!state.player.inventory.includes("Glitter Bomb Brew")) {
@@ -1621,12 +1610,8 @@ export function useGameController(): {
           return;
         }
         case "USE_TURBO_SLUDGE": {
-          if (state.player.location !== "dorm_room") {
-            result = { ok: false, message: "Use this in Dorm Room." };
-            return;
-          }
           if (!(state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
-            result = { ok: false, message: "Sonic is not here. Use this when Sonic is in Dorm Room." };
+            result = { ok: false, message: "Sonic is not here. Use this where Sonic is present." };
             return;
           }
           if (!state.player.inventory.includes("Turbo Sludge")) {

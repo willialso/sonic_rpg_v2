@@ -49,6 +49,7 @@ export function validateGameStateCandidate(candidate: unknown): candidate is Gam
   const state = candidate;
   if (!isRecord(state.meta) || typeof state.meta.seed !== "string" || typeof state.meta.version !== "string") return false;
   if (!isRecord(state.timer) || typeof state.timer.remainingSec !== "number") return false;
+  if (state.timer.paused !== undefined && typeof state.timer.paused !== "boolean") return false;
   if (!PHASES.includes(state.phase as GamePhase)) return false;
 
   if (!isRecord(state.player)) return false;
@@ -82,6 +83,7 @@ export function normalizeGameState(candidate: unknown): GameStateData | null {
   if (!validateGameStateCandidate(candidate)) return null;
   const state = structuredClone(candidate);
   state.timer.remainingSec = Math.max(0, Math.floor(state.timer.remainingSec));
+  state.timer.paused = Boolean(state.timer.paused);
   state.sonic.drunkLevel = Math.max(0, Math.min(4, Math.floor(state.sonic.drunkLevel)));
   state.fail.warnings.dean = Math.max(0, Math.floor(state.fail.warnings.dean));
   state.fail.warnings.luigi = Math.max(0, Math.floor(state.fail.warnings.luigi));
