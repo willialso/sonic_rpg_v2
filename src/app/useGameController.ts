@@ -1193,6 +1193,7 @@ export function useGameController(): {
             safeTransition(machine, state, "escort", "USE_SECURITY_SCHEDULE trick escort");
             state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 10);
             setPressure(state);
+            state.world.events.push("ESCORT_MODE::trick");
             state.world.events.push("Rumor update: Sonic bought your VIP timing pitch and agreed to move.");
             result = { ok: true, message: "You pitch a VIP timing window. Sonic agrees to follow you to Stadium." };
             return;
@@ -1440,6 +1441,7 @@ export function useGameController(): {
             state.sonic.location = state.player.location;
             state.world.actionUnlocks.stadiumEntry = true;
             state.fail.warnings.dean += 1;
+            state.world.events.push("ESCORT_MODE::handcuffs");
             safeTransition(machine, state, "escort", "USE_ITEM_ON_TARGET handcuffs sonic");
             result = { ok: true, message: "Cuffs lock. Sonic is furious but moving with you. Head for Stadium now." };
             return;
@@ -1513,6 +1515,7 @@ export function useGameController(): {
           state.sonic.location = state.player.location;
           state.world.actionUnlocks.stadiumEntry = true;
           state.fail.warnings.dean += 1;
+          state.world.events.push("ESCORT_MODE::handcuffs");
           safeTransition(machine, state, "escort", "USE_FURRY_HANDCUFFS success");
           result = {
             ok: true,
@@ -1644,6 +1647,7 @@ export function useGameController(): {
           state.sonic.following = true;
           state.sonic.location = state.player.location;
           state.world.actionUnlocks.stadiumEntry = true;
+          state.world.events.push("ESCORT_MODE::drunk");
           safeTransition(machine, state, "escort", "ESCORT_SONIC success");
           result = { ok: true, message: "Sonic is following you." };
           return;

@@ -1,4 +1,5 @@
 import type { GameStateData } from "../types/game";
+import { isEscortReady } from "./progressionRules";
 
 export class RouteManager {
   progressRouteA(state: GameStateData): void {
@@ -23,7 +24,11 @@ export class RouteManager {
   }
 
   canWin(state: GameStateData): boolean {
-    return state.sonic.following
+    const hasAlternativeEscortMode = state.world.events.some((entry) =>
+      entry.startsWith("ESCORT_MODE::trick") || entry.startsWith("ESCORT_MODE::handcuffs")
+    );
+    return (isEscortReady(state.sonic.drunkLevel) || hasAlternativeEscortMode)
+      && state.sonic.following
       && state.player.location === "stadium"
       && state.player.inventory.includes("Student ID");
   }

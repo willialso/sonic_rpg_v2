@@ -2129,7 +2129,7 @@ function App() {
     {
       id: "E",
       label: "VIP Trick Route",
-      complete: state.sonic.following && state.sonic.drunkLevel < ESCORT_READY_DRUNK_LEVEL,
+      complete: state.world.events.some((entry) => entry.startsWith("ESCORT_MODE::trick")),
       note: state.player.inventory.includes("Security Schedule")
         ? "Use Schedule in Dorm Room with Sonic to sell the VIP timing window."
         : "Search Stadium/Gate area for Security Schedule and use it as leverage."
