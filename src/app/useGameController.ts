@@ -113,6 +113,16 @@ const THUNDERHEAD_REJECTED_ITEMS = ["Hairbrush", "Fake ID Wristband", "Sorority 
 const AUTOSAVE_DIRTY_FLUSH_MS = 12000;
 const MISSION_OBJECTIVE = "Get Sonic to Stadium.";
 const MISSION_SUBOBJECTIVE = "Pick a route (booze, handcuffs, or trick), secure Sonic, and clear stadium security with your Student ID.";
+const FRAT_MATCH_TIME_COST_SEC = 45;
+const BEER_SHOT_TIME_COST_SEC = {
+  safe: 28,
+  bank: 38,
+  hero: 50
+} as const;
+const HINT_TIME_COST_SEC = 6;
+const TRICK_ROUTE_TIME_COST_SEC = 14;
+const HANDCUFFS_UNREADY_TIME_PENALTY_SEC = 22;
+const HANDCUFFS_UNREADY_FAIL_THRESHOLD = 0.48;
 
 function extractPlayerName(rawInput: string): string | null {
   return extractPlayerNameAction(rawInput);
@@ -746,7 +756,7 @@ export function useGameController(): {
               result = { ok: false, message: state.fail.reason, gameOver: true };
             }
           }
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 50);
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - FRAT_MATCH_TIME_COST_SEC);
           setPressure(state);
           return;
         }
@@ -791,7 +801,7 @@ export function useGameController(): {
               result = { ok: false, message: state.fail.reason, gameOver: true };
             }
           }
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - (action.shot === "safe" ? 30 : action.shot === "bank" ? 40 : 55));
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - BEER_SHOT_TIME_COST_SEC[action.shot]);
           setPressure(state);
           return;
         }
@@ -1191,7 +1201,7 @@ export function useGameController(): {
             state.world.actionUnlocks.escortSonic = true;
             state.world.actionUnlocks.stadiumEntry = true;
             safeTransition(machine, state, "escort", "USE_SECURITY_SCHEDULE trick escort");
-            state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 10);
+            state.timer.remainingSec = Math.max(0, state.timer.remainingSec - TRICK_ROUTE_TIME_COST_SEC);
             setPressure(state);
             state.world.events.push("ESCORT_MODE::trick");
             state.world.events.push("Rumor update: Sonic bought your VIP timing pitch and agreed to move.");
@@ -1424,14 +1434,14 @@ export function useGameController(): {
               return;
             }
             if (!isEscortReady(state.sonic.drunkLevel)) {
-              state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 28);
+              state.timer.remainingSec = Math.max(0, state.timer.remainingSec - HANDCUFFS_UNREADY_TIME_PENALTY_SEC);
               state.fail.warnings.luigi += 1;
               state.fail.warnings.dean += 1;
               const chance = seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:handcuffs-targeted`);
-              if (chance <= 0.55) {
+              if (chance <= HANDCUFFS_UNREADY_FAIL_THRESHOLD) {
                 result = {
                   ok: false,
-                  message: "Cuff attempt fails. Sonic slips free, Luigi warning +1, and staff attention spikes."
+                  message: `Cuff attempt fails. Sonic slips free, warnings spike, and you lose time. Safer fallback: reach drunk level ${ESCORT_READY_DRUNK_LEVEL}+ or run the VIP schedule trick.`
                 };
                 return;
               }
@@ -1498,14 +1508,14 @@ export function useGameController(): {
             return;
           }
           if (!isEscortReady(state.sonic.drunkLevel)) {
-            state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 28);
+            state.timer.remainingSec = Math.max(0, state.timer.remainingSec - HANDCUFFS_UNREADY_TIME_PENALTY_SEC);
             state.fail.warnings.luigi += 1;
             state.fail.warnings.dean += 1;
             const chance = seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:handcuffs-general`);
-            if (chance <= 0.55) {
+            if (chance <= HANDCUFFS_UNREADY_FAIL_THRESHOLD) {
               result = {
                 ok: false,
-                message: "Cuff attempt fails. Sonic slips free, Luigi warning +1, and your campus heat climbs."
+                message: `Cuff attempt fails. Sonic slips free, warnings spike, and heat climbs. Safer fallback: boost Sonic to drunk level ${ESCORT_READY_DRUNK_LEVEL}+ or use Security Schedule leverage.`
               };
               return;
             }
@@ -1681,13 +1691,24 @@ export function useGameController(): {
             safeTransition(machine, state, "resolved", "STADIUM_ENTRY success");
             result = { ok: true, message: "Mission complete. Sonic reached Stadium.", won: true, gameOver: true };
           } else {
-            result = { ok: false, message: "Win conditions not met. You are missing a key setup." };
+            if (!state.sonic.following) {
+              result = { ok: false, message: "Sonic is not following. Escort him first (drunk route, handcuffs route, or VIP schedule trick)." };
+              return;
+            }
+            const hasAltEscortMode = state.world.events.some((entry) =>
+              entry.startsWith("ESCORT_MODE::trick") || entry.startsWith("ESCORT_MODE::handcuffs")
+            );
+            if (!isEscortReady(state.sonic.drunkLevel) && !hasAltEscortMode) {
+              result = { ok: false, message: `Sonic is not escort-ready. Reach drunk level ${ESCORT_READY_DRUNK_LEVEL}+ or complete a trick/handcuffs escort setup.` };
+              return;
+            }
+            result = { ok: false, message: "Security blocks entry. Recheck escort setup and mission credentials." };
           }
           return;
         }
         case "GET_HINT": {
           result = { ok: true, message: hintManager.getHint(state) };
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 8);
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - HINT_TIME_COST_SEC);
           setPressure(state);
           return;
         }
