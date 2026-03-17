@@ -41,3 +41,8 @@ Constants/messages-only tuning pass after orientation-first flow and route-gatin
 - Warning totals at resolution
 - Confusion points (where player guessed instead of deciding)
 - “Felt fair?” quick rating (1-5)
+
+## Export workflow
+- End each run, then open **Menu -> Utilities**.
+- Use **Export Run Log** for single-run JSON.
+- Use **Export All Logs** after all 5 runs to get one combined JSON bundle.

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useGameController } from "./app/useGameController";
 import { seededRoll } from "./app/actions/minigameActions";
-import type { LocationId, NpcId } from "./types/game";
+import type { GameStateData, LocationId, NpcId } from "./types/game";
 import { ESCORT_READY_DRUNK_LEVEL, WARNING_LIMITS, warningMeter } from "./gameplay/progressionRules";
 import { resolveBackgroundImage, resolveCharacterImage } from "./assets/AssetManifest";
 import asswineIcon from "./assets/items/items_assswine.png";
@@ -228,6 +228,22 @@ type EggmanStir = "pulse" | "steady" | "whip";
 type EggmanLabProtocol = { catalyst: EggmanCatalyst; heat: EggmanHeat; stir: EggmanStir };
 type EggmanHintText = Partial<Record<keyof EggmanLabProtocol, string>>;
 type EggmanLabFx = "perfect" | "good" | "fail" | "meltdown" | null;
+type PlaytestResult = "win" | "fail";
+type PlaytestRunSummary = {
+  capturedAt: string;
+  seed: string;
+  result: PlaytestResult;
+  phase: string;
+  routeMode: string;
+  completedRoutes: string[];
+  timeRemainingSec: number;
+  warnings: { dean: number; luigi: number; frat: number };
+  sonic: { drunkLevel: number; following: boolean; location: string };
+  mission: { objective: string; subObjective: string };
+  location: string;
+  inventory: string[];
+  eventsTail: string[];
+};
 
 const CARD_SUITS = ["♠", "♥", "♦", "♣"] as const;
 const CARD_RANKS: Array<{ rank: string; value: number }> = [
@@ -240,6 +256,87 @@ const STRIP_POKER_CLOTHING_STAKES = ["Shirt", "Pants", "Shoes", "Socks", "Underw
 const EGGMAN_CATALYSTS: EggmanCatalyst[] = ["red", "green", "blue"];
 const EGGMAN_HEATS: EggmanHeat[] = ["low", "mid", "high"];
 const EGGMAN_STIRS: EggmanStir[] = ["pulse", "steady", "whip"];
+const PLAYTEST_LOG_KEY = "sonic_rpg_playtest_runs_v1";
+const MAX_PLAYTEST_LOGS = 40;
+
+function inferRouteMode(state: GameStateData): string {
+  const events = state.world.events ?? [];
+  if (events.some((entry) => entry.startsWith("ESCORT_MODE::trick"))) return "trick_vip_schedule";
+  if (events.some((entry) => entry.startsWith("ESCORT_MODE::handcuffs"))) return "handcuffs";
+  if (events.some((entry) => entry.startsWith("ESCORT_MODE::drunk"))) {
+    if (state.routes.routeC.complete) return "drunk_routeC_asswine";
+    if (state.routes.routeB.complete) return "drunk_routeB_whiskey";
+    if (state.routes.routeA.complete) return "drunk_routeA_beerpong";
+    return "drunk_mixed";
+  }
+  if (state.routes.routeC.complete) return "routeC_asswine_setup";
+  if (state.routes.routeB.complete) return "routeB_whiskey_setup";
+  if (state.routes.routeA.complete) return "routeA_beerpong_setup";
+  return "unresolved_setup";
+}
+
+function toPlaytestRunSummary(state: GameStateData): PlaytestRunSummary {
+  const completedRoutes = Object.entries(state.routes)
+    .filter(([, route]) => route.complete)
+    .map(([id]) => id);
+  return {
+    capturedAt: new Date().toISOString(),
+    seed: state.meta.seed,
+    result: state.fail.hardFailed ? "fail" : "win",
+    phase: state.phase,
+    routeMode: inferRouteMode(state),
+    completedRoutes,
+    timeRemainingSec: state.timer.remainingSec,
+    warnings: {
+      dean: state.fail.warnings.dean,
+      luigi: state.fail.warnings.luigi,
+      frat: state.fail.warnings.frat
+    },
+    sonic: {
+      drunkLevel: state.sonic.drunkLevel,
+      following: state.sonic.following,
+      location: state.sonic.location
+    },
+    mission: {
+      objective: state.mission.objective,
+      subObjective: state.mission.subObjective
+    },
+    location: state.player.location,
+    inventory: [...state.player.inventory],
+    eventsTail: state.world.events.slice(-12)
+  };
+}
+
+function loadPlaytestLogStore(): PlaytestRunSummary[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(PLAYTEST_LOG_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as PlaytestRunSummary[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed;
+  } catch {
+    return [];
+  }
+}
+
+function savePlaytestLogStore(runs: PlaytestRunSummary[]): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(PLAYTEST_LOG_KEY, JSON.stringify(runs));
+}
+
+function downloadJsonFile(filename: string, payload: unknown): void {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.URL.revokeObjectURL(url);
+}
 
 function resolveEggmanProtocol(seed: string, round: number): EggmanLabProtocol {
   const catalyst = EGGMAN_CATALYSTS[Math.floor(seededRoll(`${seed}:eggman:${round}:catalyst`) * EGGMAN_CATALYSTS.length)];
@@ -390,6 +487,7 @@ function App() {
   const [orientationAgendaName, setOrientationAgendaName] = useState("Student");
   const [orientationIntroOpen, setOrientationIntroOpen] = useState(false);
   const [orientationIntroSubmitting, setOrientationIntroSubmitting] = useState(false);
+  const [playtestLogCount, setPlaytestLogCount] = useState(0);
   const [campusMapOpen, setCampusMapOpen] = useState(false);
   const [showLandingPage, setShowLandingPage] = useState(true);
   const [landingClosing, setLandingClosing] = useState(false);
@@ -435,6 +533,7 @@ function App() {
   const previousHudMetricsRef = useRef<{ cupsCleared: number; throwsUsed: number } | null>(null);
   const stripDealTimerRef = useRef<number | null>(null);
   const soggyTimersRef = useRef<number[]>([]);
+  const lastCapturedResolvedSeedRef = useRef("");
   const beerRoundMemoryRef = useRef<Record<BeerMatchup, BeerRoundMemory | null>>({
     frat: null,
     sonic: null
@@ -672,6 +771,67 @@ function App() {
       : hintSignalStrong
         ? "Hint available."
         : "No urgent hint.";
+  const exportCurrentRunTelemetry = useCallback(() => {
+    if (!state) return;
+    const summary = toPlaytestRunSummary(state);
+    const shortSeed = state.meta.seed.replace(/[^a-z0-9]/gi, "").slice(-10) || "run";
+    downloadJsonFile(`playtest-run-${shortSeed}.json`, summary);
+    setNotice({
+      title: "Playtest Export",
+      body: "Current run telemetry exported as JSON."
+    });
+  }, [state]);
+  const exportPlaytestLogs = useCallback(() => {
+    const runs = loadPlaytestLogStore();
+    if (runs.length === 0) {
+      setNotice({
+        title: "Playtest Export",
+        body: "No stored playtest logs yet."
+      });
+      return;
+    }
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    downloadJsonFile(`playtest-runs-${stamp}.json`, {
+      exportedAt: new Date().toISOString(),
+      count: runs.length,
+      runs
+    });
+    setNotice({
+      title: "Playtest Export",
+      body: `Exported ${runs.length} stored run logs.`
+    });
+  }, []);
+  const clearPlaytestLogs = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (!window.confirm("Clear all stored playtest logs?")) return;
+    window.localStorage.removeItem(PLAYTEST_LOG_KEY);
+    setPlaytestLogCount(0);
+    setNotice({
+      title: "Playtest Logs",
+      body: "Stored playtest logs cleared."
+    });
+  }, []);
+
+  useEffect(() => {
+    setPlaytestLogCount(loadPlaytestLogStore().length);
+  }, []);
+
+  useEffect(() => {
+    if (!state || !isResolved) return;
+    if (lastCapturedResolvedSeedRef.current === state.meta.seed) return;
+    const summary = toPlaytestRunSummary(state);
+    const existing = loadPlaytestLogStore().filter((entry) => entry.seed !== summary.seed);
+    const next = [summary, ...existing].slice(0, MAX_PLAYTEST_LOGS);
+    savePlaytestLogStore(next);
+    lastCapturedResolvedSeedRef.current = state.meta.seed;
+    setPlaytestLogCount(next.length);
+  }, [isResolved, state]);
+
+  useEffect(() => {
+    if (!state || state.phase === "resolved") return;
+    if (lastCapturedResolvedSeedRef.current !== state.meta.seed) return;
+    lastCapturedResolvedSeedRef.current = "";
+  }, [state]);
 
   useEffect(() => {
     if (!beerGameOpen) {
@@ -2650,6 +2810,33 @@ function App() {
                   >
                     Get Hint
                   </button>
+                  <button
+                    disabled={!state}
+                    onClick={() => {
+                      setHudMenuOpen(false);
+                      exportCurrentRunTelemetry();
+                    }}
+                  >
+                    Export Run Log
+                  </button>
+                  <button
+                    disabled={playtestLogCount <= 0}
+                    onClick={() => {
+                      setHudMenuOpen(false);
+                      exportPlaytestLogs();
+                    }}
+                  >
+                    Export All Logs
+                  </button>
+                  <button
+                    className="ghost"
+                    disabled={playtestLogCount <= 0}
+                    onClick={() => {
+                      clearPlaytestLogs();
+                    }}
+                  >
+                    Clear Logs
+                  </button>
                   <button onClick={async () => {
                     setHudMenuOpen(false);
                     setActiveNpc(null);
@@ -2660,6 +2847,7 @@ function App() {
                   }}>Restart Run</button>
                 </div>
                 <p className="menu-inline-copy muted">{hintButtonNote}</p>
+                <p className="menu-inline-copy muted">Playtest logs stored: {playtestLogCount}</p>
               </section>
             </div>
           </article>
