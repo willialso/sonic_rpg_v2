@@ -2313,6 +2313,19 @@ function App() {
     : "";
   const sonicIntelAtCurrent = Boolean(rumoredLocation && rumoredLocation === state.player.location);
   const sonicIntelReachableNow = Boolean(rumoredLocation && exits.includes(rumoredLocation));
+  const latestSonicRumorIndex = latestSonicRumorEvent ? state.world.events.lastIndexOf(latestSonicRumorEvent) : -1;
+  const eventsSinceSonicRumor = latestSonicRumorIndex >= 0
+    ? Math.max(0, (state.world.events.length - 1) - latestSonicRumorIndex)
+    : null;
+  const sonicIntelFreshness = !rumoredLocation
+    ? { label: "None", tone: "none" as const }
+    : sonicIntelAtCurrent
+      ? { label: "Live", tone: "live" as const }
+      : (eventsSinceSonicRumor ?? 0) <= 2
+        ? { label: "Fresh", tone: "fresh" as const }
+        : (eventsSinceSonicRumor ?? 0) <= 6
+          ? { label: "Recent", tone: "recent" as const }
+          : { label: "Stale", tone: "stale" as const };
   const sonicIntelGuidance = !rumoredLocation
     ? "No recent sighting surfaced. Talk to clue NPCs and keep moving through social lanes."
     : sonicIntelAtCurrent
@@ -2767,7 +2780,12 @@ function App() {
             <span>Warnings — Dean {warningMeter(state.fail.warnings.dean, WARNING_LIMITS.dean)}, Luigi {warningMeter(state.fail.warnings.luigi, WARNING_LIMITS.luigi)}, Frat {warningMeter(state.fail.warnings.frat, WARNING_LIMITS.frat)}</span>
           </div>
           <div className={`sonic-intel-card ${sonicIntelAtCurrent ? "on-target" : sonicIntelReachableNow ? "nearby" : "searching"}`}>
-            <p className="mission-kicker">Sonic Intel</p>
+            <div className="sonic-intel-head">
+              <p className="mission-kicker">Sonic Intel</p>
+              <span className={`sonic-intel-freshness ${sonicIntelFreshness.tone}`}>
+                {sonicIntelFreshness.label}
+              </span>
+            </div>
             <p className="sonic-intel-line">
               <strong>Last sighting:</strong>{" "}
               {rumoredLocation ? rumoredLocationLabel : "No confirmed sighting yet"}

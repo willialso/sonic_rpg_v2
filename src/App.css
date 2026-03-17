@@ -616,6 +616,49 @@ p, li, span, input, button {
   color: rgba(232, 238, 255, 0.96);
 }
 
+.sonic-intel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sonic-intel-freshness {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 3px 7px;
+  border: 1px solid rgba(171, 196, 255, 0.54);
+  background: rgba(24, 32, 86, 0.8);
+  color: rgba(227, 236, 255, 0.96);
+}
+
+.sonic-intel-freshness.none {
+  border-color: rgba(171, 196, 255, 0.44);
+}
+
+.sonic-intel-freshness.live {
+  border-color: rgba(119, 220, 154, 0.78);
+  color: #d8ffde;
+}
+
+.sonic-intel-freshness.fresh {
+  border-color: rgba(255, 210, 74, 0.82);
+  color: #ffeeb3;
+}
+
+.sonic-intel-freshness.recent {
+  border-color: rgba(132, 192, 255, 0.78);
+  color: #d8ecff;
+}
+
+.sonic-intel-freshness.stale {
+  border-color: rgba(255, 165, 165, 0.78);
+  color: #ffd5d5;
+}
+
 .route-matrix {
   display: grid;
   gap: 6px;
