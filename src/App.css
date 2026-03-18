@@ -369,6 +369,13 @@ p, li, span, input, button {
   overflow: hidden;
 }
 
+.presence-caption {
+  margin: 0;
+  font-size: 11px;
+  color: rgba(224, 236, 255, 0.86);
+  letter-spacing: 0.02em;
+}
+
 .presence-markers {
   position: relative;
 }
@@ -663,6 +670,18 @@ p, li, span, input, button {
   min-height: 36px;
   padding: 7px 10px;
   font-size: 13px;
+}
+
+.mission-following-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(119, 220, 154, 0.72);
+  background: rgba(28, 87, 55, 0.48);
+  color: #dcffe5;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .mission-tracker-head {
@@ -1615,24 +1634,25 @@ button:disabled {
   place-items: center;
   padding: 14px;
   pointer-events: auto;
+  background: rgba(7, 10, 28, 0.26);
 }
 
 .location-splash-card {
-  min-width: 260px;
+  min-width: 240px;
   max-width: min(560px, 92vw);
-  padding: 20px 22px;
-  border-radius: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
   background:
-    radial-gradient(circle at 20% 15%, rgba(255, 252, 198, 0.72), transparent 36%),
-    linear-gradient(180deg, rgba(255, 238, 122, 0.98), rgba(255, 216, 68, 0.96));
-  border: 4px solid rgba(20, 20, 20, 0.9);
-  box-shadow: 0 20px 38px rgba(0, 0, 0, 0.46), 0 0 0 2px rgba(255, 255, 255, 0.1) inset;
-  color: #12131d;
+    radial-gradient(circle at 20% 15%, rgba(176, 196, 255, 0.2), transparent 40%),
+    linear-gradient(180deg, rgba(37, 52, 122, 0.97), rgba(23, 31, 79, 0.97));
+  border: 2px solid rgba(171, 196, 255, 0.62);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.38), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  color: #ecf3ff;
   text-align: center;
   position: relative;
   isolation: isolate;
   transform-origin: center center;
-  animation: locationComicPop 420ms cubic-bezier(0.2, 0.9, 0.2, 1) 1;
+  animation: locationPopIn 220ms cubic-bezier(0.2, 0.9, 0.2, 1) 1;
   overflow: hidden;
 }
 
@@ -1658,28 +1678,28 @@ button:disabled {
 
 .location-splash-kicker {
   margin: 0 0 2px;
-  font-size: 13px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #5a0f1b;
+  color: #b8d3ff;
   font-weight: 800;
 }
 
 .location-splash-card h3 {
   margin: 0;
-  font-size: 1.68rem;
+  font-size: 1.18rem;
   line-height: 1.1;
   letter-spacing: 0.02em;
-  color: #5a0f1b;
+  color: #f2f7ff;
   font-weight: 800;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+  text-shadow: none;
 }
 
 .location-splash-card p {
-  margin: 8px 0 0;
-  font-size: 1.14rem;
+  margin: 6px 0 0;
+  font-size: 0.94rem;
   line-height: 1.35;
-  color: #2f1320;
+  color: #dceaff;
   font-weight: 700;
 }
 

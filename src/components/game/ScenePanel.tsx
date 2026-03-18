@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { LocationId, NpcId } from "../../types/game";
+import type { DialogueTone } from "../../dialogue/types";
 
 type Props = {
   locationId: LocationId;
@@ -14,8 +15,8 @@ type Props = {
   engagedNpc: NpcId | null;
   isAwaitingNpcReply: boolean;
   isResolved: boolean;
-  dialogueQuickReplies: Array<{ id: string; tone: string; text: string }>;
-  onSubmitQuickReply: (text: string) => Promise<void>;
+  dialogueQuickReplies: Array<{ id: DialogueTone; tone: string; text: string }>;
+  onSubmitQuickReply: (text: string, tone: DialogueTone) => Promise<void>;
 };
 
 export function ScenePanel(props: Props) {
@@ -88,7 +89,7 @@ export function ScenePanel(props: Props) {
                   title={reply.text}
                   disabled={isAwaitingNpcReply || isResolved}
                   onClick={async () => {
-                    await onSubmitQuickReply(reply.text);
+                    await onSubmitQuickReply(reply.text, reply.id);
                   }}
                 >
                   {reply.tone}

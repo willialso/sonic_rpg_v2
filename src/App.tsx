@@ -82,7 +82,7 @@ type UiAction =
   | { type: "ESCORT_SONIC" }
   | { type: "STADIUM_ENTRY" }
   | { type: "GET_HINT" }
-  | { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string };
+  | { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string; tone?: DialogueTone };
 
 type ActionButtonDef = {
   key: string;
@@ -585,9 +585,11 @@ function App() {
   const lastBounceAtRef = useRef(0);
   const cupNearPulseRef = useRef<number[]>([0, 0, 0, 0, 0, 0]);
   const prevLocationRef = useRef<LocationId | null>(null);
+  const lastLocationSplashAtRef = useRef(0);
   const prevUnlockSnapshotRef = useRef<Record<string, boolean> | null>(null);
   const lastMissionIntakeEventRef = useRef<string>("");
   const lastRumorEventRef = useRef<string>("");
+  const lastStatusEventRef = useRef<string>("");
   const lastRumorToastAtRef = useRef(0);
   const toastQueueRef = useRef<Array<{ id: string; text: string; kind: TopToastKind }>>([]);
   const nextToastReadyAtRef = useRef(0);
@@ -831,11 +833,11 @@ function App() {
       return speakerA === target || speakerB === npc;
     });
   }, [state]);
-  const submitQuickDialogueTone = useCallback(async (text: string) => {
+  const submitQuickDialogueTone = useCallback(async (text: string, tone: DialogueTone) => {
     if (!engagedNpc || isResolved || isAwaitingNpcReply) return;
     const trimmed = text.trim();
     if (!trimmed) return;
-    await submitDialogueLocked({ type: "SUBMIT_DIALOGUE", npcId: engagedNpc, input: trimmed });
+    await submitDialogueLocked({ type: "SUBMIT_DIALOGUE", npcId: engagedNpc, input: trimmed, tone });
     setPlayerInput("");
   }, [engagedNpc, isAwaitingNpcReply, isResolved, submitDialogueLocked]);
   const focusNpcConversation = useCallback(async (npc: NpcId) => {
@@ -1047,6 +1049,10 @@ function App() {
         prevLocationRef.current = current;
         return;
       }
+      if (Date.now() - lastLocationSplashAtRef.current < 1200) {
+        prevLocationRef.current = current;
+        return;
+      }
       const locationTitle = content.locations.find((l) => l.id === current)?.name ?? titleCase(current);
       const occupants = state.world.presentNpcs[current];
       setLocationSplash({
@@ -1055,6 +1061,7 @@ function App() {
         subtitle: "Now here",
         occupants: occupants.length > 0 ? occupants.map((npc) => titleCase(npc)).join(" • ") : "Quiet"
       });
+      lastLocationSplashAtRef.current = Date.now();
       prevLocationRef.current = current;
     }
   }, [content, state]);
@@ -1070,7 +1077,7 @@ function App() {
 
   useEffect(() => {
     if (!locationSplash) return;
-    const id = window.setTimeout(() => setLocationSplash(null), 1800);
+    const id = window.setTimeout(() => setLocationSplash(null), 900);
     return () => window.clearTimeout(id);
   }, [locationSplash]);
 
@@ -1139,6 +1146,15 @@ function App() {
     lastRumorToastAtRef.current = now;
     queueTopToast(latestEvent, "rumor");
   }, [activeNpc, queueTopToast, state]);
+
+  useEffect(() => {
+    if (!state) return;
+    const latestEvent = state.world.events[state.world.events.length - 1] ?? "";
+    if (!latestEvent.startsWith("Sonic status:") && !latestEvent.startsWith("Search update:")) return;
+    if (latestEvent === lastStatusEventRef.current) return;
+    lastStatusEventRef.current = latestEvent;
+    queueTopToast(latestEvent, "status");
+  }, [queueTopToast, state]);
 
   useEffect(() => {
     if (!state) return;
@@ -2496,6 +2512,8 @@ function App() {
 
   const routeActionButtons: ActionButtonDef[] = [];
   const unlocks = state.world.actionUnlocks;
+  const sonicPongMatchesUsed = state.world.events.filter((entry) => entry.startsWith("SONIC_PONG_MATCH::")).length;
+  const sonicPongMatchesLeft = Math.max(0, 2 - sonicPongMatchesUsed);
   if (state.player.location === "frat" && unlocks.beerPongFrat) {
     routeActionButtons.push({
       key: "PLAY_BEER_PONG_MINIGAME_FRAT",
@@ -2510,12 +2528,14 @@ function App() {
     && sonicPresentAtCurrentLocation
     && !state.sonic.following
     && !state.world.restrictions.fratBanned
+    && sonicPongMatchesLeft > 0
   ) {
     routeActionButtons.push({
       key: "PLAY_BEER_PONG_MINIGAME_SONIC",
       label: "Challenge Sonic",
       action: { type: "PLAY_BEER_PONG_SHOT", shot: "hero" },
-      priority: state.sonic.drunkLevel < 4 ? 89 : 52
+      priority: state.sonic.drunkLevel < 4 ? 89 : 52,
+      badge: `${sonicPongMatchesLeft} left`
     });
   }
   if (state.player.location === "dean_office" && !deanInOffice && unlocks.searchDeanDesk) {
@@ -2639,7 +2659,7 @@ function App() {
         disabled: !sonicPresentAtCurrentLocation
       });
     }
-    if (unlocks.escortSonic) {
+    if (unlocks.escortSonic && !state.sonic.following) {
       routeActionButtons.push({
         key: "ESCORT_SONIC",
         label: "Escort Sonic",
@@ -2784,7 +2804,7 @@ function App() {
         priority: 40
       });
     }
-    if (unlocks.escortSonic) {
+    if (unlocks.escortSonic && !state.sonic.following) {
       routeActionButtons.push({
         key: "ESCORT_SONIC_ANYWHERE",
         label: "Escort Sonic",
@@ -2951,6 +2971,7 @@ function App() {
     if (!matcher) return [];
     return routeActionButtons.filter((a) => matcher.match(a));
   };
+  const actionableInventoryItems = inventoryItems.filter((item) => resolveItemActions(item).length > 0 || item === "Campus Map");
   const selectedItemActions = selectedActionItem ? resolveItemActions(selectedActionItem) : [];
   const getOpponentSeatStyle = (index: number, total: number): CSSProperties => {
     const normalizedTotal = Math.max(1, total);
@@ -3011,6 +3032,9 @@ function App() {
             <strong>Last sighting:</strong> {compactSightingLabel} • <strong>Intel:</strong> {sonicIntelFreshness.label}
           </p>
           <div className="mission-compact-actions">
+            {state.sonic.following && (
+              <span className="mission-following-chip">Sonic Following ✓</span>
+            )}
             {rumoredLocation && sonicIntelReachableNow && !isResolved && (
               <button
                 className="next-best-action mission-compact-btn"
@@ -3276,8 +3300,8 @@ function App() {
               <section className="action-group">
                 <h4>Items</h4>
                 <div className="menu-chip-wrap">
-                  {inventoryItems.length > 0 ? (
-                    inventoryItems.map((item) => (
+                  {actionableInventoryItems.length > 0 ? (
+                    actionableInventoryItems.map((item) => (
                       <button
                         key={`action-item-${item}`}
                         className={`menu-chip item-chip-button ${selectedActionItem === item ? "active-talk-btn" : ""}`}

@@ -64,7 +64,8 @@ export class DynamicDialogueService {
         sonic_social_topic: playerRecentlyMentioned(/sonic|party|drink|pong|booze/i),
         route_question: playerRecentlyMentioned(/which route|what route|route\?/i),
         drink_question: playerRecentlyMentioned(/beer|drink|pong|shot/i)
-      }
+      },
+      requested_tone: request.tone ?? "neutral"
     };
     const includeMissionContext = contract.missionAwareness === "explicit"
       || (contract.missionAwareness === "conditional"
@@ -107,6 +108,7 @@ export class DynamicDialogueService {
           function_id: intent.functionId,
           intent_context: {
             goal: intent.goal,
+            requested_tone: intent.tone,
             must_include: intent.mustInclude,
             avoid: intent.avoid,
             character_contract: contract

@@ -104,7 +104,7 @@ type GameAction =
   | { type: "ESCORT_SONIC" }
   | { type: "STADIUM_ENTRY" }
   | { type: "GET_HINT" }
-  | { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string };
+  | { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string; tone?: "sarcastic" | "informative" | "neutral" };
 
 const STRIP_POKER_CLOTHING_STAKES = ["Shirt", "Pants", "Shoes", "Socks", "Underwear"] as const;
 const LUIGI_CONTRABAND_ITEMS = ["Fake ID Wristband", "Exam Keycard", "Frat Bong"];
@@ -124,6 +124,8 @@ const HINT_TIME_COST_SEC = 6;
 const TRICK_ROUTE_TIME_COST_SEC = 14;
 const HANDCUFFS_UNREADY_TIME_PENALTY_SEC = 22;
 const HANDCUFFS_UNREADY_FAIL_THRESHOLD = 0.48;
+const SONIC_PONG_MAX_MATCHES = 2;
+const CAMPUS_MAP_TIME_COST_SEC = 8;
 
 function extractPlayerName(rawInput: string): string | null {
   return extractPlayerNameAction(rawInput);
@@ -151,6 +153,51 @@ function setPressure(state: GameStateData): void {
 
 function syncSonicLocation(state: GameStateData): void {
   syncSonicLocationAction(state);
+}
+
+function formatLocationLabel(location: LocationId): string {
+  return location.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function formatSearchResult(found: string[]): string {
+  return found.length > 0
+    ? `Search complete. Found: ${found.join(", ")}.`
+    : "Already searched. Room is empty.";
+}
+
+function findShortestLocationPath(
+  bundle: ContentBundle | null,
+  start: LocationId,
+  goal: LocationId
+): LocationId[] {
+  if (!bundle) return [];
+  if (start === goal) return [start];
+  const byId = new Map(bundle.locations.map((loc) => [loc.id, loc]));
+  const queue: LocationId[] = [start];
+  const visited = new Set<LocationId>([start]);
+  const parent = new Map<LocationId, LocationId | null>([[start, null]]);
+  while (queue.length > 0) {
+    const current = queue.shift() as LocationId;
+    const node = byId.get(current);
+    if (!node) continue;
+    for (const next of node.exits) {
+      if (visited.has(next)) continue;
+      visited.add(next);
+      parent.set(next, current);
+      if (next === goal) {
+        const path: LocationId[] = [goal];
+        let cursor: LocationId | null = goal;
+        while (cursor) {
+          const previousLocation: LocationId | null = parent.get(cursor) ?? null;
+          if (previousLocation) path.push(previousLocation);
+          cursor = previousLocation;
+        }
+        return path.reverse();
+      }
+      queue.push(next);
+    }
+  }
+  return [];
 }
 
 function ensureMissionIntakeConsistency(state: GameStateData): void {
@@ -549,6 +596,21 @@ export function useGameController(): {
           state.world.intents = postMoveWorld.intents;
           state.world.presentNpcs = postMoveWorld.presentNpcs;
           syncSonicLocation(state);
+          if (state.sonic.following && action.target !== "stadium") {
+            const sobrietyRoll = seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:${action.target}:escort-sober`);
+            if (sobrietyRoll > 0.62) {
+              state.sonic.drunkLevel = Math.max(0, state.sonic.drunkLevel - 1);
+              state.world.events.push("Sonic status: Sonic is getting sober. Keep drinks coming or move to Stadium now.");
+              state.world.events.push("telemetry:sonic-sobering");
+              if (state.sonic.drunkLevel <= 0) {
+                state.sonic.following = false;
+                state.sonic.location = "quad";
+                state.sonic.cooldownMoves = 2;
+                state.world.events.push("Rumor update: Sonic slipped away while sobering up. Last seen near Quad.");
+                state.world.events.push("telemetry:sonic-slip-away");
+              }
+            }
+          }
           const autoNpc = postMoveWorld.presentNpcs[state.player.location]?.[0];
           if (autoNpc) {
                     if (autoNpc === "frat_boys") state.world.actionUnlocks.beerPongFrat = true;
@@ -818,42 +880,66 @@ export function useGameController(): {
             return;
           }
           const cups = Math.max(0, Math.min(6, Math.floor(action.cupsHit)));
+          const matchup = action.matchup;
           state.world.minigames.globalRound += 1;
           state.world.minigames.beerPongRound += 1;
-          if (cups >= 6) {
-            routeManager.progressRouteA(state);
-            routeManager.progressRouteA(state);
-            state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 3);
-            state.world.minigames.beerPongStreak += 2;
-            state.world.minigames.globalStreak += 2;
-            result = { ok: true, message: "Perfect sweep. Frat lane instantly spikes." };
-          } else if (cups >= 4) {
-            routeManager.progressRouteA(state);
-            state.world.minigames.beerPongStreak += 1;
-            state.world.minigames.globalStreak += 1;
-            state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 2);
-            result = { ok: true, message: "Strong round. Big drunk gain and route progress." };
-          } else if (cups >= 2) {
-            routeManager.progressRouteA(state);
-            state.world.minigames.beerPongStreak = 0;
-            state.world.minigames.globalStreak = 0;
-            state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 1);
-            result = { ok: true, message: "Solid round. You keep momentum." };
-          } else {
-            state.world.minigames.beerPongStreak = 0;
-            state.world.minigames.globalStreak = 0;
-            state.fail.warnings.frat += 1;
-            if (state.world.restrictions.fratChallengeForced) {
-              state.world.restrictions.fratBanned = true;
-              state.world.restrictions.fratChallengeForced = false;
-              const fallbackLocation = state.world.restrictions.fratLastSafeLocation ?? "quad";
-              const destination = fallbackLocation === "frat" ? "quad" : fallbackLocation;
-              state.world.events.push("Rumor update: Frat tossed you out after you lost their challenge.");
-              state.world.events.push(`FORCED_RELOCATE::${destination}::Kicked Out::${encodeURIComponent("You lose the forced challenge. Frat bans you and throws you out.")}`);
-              result = { ok: false, message: "You lose the forced challenge. Frat bans you and throws you out." };
-              return;
+          if (matchup === "sonic") {
+            const priorSonicRounds = state.world.events.filter((entry) => entry.startsWith("SONIC_PONG_MATCH::")).length;
+            state.world.events.push(`SONIC_PONG_MATCH::${priorSonicRounds + 1}::cups=${cups}`);
+            if (cups >= 4) {
+              routeManager.progressRouteA(state);
+              state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 3);
+              state.world.minigames.beerPongStreak = 0;
+              state.world.minigames.globalStreak = 0;
+              result = { ok: true, message: "You outplay Sonic hard. Sonic +3 drunk level." };
+            } else if (cups >= 3) {
+              routeManager.progressRouteA(state);
+              state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 2);
+              state.world.minigames.beerPongStreak = 0;
+              state.world.minigames.globalStreak = 0;
+              result = { ok: true, message: "Solid Sonic round. Sonic +2 drunk level." };
+            } else {
+              state.sonic.drunkLevel = Math.max(0, state.sonic.drunkLevel - 1);
+              state.world.minigames.beerPongStreak = 0;
+              state.world.minigames.globalStreak = 0;
+              result = { ok: true, message: "You lose momentum. Sonic sobers by 1." };
             }
-            result = { ok: true, message: "Cold round. Frat patience drops." };
+          } else {
+            if (cups >= 6) {
+              routeManager.progressRouteA(state);
+              routeManager.progressRouteA(state);
+              state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 3);
+              state.world.minigames.beerPongStreak += 2;
+              state.world.minigames.globalStreak += 2;
+              result = { ok: true, message: "Perfect sweep. Frat lane instantly spikes." };
+            } else if (cups >= 4) {
+              routeManager.progressRouteA(state);
+              state.world.minigames.beerPongStreak += 1;
+              state.world.minigames.globalStreak += 1;
+              state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 2);
+              result = { ok: true, message: "Strong round. Big drunk gain and route progress." };
+            } else if (cups >= 2) {
+              routeManager.progressRouteA(state);
+              state.world.minigames.beerPongStreak = 0;
+              state.world.minigames.globalStreak = 0;
+              state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 1);
+              result = { ok: true, message: "Solid round. You keep momentum." };
+            } else {
+              state.world.minigames.beerPongStreak = 0;
+              state.world.minigames.globalStreak = 0;
+              state.fail.warnings.frat += 1;
+              if (state.world.restrictions.fratChallengeForced) {
+                state.world.restrictions.fratBanned = true;
+                state.world.restrictions.fratChallengeForced = false;
+                const fallbackLocation = state.world.restrictions.fratLastSafeLocation ?? "quad";
+                const destination = fallbackLocation === "frat" ? "quad" : fallbackLocation;
+                state.world.events.push("Rumor update: Frat tossed you out after you lost their challenge.");
+                state.world.events.push(`FORCED_RELOCATE::${destination}::Kicked Out::${encodeURIComponent("You lose the forced challenge. Frat bans you and throws you out.")}`);
+                result = { ok: false, message: "You lose the forced challenge. Frat bans you and throws you out." };
+                return;
+              }
+              result = { ok: true, message: "Cold round. Frat patience drops." };
+            }
           }
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 45);
           setPressure(state);
@@ -863,7 +949,6 @@ export function useGameController(): {
             safeTransition(machine, state, "resolved", "PLAY_BEER_PONG_SCORE fail");
             result = { ok: false, message: state.fail.reason, gameOver: true };
           }
-          const matchup = action.matchup;
           if (state.world.restrictions.fratChallengeForced && cups >= 2) {
             state.world.restrictions.fratChallengeForced = false;
             state.fail.warnings.frat = Math.max(0, state.fail.warnings.frat - 1);
@@ -887,6 +972,11 @@ export function useGameController(): {
             result = { ok: false, message: "Find Sonic first, then challenge him." };
             return;
           }
+          const sonicRoundsUsed = state.world.events.filter((entry) => entry.startsWith("SONIC_PONG_MATCH::")).length;
+          if (sonicRoundsUsed >= SONIC_PONG_MAX_MATCHES) {
+            result = { ok: false, message: "Sonic refuses more rematches. Use items or another route setup now." };
+            return;
+          }
           if (state.world.restrictions.fratBanned && state.player.location !== "frat") {
             result = { ok: false, message: "Frat banned you. Sonic beer pong route is locked." };
             return;
@@ -904,7 +994,8 @@ export function useGameController(): {
           state.world.intents = refreshed.intents;
           state.world.presentNpcs = refreshed.presentNpcs;
           syncSonicLocation(state);
-          result = { ok: true, message: "Sonic grins and drags you to Frat. Table is live." };
+          const roundsLeft = Math.max(0, SONIC_PONG_MAX_MATCHES - sonicRoundsUsed);
+          result = { ok: true, message: `Sonic grins and drags you to Frat. Table is live. Sonic rematches left: ${roundsLeft}.` };
           return;
         }
         case "PLAY_SOGGY_BISCUIT": {
@@ -929,7 +1020,7 @@ export function useGameController(): {
             return;
           }
           const found = revealSearchCache(state, "dean_office", ["Dean Whiskey", "Exam Keycard"]);
-          result = { ok: true, message: `Desk stash spotted: ${found.join(", ")}. Choose what to take.` };
+          result = { ok: true, message: formatSearchResult(found) };
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 35);
           setPressure(state);
           return;
@@ -942,7 +1033,7 @@ export function useGameController(): {
           const found = revealSearchCache(state, "quad", ["Campus Map", "Lost Lanyard"]);
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 10);
           setPressure(state);
-          result = { ok: true, message: `You scan the benches and spot: ${found.join(", ")}.` };
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_EGGMAN_CLASSROOM": {
@@ -953,7 +1044,7 @@ export function useGameController(): {
           const found = revealSearchCache(state, "eggman_classroom", ["Campus Map"]);
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 12);
           setPressure(state);
-          result = { ok: true, message: `You check the lab desks and find: ${found.join(", ")}.` };
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_FRAT_HOUSE": {
@@ -980,7 +1071,7 @@ export function useGameController(): {
           const found = revealSearchCache(state, "frat", ["Frat Bong", "Warm Beer"]);
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 16);
           setPressure(state);
-          result = { ok: true, message: `You poke around the house and notice: ${found.join(", ")}.` };
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_SORORITY_HOUSE": {
@@ -1011,7 +1102,7 @@ export function useGameController(): {
             "Sorority Mascara",
             "Sorority Composite"
           ]);
-          result = { ok: true, message: `Spotted: ${found.join(", ")}.` };
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_TUNNEL": {
@@ -1022,7 +1113,7 @@ export function useGameController(): {
           const found = revealSearchCache(state, "tunnel", ["Gate Stamp"]);
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 12);
           setPressure(state);
-          result = { ok: true, message: `You search the damp walls and find: ${found.join(", ")}.` };
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_CAFETERIA": {
@@ -1033,8 +1124,8 @@ export function useGameController(): {
           state.world.actionUnlocks.searchCafeteria = true;
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 12);
           setPressure(state);
-          const found = revealSearchCache(state, "cafeteria", ["Mystery Meat", "Super Dean Beans", "Expired Energy Shot"]);
-          result = { ok: true, message: `Spotted: ${found.join(", ")}.` };
+          const found = revealSearchCache(state, "cafeteria", ["Mystery Meat", "Super Dean Beans", "Expired Energy Shot", "Warm Beer"]);
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_DORMS": {
@@ -1042,10 +1133,10 @@ export function useGameController(): {
             result = { ok: false, message: "Search works only in Dorm Hall." };
             return;
           }
-          const found = revealSearchCache(state, "dorms", ["Spare Socks", "RA Whistle"]);
+          const found = revealSearchCache(state, "dorms", ["Spare Socks", "RA Whistle", "Warm Beer"]);
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 10);
           setPressure(state);
-          result = { ok: true, message: `Dorm hallway loot spotted: ${found.join(", ")}.` };
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_DORM_ROOM": {
@@ -1058,13 +1149,16 @@ export function useGameController(): {
           state.world.actionUnlocks.escortSonic = true;
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 12);
           setPressure(state);
-          const found = revealSearchCache(state, "dorm_room", ["Warm Beer"]);
-          if (found.includes("Warm Beer") && takeFromSearchCache(state, "dorm_room", "Warm Beer")) {
-            addInventory(state, "Warm Beer");
-            result = { ok: true, message: "You found Warm Beer and grabbed it automatically. It is now in your inventory." };
-            return;
+          let found = revealSearchCache(state, "dorm_room", ["Warm Beer"]);
+          if (found.length === 0) {
+            const dormRoomVisits = state.world.visitCounts.dorm_room ?? 0;
+            if (dormRoomVisits > 0 && dormRoomVisits % 3 === 0) {
+              state.world.searchCaches.dorm_room = ["Warm Beer"];
+              found = state.world.searchCaches.dorm_room ?? [];
+              state.world.events.push("Search update: Dorm Room got restocked with Warm Beer.");
+            }
           }
-          result = { ok: true, message: found.length > 0 ? `You scan the room and spot: ${found.join(", ")}.` : "You search the room, but there is nothing left to collect." };
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_STADIUM": {
@@ -1075,7 +1169,7 @@ export function useGameController(): {
           const found = revealSearchCache(state, "stadium", ["Gate Stamp", "Security Schedule"]);
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 8);
           setPressure(state);
-          result = { ok: true, message: `Near the gate, you spot: ${found.join(", ")}.` };
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "USE_CAMPUS_MAP": {
@@ -1087,9 +1181,15 @@ export function useGameController(): {
           state.world.actionUnlocks.searchCafeteria = true;
           state.world.actionUnlocks.searchDorms = true;
           state.world.actionUnlocks.searchTunnel = true;
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 5);
+          state.world.actionUnlocks.searchStadium = true;
+          const path = findShortestLocationPath(content, state.player.location, "stadium");
+          const routeText = path.length > 1
+            ? path.map((loc) => formatLocationLabel(loc)).join(" -> ")
+            : "No direct route found from this spot.";
+          const nextHop = path.length > 1 ? formatLocationLabel(path[1]) : "Move toward Quad/Cafeteria lanes.";
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - CAMPUS_MAP_TIME_COST_SEC);
           setPressure(state);
-          result = { ok: true, message: "Map read. Search lanes unlocked. -5s." };
+          result = { ok: true, message: `Map read (-${CAMPUS_MAP_TIME_COST_SEC}s). Suggested gate path: ${routeText}. Next move: ${nextHop}.` };
           return;
         }
         case "USE_GATE_STAMP": {
@@ -2067,38 +2167,39 @@ export function useGameController(): {
           state.dialogue.turns.push(provisional);
         });
       }
-      const reply = await dialogue.reply(dialogueAction.npcId, dialogueInput, snapshot);
+      const toneForReply = isSystemDialogue ? undefined : (dialogueAction.tone ?? "neutral");
+      const routed = await dialogue.reply(dialogueAction.npcId, dialogueInput, snapshot, toneForReply);
       store.patch((state) => {
         if (provisionalCreatedAt) {
           state.dialogue.turns = state.dialogue.turns.filter((turn) => !(turn.createdAt === provisionalCreatedAt && turn.text === "..."));
         }
-        state.dialogue.source = reply.source;
-        const clampedText = clampDialogueForDisplay(dialogueAction.npcId, reply.text);
-        if (dialogueAction.npcId === "sorority_girls" && clampedText.length < reply.text.length) {
+        state.dialogue.source = routed.source;
+        const clampedText = clampDialogueForDisplay(dialogueAction.npcId, routed.text);
+        if (dialogueAction.npcId === "sorority_girls" && clampedText.length < routed.text.length) {
           state.world.events.push("telemetry:sorority-trimmed");
         }
-        const parsedTurns = parseDisplayTurns(dialogueAction.npcId, clampedText, reply.displaySpeaker);
+        const parsedTurns = parseDisplayTurns(dialogueAction.npcId, clampedText, routed.displaySpeaker);
         parsedTurns.forEach((turn) => state.dialogue.turns.push(createDialogueTurn(turn.speaker, turn.text, state, {
           npcId: dialogueAction.npcId,
           displaySpeaker: turn.displaySpeaker,
-          poseKey: inferNpcPoseKey(dialogueAction.npcId, turn.text, state, reply.intent)
+          poseKey: inferNpcPoseKey(dialogueAction.npcId, turn.text, state, routed.intent)
         })));
-        state.quality.sourceCounts[reply.source] = (state.quality.sourceCounts[reply.source] ?? 0) + 1;
-        updateNpcMemory(state, dialogueAction.npcId, reply.text);
+        state.quality.sourceCounts[routed.source] = (state.quality.sourceCounts[routed.source] ?? 0) + 1;
+        updateNpcMemory(state, dialogueAction.npcId, routed.text);
         ensureMissionIntakeConsistency(state);
         const world = director.updateWorld(state);
         state.world.intents = world.intents;
         state.world.presentNpcs = world.presentNpcs;
         syncSonicLocation(state);
-        if (reply.safetyAbort) {
+        if (routed.safetyAbort) {
           state.safety.status = "abort";
           state.fail.hardFailed = true;
           state.fail.reason = "Safety policy triggered.";
           safeTransition(machine, state, "resolved", "SUBMIT_DIALOGUE safety abort");
-          result = { ok: false, message: reply.text, gameOver: true };
+          result = { ok: false, message: routed.text, gameOver: true };
           return;
         }
-        result = { ok: true, message: reply.text };
+        result = { ok: true, message: routed.text };
       });
     }
 
