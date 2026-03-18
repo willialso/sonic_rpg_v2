@@ -114,18 +114,22 @@ const THUNDERHEAD_REJECTED_ITEMS = ["Hairbrush", "Fake ID Wristband", "Sorority 
 const AUTOSAVE_DIRTY_FLUSH_MS = 12000;
 const MISSION_OBJECTIVE = "Get Sonic to Stadium.";
 const MISSION_SUBOBJECTIVE = "Pick a route (booze, handcuffs, or trick), secure Sonic, and clear stadium security with your Student ID.";
-const FRAT_MATCH_TIME_COST_SEC = 45;
+const FRAT_MATCH_TIME_COST_SEC = 40;
 const BEER_SHOT_TIME_COST_SEC = {
   safe: 28,
   bank: 38,
   hero: 50
 } as const;
 const HINT_TIME_COST_SEC = 6;
-const TRICK_ROUTE_TIME_COST_SEC = 14;
-const HANDCUFFS_UNREADY_TIME_PENALTY_SEC = 22;
+const TRICK_ROUTE_TIME_COST_SEC = 12;
+const HANDCUFFS_UNREADY_TIME_PENALTY_SEC = 18;
 const HANDCUFFS_UNREADY_FAIL_THRESHOLD = 0.48;
 const SONIC_PONG_MAX_MATCHES = 2;
-const CAMPUS_MAP_TIME_COST_SEC = 8;
+const CAMPUS_MAP_TIME_COST_SEC = 6;
+const MOVE_TIME_COST_SEC = {
+  withMap: 8,
+  base: 12
+} as const;
 
 function extractPlayerName(rawInput: string): string | null {
   return extractPlayerNameAction(rawInput);
@@ -585,7 +589,9 @@ export function useGameController(): {
           }
           state.world.visitCounts[action.target] = (state.world.visitCounts[action.target] ?? 0) + 1;
           state.dialogue.turns = [];
-          const travelCost = state.player.inventory.includes("Campus Map") ? 10 : 15;
+          const travelCost = state.player.inventory.includes("Campus Map")
+            ? MOVE_TIME_COST_SEC.withMap
+            : MOVE_TIME_COST_SEC.base;
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - travelCost);
           setPressure(state);
           state.world.events.push(`Moved to ${action.target}`);
@@ -598,7 +604,7 @@ export function useGameController(): {
           syncSonicLocation(state);
           if (state.sonic.following && action.target !== "stadium") {
             const sobrietyRoll = seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:${action.target}:escort-sober`);
-            if (sobrietyRoll > 0.62) {
+            if (sobrietyRoll > 0.78) {
               state.sonic.drunkLevel = Math.max(0, state.sonic.drunkLevel - 1);
               state.world.events.push("Sonic status: Sonic is getting sober. Keep drinks coming or move to Stadium now.");
               state.world.events.push("telemetry:sonic-sobering");
@@ -1030,8 +1036,8 @@ export function useGameController(): {
             result = { ok: false, message: "You can only search while at Quad." };
             return;
           }
-          const found = revealSearchCache(state, "quad", ["Campus Map", "Lost Lanyard"]);
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 10);
+          const found = revealSearchCache(state, "quad", ["Campus Map"]);
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 8);
           setPressure(state);
           result = { ok: true, message: formatSearchResult(found) };
           return;
@@ -1069,7 +1075,7 @@ export function useGameController(): {
             return;
           }
           const found = revealSearchCache(state, "frat", ["Frat Bong", "Warm Beer"]);
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 16);
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 14);
           setPressure(state);
           result = { ok: true, message: formatSearchResult(found) };
           return;
@@ -1084,7 +1090,7 @@ export function useGameController(): {
             return;
           }
           const girlsPresent = state.world.presentNpcs.sorority.includes("sorority_girls");
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 18);
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 15);
           setPressure(state);
           if (girlsPresent) {
             pendingSystemReactions.push({
@@ -1124,7 +1130,7 @@ export function useGameController(): {
           state.world.actionUnlocks.searchCafeteria = true;
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 12);
           setPressure(state);
-          const found = revealSearchCache(state, "cafeteria", ["Mystery Meat", "Super Dean Beans", "Expired Energy Shot", "Warm Beer"]);
+          const found = revealSearchCache(state, "cafeteria", ["Mystery Meat", "Super Dean Beans", "Warm Beer"]);
           result = { ok: true, message: formatSearchResult(found) };
           return;
         }
@@ -1133,7 +1139,7 @@ export function useGameController(): {
             result = { ok: false, message: "Search works only in Dorm Hall." };
             return;
           }
-          const found = revealSearchCache(state, "dorms", ["Spare Socks", "RA Whistle", "Warm Beer"]);
+          const found = revealSearchCache(state, "dorms", ["RA Whistle", "Warm Beer"]);
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 10);
           setPressure(state);
           result = { ok: true, message: formatSearchResult(found) };
@@ -1147,7 +1153,7 @@ export function useGameController(): {
           state.world.actionUnlocks.giveWhiskey = true;
           state.world.actionUnlocks.giveAsswine = true;
           state.world.actionUnlocks.escortSonic = true;
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 12);
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 10);
           setPressure(state);
           let found = revealSearchCache(state, "dorm_room", ["Warm Beer"]);
           if (found.length === 0) {

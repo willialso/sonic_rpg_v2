@@ -23,8 +23,8 @@ export class HintManager {
     if (state.player.inventory.includes("Furry Handcuffs") && state.player.location === "dorm_room" && isEscortReady(state.sonic.drunkLevel)) {
       return "Handcuffs path is live: use them now, then move straight to Stadium.";
     }
-    if (!state.player.inventory.includes("Spare Socks") && state.world.visitCounts.dorms > 0) {
-      return "Dorm hall stash can carry a strip-poker safety item if you need it.";
+    if (!state.player.inventory.includes("Warm Beer") && state.world.visitCounts.dorms > 0) {
+      return "Dorm hall stash often has Warm Beer plus utility gear if you need quick Sonic setup.";
     }
     if (isEscortReady(state.sonic.drunkLevel) && !state.sonic.following) {
       return `Sonic is ready (drunk level ${ESCORT_READY_DRUNK_LEVEL}+). Escort him from Dorm Hall or current location.`;

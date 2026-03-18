@@ -79,8 +79,7 @@ export class NPCPresenceSystem {
       || state.routes.routeA.progress > 0
       || state.routes.routeB.progress > 0
       || state.routes.routeC.progress > 0
-      || state.player.inventory.includes("Campus Map")
-      || state.player.inventory.includes("Lost Lanyard");
+      || state.player.inventory.includes("Campus Map");
     if (!hasProgressSignal) {
       return;
     }

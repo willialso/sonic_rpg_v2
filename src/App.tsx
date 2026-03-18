@@ -182,17 +182,8 @@ const ITEM_HELP: Record<string, { desc: string; useHint: string; targetHint?: st
   "Glitter Bomb Brew": { desc: "Chaotic mixed drink.", useHint: "Use where Sonic is present for swingy gain.", targetHint: "Target: Sonic at current location.", riskHint: "Can spike Dean warning." },
   "Turbo Sludge": { desc: "Heavy mixed brew.", useHint: "Big spike attempt where Sonic is present.", targetHint: "Target: Sonic at current location.", riskHint: "Big backfire risk." },
   "Campus Map": { desc: "Route intel.", useHint: "Use to reveal search lanes.", targetHint: "Target: route planning.", riskHint: "Costs time to use." },
-  "Lost Lanyard": { desc: "Early clue item.", useHint: "Minor hunt support.", targetHint: "Target: early progression.", riskHint: "Low late-game value." },
-  "Lecture Notes": { desc: "Flavor intel scrap.", useHint: "Low impact utility.", riskHint: "Can clutter inventory." },
-  "Remote Battery": { desc: "Minor utility part.", useHint: "Side item only.", riskHint: "No core route impact." },
-  "Pocket Flashlight": { desc: "Tunnel helper.", useHint: "Minor tunnel support.", riskHint: "Low mission impact." },
-  "Rusty Token": { desc: "Tunnel relic.", useHint: "Flavor-only pickup.", riskHint: "Low route value." },
   "Gate Stamp": { desc: "Gate credential.", useHint: "Use at Stadium; better with Student ID.", riskHint: "Without ID, can add Dean warning." },
   "Security Schedule": { desc: "Guard timing intel.", useHint: "Use at Stadium for gate timing or in Dorm Room to sell Sonic a VIP window.", targetHint: "Target: Sonic in Dorm Room or gate timing at Stadium.", riskHint: "Without Student ID, the VIP bluff backfires." },
-  "Ping Pong Paddle": { desc: "Frat flavor item.", useHint: "Not required for progression.", riskHint: "Stealing can raise hostility." },
-  "Party Wristband": { desc: "Frat trinket.", useHint: "Low impact utility.", riskHint: "Mostly inventory noise." },
-  "Extra Sock": { desc: "Spare clothing scrap.", useHint: "Low impact backup item.", riskHint: "Minimal route value." },
-  "Laundry Detergent": { desc: "Dorm supply.", useHint: "Low priority item.", riskHint: "Mostly inventory noise." },
   "Mystery Meat": { desc: "Cafeteria wildcard.", useHint: "Use on Sonic where present.", riskHint: "Can help or backfire." }
 };
 const ITEM_ICONS: Partial<Record<string, string>> = {
@@ -306,6 +297,16 @@ type PlaytestRunSummary = {
   inventory: string[];
   eventsTail: string[];
 };
+type PlaytestTuningSnapshot = {
+  sampleSize: number;
+  wins: number;
+  fails: number;
+  inProgress: number;
+  winRatePct: number;
+  unresolvedSetupCount: number;
+  avgTimeRemainingSec: number;
+  mostCommonRouteMode: string;
+};
 
 const CARD_SUITS = ["♠", "♥", "♦", "♣"] as const;
 const CARD_RANKS: Array<{ rank: string; value: number }> = [
@@ -371,6 +372,34 @@ function toPlaytestRunSummary(state: GameStateData): PlaytestRunSummary {
     location: state.player.location,
     inventory: [...state.player.inventory],
     eventsTail: state.world.events.slice(-12)
+  };
+}
+
+function buildPlaytestTuningSnapshot(runs: PlaytestRunSummary[], sampleSize = 5): PlaytestTuningSnapshot | null {
+  if (runs.length === 0) return null;
+  const sample = runs.slice(0, sampleSize);
+  const wins = sample.filter((run) => run.result === "win").length;
+  const fails = sample.filter((run) => run.result === "fail").length;
+  const inProgress = sample.filter((run) => run.result === "in_progress").length;
+  const unresolvedSetupCount = sample.filter((run) => run.routeMode === "unresolved_setup").length;
+  const avgTimeRemainingSec = Math.round(
+    sample.reduce((acc, run) => acc + run.timeRemainingSec, 0) / Math.max(1, sample.length)
+  );
+  const routeModeCounts = sample.reduce<Record<string, number>>((acc, run) => {
+    acc[run.routeMode] = (acc[run.routeMode] ?? 0) + 1;
+    return acc;
+  }, {});
+  const mostCommonRouteMode = Object.entries(routeModeCounts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] ?? "n/a";
+  return {
+    sampleSize: sample.length,
+    wins,
+    fails,
+    inProgress,
+    winRatePct: Math.round((wins / Math.max(1, sample.length)) * 100),
+    unresolvedSetupCount,
+    avgTimeRemainingSec,
+    mostCommonRouteMode
   };
 }
 
@@ -559,6 +588,10 @@ function App() {
   const [latestHintText, setLatestHintText] = useState("");
   const [latestHintAtMs, setLatestHintAtMs] = useState(0);
   const [playtestLogCount, setPlaytestLogCount] = useState(0);
+  const latestPlaytestTuning = useMemo(
+    () => buildPlaytestTuningSnapshot(loadPlaytestLogStore(), 5),
+    [playtestLogCount]
+  );
   const [campusMapOpen, setCampusMapOpen] = useState(false);
   const [showLandingPage, setShowLandingPage] = useState(true);
   const [landingClosing, setLandingClosing] = useState(false);
@@ -884,6 +917,7 @@ function App() {
   }, [state]);
   const exportPlaytestLogs = useCallback(() => {
     const runs = loadPlaytestLogStore();
+    const tuningSnapshot = buildPlaytestTuningSnapshot(runs, 5);
     if (runs.length === 0) {
       setNotice({
         title: "Playtest Export",
@@ -895,11 +929,14 @@ function App() {
     downloadJsonFile(`playtest-runs-${stamp}.json`, {
       exportedAt: new Date().toISOString(),
       count: runs.length,
+      tuningSnapshot,
       runs
     });
     setNotice({
       title: "Playtest Export",
-      body: `Exported ${runs.length} stored run logs.`
+      body: tuningSnapshot
+        ? `Exported ${runs.length} logs. Latest ${tuningSnapshot.sampleSize}-run win rate: ${tuningSnapshot.winRatePct}%.`
+        : `Exported ${runs.length} stored run logs.`
     });
   }, []);
   const clearPlaytestLogs = useCallback(() => {
@@ -3282,6 +3319,22 @@ function App() {
                     </button>
                   </div>
                   <p className="menu-inline-copy muted">Use logs to compare route consistency and blockers across runs.</p>
+                  {latestPlaytestTuning && (
+                    <div className="status-note-card">
+                      <h3>Latest {latestPlaytestTuning.sampleSize}-run tuning snapshot</h3>
+                      <div className="status-note-body">
+                        <p>
+                          Wins {latestPlaytestTuning.wins} • Fails {latestPlaytestTuning.fails} • In progress {latestPlaytestTuning.inProgress}
+                        </p>
+                        <p>
+                          Win rate {latestPlaytestTuning.winRatePct}% • Avg time left {latestPlaytestTuning.avgTimeRemainingSec}s
+                        </p>
+                        <p>
+                          Most common route: {latestPlaytestTuning.mostCommonRouteMode} • unresolved_setup: {latestPlaytestTuning.unresolvedSetupCount}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </details>
               </section>
             </div>
