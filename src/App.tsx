@@ -1057,21 +1057,6 @@ function App() {
   ]);
 
   useEffect(() => {
-    const handler = (event: Event) => {
-      const detail = (event as CustomEvent<{ message?: string }>).detail;
-      const message = detail?.message || "Dialogue request validation failed.";
-      setNotice({
-        title: "Dialogue",
-        body: message
-      });
-    };
-    window.addEventListener("dialogue-validation-issue", handler as EventListener);
-    return () => {
-      window.removeEventListener("dialogue-validation-issue", handler as EventListener);
-    };
-  }, []);
-
-  useEffect(() => {
     if (!state || !content) return;
     const current = state.player.location;
     if (prevLocationRef.current === null) {
@@ -2540,6 +2525,28 @@ function App() {
     : state.phase === "resolved"
       ? "Won"
       : "Active";
+  const resolvedRouteMode = inferRouteMode(state);
+  const routeModeLabels: Record<string, string> = {
+    trick_vip_schedule: "VIP schedule trick",
+    handcuffs: "Handcuffs escort",
+    drunk_routeC_asswine: "Asswine route",
+    drunk_routeB_whiskey: "Dean Whiskey route",
+    drunk_routeA_beerpong: "Beer Pong route",
+    drunk_mixed: "Mixed booze route",
+    routeC_asswine_setup: "Asswine setup",
+    routeB_whiskey_setup: "Whiskey setup",
+    routeA_beerpong_setup: "Beer Pong setup",
+    unresolved_setup: "Unresolved setup"
+  };
+  const resolvedRouteLabel = routeModeLabels[resolvedRouteMode] ?? titleCase(resolvedRouteMode);
+  const resolvedWarningTotal = state.fail.warnings.dean + state.fail.warnings.luigi + state.fail.warnings.frat;
+  const resolvedGrade = state.fail.hardFailed
+    ? "F"
+    : resolvedWarningTotal <= 1 && state.timer.remainingSec >= 300
+      ? "A"
+      : resolvedWarningTotal <= 2 && state.timer.remainingSec >= 180
+        ? "B"
+        : "C";
   const latestHintAgeSec = latestHintAtMs > 0 ? Math.max(0, Math.floor((Date.now() - latestHintAtMs) / 1000)) : null;
   const latestHintAgeLabel = latestHintAgeSec === null
     ? ""
@@ -2648,7 +2655,7 @@ function App() {
   if (state.player.location === "sorority" && !sororityBanned && sororityPokerEligible) {
     routeActionButtons.push({
       key: "STRIP_POKER_MINIGAME",
-      label: "Play Poker",
+      label: "Play Poker (Quick)",
       action: { type: "PLAY_STRIP_POKER_ROUND" },
       priority: 83
     });
@@ -3452,11 +3459,7 @@ function App() {
                           }
                           if (item.key === "STRIP_POKER_MINIGAME") {
                             setActionMenuOpen(false);
-                            const opponentNpcIds = [...new Set(sororityOccupants)].slice(0, 4);
-                            await runAction({ type: "START_STRIP_POKER_SESSION" }, true);
-                            const round = (state.world.minigames.globalRound ?? 0) + 1;
-                            startStripPokerRound(opponentNpcIds, round);
-                            setStripPokerOpen(true);
+                            await runAction({ type: "PLAY_STRIP_POKER_ROUND" });
                             return;
                           }
                           if (item.key === "ASK_EGGMAN_QUIZ") {
@@ -4084,6 +4087,22 @@ function App() {
                 <p className={state.fail.hardFailed ? "official-body" : "status-note-body"}>
                   {state.fail.hardFailed ? state.fail.reason : "Sonic reached Stadium under mission conditions."}
                 </p>
+                {!state.fail.hardFailed && (
+                  <>
+                    <div className="mission-complete-summary">
+                      <p><strong>Route:</strong> {resolvedRouteLabel}</p>
+                      <p><strong>Time left:</strong> {state.timer.remainingSec}s</p>
+                      <p><strong>Warnings:</strong> Dean {state.fail.warnings.dean} • Luigi {state.fail.warnings.luigi} • Frat {state.fail.warnings.frat}</p>
+                      <p><strong>Run grade:</strong> {resolvedGrade}</p>
+                    </div>
+                    <div className="mission-complete-reel">
+                      <h3>Victory Replay</h3>
+                      <p className="muted">
+                        Placeholder for final outro clip (route-specific stinger). Current run closed with the {resolvedRouteLabel} finish.
+                      </p>
+                    </div>
+                  </>
+                )}
                 <button onClick={async () => {
                   setActiveNpc(null);
                   setActiveNpcFocusAtMs(0);

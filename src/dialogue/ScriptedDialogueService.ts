@@ -51,8 +51,7 @@ export class ScriptedDialogueService {
       ],
       sorority_girls: [
         "Apple: Cute entrance. What's your angle?",
-        "Fedora: Confidence acceptable, judgment still pending.",
-        "Sorority Girls: Welcome. Quick intro, then we decide your ranking."
+        "Fedora: Confidence acceptable, judgment still pending."
       ],
       thunderhead: [
         "Tunnel desk is open. You here to trade or hear an inadvisable confession?",
@@ -106,8 +105,7 @@ export class ScriptedDialogueService {
       ],
       sorority_girls: [
         "Apple: You came back. That's either confidence or a warning sign.",
-        "Fedora: Return visit noted. Keep it sharp.",
-        "Sorority Girls: Again? Fine. Don't make it weird."
+        "Fedora: Return visit noted. Keep it sharp."
       ],
       thunderhead: [
         "You came back. Great, my poor judgment feels seen.",
@@ -339,13 +337,12 @@ export class ScriptedDialogueService {
       if (state.world.restrictions.sororityBanned) {
         return pickLine([
           "Apple: Ban stands. You stole once and trust is permanently sold out.",
-          "Fedora: You are on the no-entry list. We laminated it for drama and durability.",
-          "Responsible Rachel: House decision is final. You're not rejoining this space today."
+          "Fedora: You are on the no-entry list. We laminated it for drama and durability."
         ], `${voiceSeed}:sorority:banned`);
       }
       if (/(search|look around|snoop|scan)/i.test(text)) {
         return pickLine([
-          "Responsible Rachel: Hard no. This house isn't your scavenger hunt.",
+          "Fedora: Hard no. This house isn't your scavenger hunt.",
           "Apple: If you're snooping, at least pretend to be subtle.",
           "Fedora: Wow, boundary awareness is not your major."
         ], `${voiceSeed}:sorority:search`);
@@ -353,14 +350,12 @@ export class ScriptedDialogueService {
       if (/(party|last night|handcuff|hookup)/i.test(text)) {
         return pickLine([
           "Apple: Last night was chaos. If you're searching for leverage, do it when house traffic is low.",
-          "Fedora: Party archives are closed. But yes, people stash questionable gear in plain sight.",
-          "Responsible Rachel: We do not litigate party history. Also, don't get caught taking anything."
+          "Fedora: Party archives are closed. But yes, people stash questionable gear in plain sight."
         ], `${voiceSeed}:sorority:party`);
       }
       return pickLine([
         "Apple: We run this house by receipts and memory. Helpful items exist; consequences exist too.",
-        "Fedora: You can stand there, just don't be weird. Move fast when the room clears out.",
-        "Responsible Rachel: Keep it respectful and short. If we catch theft, you are banned."
+        "Fedora: You can stand there, just don't be weird. Move fast when the room clears out."
       ], `${voiceSeed}:sorority:general`);
     }
 

@@ -106,7 +106,6 @@ type GameAction =
   | { type: "GET_HINT" }
   | { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string; tone?: "sarcastic" | "informative" | "neutral" };
 
-const STRIP_POKER_CLOTHING_STAKES = ["Shirt", "Pants", "Shoes", "Socks", "Underwear"] as const;
 const LUIGI_CONTRABAND_ITEMS = ["Fake ID Wristband", "Exam Keycard", "Frat Bong"];
 const DEAN_ZERO_TOLERANCE_ITEMS = ["Frat Bong"];
 const THUNDERHEAD_ACCEPTED_ITEMS = ["Lace Undies", "Sorority Mascara", "Sorority Composite"];
@@ -580,13 +579,6 @@ export function useGameController(): {
             state.world.restrictions.fratLastSafeLocation = origin;
           }
           state.player.location = action.target;
-          if (state.world.minigames.stripPokerLosses >= STRIP_POKER_CLOTHING_STAKES.length && action.target !== "sorority") {
-            state.fail.hardFailed = true;
-            state.fail.reason = "Campus police stop you for indecent exposure the moment you leave Sorority.";
-            safeTransition(machine, state, "resolved", "MOVE: indecent exposure fail");
-            result = { ok: false, message: state.fail.reason, gameOver: true };
-            return;
-          }
           state.world.visitCounts[action.target] = (state.world.visitCounts[action.target] ?? 0) + 1;
           state.dialogue.turns = [];
           const travelCost = state.player.inventory.includes("Campus Map")
@@ -706,7 +698,7 @@ export function useGameController(): {
             return;
           }
           state.world.minigames.stripPokerTableLocked = true;
-          result = { ok: true, message: "Poker table session locked in." };
+          result = { ok: true, message: "Poker table opens for one quick hand." };
           return;
         }
         case "END_STRIP_POKER_SESSION": {
@@ -1462,39 +1454,29 @@ export function useGameController(): {
             result = { ok: false, message: "Sorority table ban is active. No games for you after that theft stunt." };
             return;
           }
-          if (!state.world.minigames.stripPokerTableLocked) {
-            const occupants = state.world.presentNpcs.sorority;
-            const girlsPresent = occupants.includes("sorority_girls");
-            if (!girlsPresent) {
-              result = { ok: false, message: "No game right now. Sorority Girls are not at the table." };
-              return;
-            }
-            state.world.minigames.stripPokerTableLocked = true;
+          const occupants = state.world.presentNpcs.sorority;
+          const girlsPresent = occupants.includes("sorority_girls");
+          if (!girlsPresent) {
+            result = { ok: false, message: "No game right now. Sorority Girls are not at the table." };
+            return;
           }
+          // Lightweight one-hand distraction: fixed cost, small upside chance.
+          state.world.minigames.stripPokerTableLocked = false;
           state.world.minigames.globalRound += 1;
           state.world.minigames.globalStreak = 0;
-          if (state.player.inventory.includes("Spare Socks")) {
-            removeInventory(state, "Spare Socks");
-            state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 20);
-            setPressure(state);
-            result = { ok: true, message: "You toss Spare Socks into the side pot to dodge a clothing forfeit this hand." };
-            return;
-          }
-          state.world.minigames.stripPokerLosses += 1;
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 55);
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 40);
           setPressure(state);
-          const losses = state.world.minigames.stripPokerLosses;
-          const forfeited = STRIP_POKER_CLOTHING_STAKES[Math.min(losses - 1, STRIP_POKER_CLOTHING_STAKES.length - 1)];
-          if (losses >= STRIP_POKER_CLOTHING_STAKES.length) {
-            state.world.minigames.stripPokerTableLocked = false;
-            state.player.location = "quad";
-            state.fail.hardFailed = true;
-            state.fail.reason = "You lose every clothing stake. Sorority kicks you out, and campus expels you for indecent exposure.";
-            safeTransition(machine, state, "resolved", "PLAY_STRIP_POKER_ROUND fail");
-            result = { ok: false, message: state.fail.reason, gameOver: true };
+          const roll = seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:strip-poker-quick`);
+          if (roll > 0.82) {
+            const rewardItem = state.player.inventory.includes("Warm Beer") ? "Security Schedule" : "Warm Beer";
+            if (!state.player.inventory.includes(rewardItem)) {
+              addInventory(state, rewardItem);
+            }
+            state.world.events.push("Rumor update: Poker table chatter revealed a useful route clue.");
+            result = { ok: true, message: `Quick hand done (-40s). You snag ${rewardItem} while everyone argues over side bets.` };
             return;
           }
-          result = { ok: true, message: `You lose the hand and forfeit ${forfeited}. They keep you at the table for another hand.` };
+          result = { ok: true, message: "Quick hand done (-40s). You burn time, lose face, and walk away empty." };
           return;
         }
         case "GIVE_WHISKEY": {
@@ -2164,9 +2146,12 @@ export function useGameController(): {
       let provisionalCreatedAt: string | undefined;
       if (!isSystemDialogue) {
         store.patch((state) => {
+          const provisionalSpeaker = dialogueAction.npcId === "sorority_girls"
+            ? (seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:sorority-provisional`) > 0.5 ? "Apple" : "Fedora")
+            : dialogueAction.npcId.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
           const provisional = createDialogueTurn(dialogueAction.npcId, "...", state, {
             npcId: dialogueAction.npcId,
-            displaySpeaker: dialogueAction.npcId.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()),
+            displaySpeaker: provisionalSpeaker,
             poseKey: "neutral"
           });
           provisionalCreatedAt = provisional.createdAt;

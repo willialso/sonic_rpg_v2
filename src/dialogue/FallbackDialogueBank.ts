@@ -79,8 +79,7 @@ export class FallbackDialogueBank {
     if (npcId === "sorority_girls") {
       return pick([
         "Apple: You're in our house, so act normal.",
-        "Fedora: We can help accidentally, not intentionally.",
-        "Responsible Rachel: Keep this brief and non-chaotic."
+        "Fedora: We can help accidentally, not intentionally."
       ], `${seed}:sorority`);
     }
     if (npcId === "thunderhead") {

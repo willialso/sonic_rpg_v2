@@ -2,8 +2,41 @@ import type { DialogueTurn, GameStateData, LocationId, NpcId, NpcMemoryCard } fr
 
 const GROUP_SPEAKERS: Partial<Record<NpcId, string[]>> = {
   frat_boys: ["Diesel", "Provolone Toney", "Provoloney Tony", "Frat Boys"],
-  sorority_girls: ["Apple", "Fedora", "Responsible Rachel", "Sorority Girls"]
+  sorority_girls: ["Apple", "Fedora"]
 };
+
+function speakerHash(input: string): number {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = ((hash * 33) ^ input.charCodeAt(i)) >>> 0;
+  }
+  return hash >>> 0;
+}
+
+function normalizeGroupPrefix(npcId: NpcId, text: string): string {
+  if (npcId === "sorority_girls") {
+    return text.replace(/^sorority\s+girls?:\s*/i, "").trim();
+  }
+  if (npcId === "frat_boys") {
+    return text.replace(/^frat\s+boys?:\s*/i, "").trim();
+  }
+  return text;
+}
+
+function normalizeDisplaySpeakerForGroup(npcId: NpcId, fallbackSpeaker: string | undefined, text: string): string | undefined {
+  if (!fallbackSpeaker || !fallbackSpeaker.trim()) return undefined;
+  const allowed = GROUP_SPEAKERS[npcId] ?? [];
+  const trimmed = fallbackSpeaker.trim();
+  if (allowed.length === 0) return trimmed;
+  if (allowed.includes(trimmed)) return trimmed;
+  const lowered = trimmed.toLowerCase();
+  const exact = allowed.find((name) => name.toLowerCase() === lowered);
+  if (exact) return exact;
+  if (npcId === "sorority_girls" || npcId === "frat_boys") {
+    return allowed[speakerHash(`${trimmed}:${text}`) % allowed.length];
+  }
+  return undefined;
+}
 
 export function extractPlayerName(rawInput: string): string | null {
   const trimmed = rawInput.trim();
@@ -68,11 +101,12 @@ function parseDisplaySpeaker(
   text: string,
   fallbackSpeaker?: string
 ): { speaker: string; text: string; displaySpeaker?: string } {
-  const cleaned = text.trim();
+  const cleaned = normalizeGroupPrefix(npcId, text.trim());
   const match = cleaned.match(/^([A-Za-z][A-Za-z\s'.-]{1,32}):\s*(.+)$/);
   if (!match) {
-    if (fallbackSpeaker && fallbackSpeaker.trim()) {
-      return { speaker: npcId, text: cleaned, displaySpeaker: fallbackSpeaker.trim() };
+    const groupSpeaker = normalizeDisplaySpeakerForGroup(npcId, fallbackSpeaker, cleaned);
+    if (groupSpeaker) {
+      return { speaker: npcId, text: cleaned, displaySpeaker: groupSpeaker };
     }
     return { speaker: npcId, text: cleaned };
   }
@@ -82,8 +116,13 @@ function parseDisplaySpeaker(
   if (allowed.includes(rawName)) {
     return { speaker: npcId, text: line, displaySpeaker: rawName };
   }
-  if (fallbackSpeaker && fallbackSpeaker.trim()) {
-    return { speaker: npcId, text: cleaned, displaySpeaker: fallbackSpeaker.trim() };
+  const remappedGroupSpeaker = normalizeDisplaySpeakerForGroup(npcId, rawName, line);
+  if (remappedGroupSpeaker) {
+    return { speaker: npcId, text: line, displaySpeaker: remappedGroupSpeaker };
+  }
+  const groupSpeaker = normalizeDisplaySpeakerForGroup(npcId, fallbackSpeaker, cleaned);
+  if (groupSpeaker) {
+    return { speaker: npcId, text: cleaned, displaySpeaker: groupSpeaker };
   }
   return { speaker: npcId, text: cleaned };
 }
@@ -93,7 +132,7 @@ export function parseDisplayTurns(
   text: string,
   fallbackSpeaker?: string
 ): Array<{ speaker: string; text: string; displaySpeaker?: string }> {
-  const cleaned = text.trim();
+  const cleaned = normalizeGroupPrefix(npcId, text.trim());
   if (!cleaned) return [{ speaker: npcId, text: cleaned }];
   const allowed = GROUP_SPEAKERS[npcId] ?? [];
   if (allowed.length === 0) {

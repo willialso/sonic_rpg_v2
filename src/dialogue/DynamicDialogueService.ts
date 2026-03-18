@@ -4,6 +4,7 @@ import { CHARACTER_CONTRACTS } from "./CharacterContracts";
 
 const FALLBACK_SOURCE: DialogueResponse["source"] = "fallback";
 const seenValidationIssueHashes = new Set<string>();
+const DIALOGUE_BACKEND_COOLDOWN_MS = 10 * 60 * 1000;
 
 interface DynamicDialogueOptions {
   maxSentencesPerReply?: number;
@@ -24,7 +25,6 @@ export class DynamicDialogueService {
   private readonly fallback = new FallbackDialogueBank();
   private readonly options: DynamicDialogueOptions;
   private backendCooldownUntilMs = 0;
-  private backendFailureNotified = false;
 
   constructor(options: DynamicDialogueOptions = {}) {
     this.options = options;
@@ -121,13 +121,7 @@ export class DynamicDialogueService {
       });
       if (!response.ok) {
         if (response.status >= 500) {
-          this.backendCooldownUntilMs = Date.now() + 30000;
-          if (!this.backendFailureNotified && typeof window !== "undefined") {
-            this.backendFailureNotified = true;
-            window.dispatchEvent(new CustomEvent("dialogue-validation-issue", {
-              detail: { message: "Dialogue service is temporarily unavailable (API error). In local dev, ensure the API server is running on :8787. Falling back to in-game lines." }
-            }));
-          }
+          this.backendCooldownUntilMs = Date.now() + DIALOGUE_BACKEND_COOLDOWN_MS;
         }
         if (response.status === 400) {
           try {
@@ -140,11 +134,6 @@ export class DynamicDialogueService {
                 ? `Dialogue API rejected request: ${issues.join("; ")}`
                 : "Dialogue API rejected request with 400.";
               console.warn(message);
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(new CustomEvent("dialogue-validation-issue", {
-                  detail: { message }
-                }));
-              }
             }
           } catch {
             // Keep fallback response on parse failure.
@@ -153,7 +142,6 @@ export class DynamicDialogueService {
         return { text: fallbackText, source: FALLBACK_SOURCE, safetyAbort: false };
       }
       this.backendCooldownUntilMs = 0;
-      this.backendFailureNotified = false;
       const payload = (await response.json()) as {
         npc_text?: string;
         source?: DialogueResponse["source"];
@@ -180,13 +168,7 @@ export class DynamicDialogueService {
         displaySpeaker: typeof payload.display_speaker === "string" ? payload.display_speaker : undefined
       };
     } catch {
-      this.backendCooldownUntilMs = Date.now() + 30000;
-      if (!this.backendFailureNotified && typeof window !== "undefined") {
-        this.backendFailureNotified = true;
-        window.dispatchEvent(new CustomEvent("dialogue-validation-issue", {
-          detail: { message: "Dialogue network call failed (API likely unreachable). In local dev, start web+API together via `npm run dev`. Using fallback dialogue for now." }
-        }));
-      }
+      this.backendCooldownUntilMs = Date.now() + DIALOGUE_BACKEND_COOLDOWN_MS;
       return { text: fallbackText, source: FALLBACK_SOURCE, safetyAbort: false };
     }
   }
