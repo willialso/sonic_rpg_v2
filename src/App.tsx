@@ -2954,32 +2954,16 @@ function App() {
       {showCompactMissionBar && (
         <section className="mission-compact-bar" aria-label="Mission status">
           <p className="mission-compact-title">Mission: Get Sonic to Stadium</p>
-          <div className="mission-compact-stats">
-            <span className="mission-compact-chip">
-              <span className="mission-compact-chip-label">Run</span>
-              <strong>{runStatusLabel}</strong>
-            </span>
-            <span className="mission-compact-chip">
-              <span className="mission-compact-chip-label">Sonic drunk</span>
-              <strong>{state.sonic.drunkLevel}/4</strong>
-            </span>
-            <span className="mission-compact-chip">
-              <span className="mission-compact-chip-label">Following</span>
-              <strong>{state.sonic.following ? "Yes" : "No"}</strong>
-            </span>
-            <span className="mission-compact-chip">
-              <span className="mission-compact-chip-label">Student ID</span>
-              <strong>{studentIdReady ? "Ready" : "Missing"}</strong>
-            </span>
-            <span className="mission-compact-chip">
-              <span className="mission-compact-chip-label">Last sighting</span>
-              <strong>{compactSightingLabel}</strong>
-            </span>
-          </div>
+          <p className="mission-compact-line">
+            <strong>Sonic:</strong> {state.sonic.drunkLevel}/4 drunk • <strong>Following:</strong> {state.sonic.following ? "Yes" : "No"} • <strong>ID:</strong> {studentIdReady ? "Ready" : "Missing"}
+          </p>
+          <p className="mission-compact-line">
+            <strong>Last sighting:</strong> {compactSightingLabel} • <strong>Intel:</strong> {sonicIntelFreshness.label}
+          </p>
           <div className="mission-compact-actions">
             {rumoredLocation && sonicIntelReachableNow && !isResolved && (
               <button
-                className="next-best-action"
+                className="next-best-action mission-compact-btn"
                 onClick={async () => {
                   await runAction({ type: "MOVE", target: rumoredLocation });
                 }}
@@ -2988,6 +2972,7 @@ function App() {
               </button>
             )}
             <button
+              className="mission-compact-btn"
               disabled={!canUseHint}
               onClick={async () => {
                 if (!canUseHint) return;
@@ -3999,10 +3984,10 @@ function App() {
 
       {(notice || isResolved) && !orientationIntroOpen && !starterRoutePanelOpen && !showLandingPage && !landingClosing && !isSoggySequenceActive && (
         <section className="modal-overlay">
-          <article className={`modal-card ${isResolved ? "official-notice-card" : "status-note-card"}`}>
+          <article className={`modal-card ${isResolved ? (state.fail.hardFailed ? "official-notice-card" : "status-note-card mission-complete-card") : "status-note-card"}`}>
             {isResolved ? (
               <>
-                <div className="official-letterhead">
+                <div className={state.fail.hardFailed ? "official-letterhead" : "mission-complete-head"}>
                   <p className="official-school">Console University</p>
                   <p className="official-dept">Office of Dean Cain</p>
                   <h2>{state.fail.hardFailed ? "Expulsion Notice" : "Mission Completion Record"}</h2>
@@ -4014,7 +3999,9 @@ function App() {
                     alt="Expulsion notice"
                   />
                 )}
-                <p className="official-body">{state.fail.hardFailed ? state.fail.reason : "Sonic reached Stadium under mission conditions."}</p>
+                <p className={state.fail.hardFailed ? "official-body" : "status-note-body"}>
+                  {state.fail.hardFailed ? state.fail.reason : "Sonic reached Stadium under mission conditions."}
+                </p>
                 <button onClick={async () => {
                   setActiveNpc(null);
                   setActiveNpcFocusAtMs(0);

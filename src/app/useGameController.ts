@@ -1636,6 +1636,10 @@ export function useGameController(): {
           return;
         }
         case "ESCORT_SONIC": {
+          if (state.sonic.following) {
+            result = { ok: true, message: "Sonic is already following you." };
+            return;
+          }
           if (!isEscortReady(state.sonic.drunkLevel)) {
             result = { ok: false, message: `Sonic is not in the right state to follow yet. Reach drunk level ${ESCORT_READY_DRUNK_LEVEL}+ first.` };
             return;
@@ -1648,7 +1652,9 @@ export function useGameController(): {
           state.sonic.location = state.player.location;
           state.world.actionUnlocks.stadiumEntry = true;
           state.world.events.push("ESCORT_MODE::drunk");
-          safeTransition(machine, state, "escort", "ESCORT_SONIC success");
+          if (state.phase !== "escort") {
+            safeTransition(machine, state, "escort", "ESCORT_SONIC success");
+          }
           result = { ok: true, message: "Sonic is following you." };
           return;
         }
