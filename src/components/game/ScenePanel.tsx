@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ActionResult, LocationId, NpcId } from "../../types/game";
+import type { LocationId, NpcId } from "../../types/game";
 
 type Props = {
   locationId: LocationId;
@@ -12,14 +12,10 @@ type Props = {
   popupDialogueText: string;
   popupTyping: boolean;
   engagedNpc: NpcId | null;
-  playerInput: string;
   isAwaitingNpcReply: boolean;
   isResolved: boolean;
   dialogueQuickReplies: Array<{ id: string; tone: string; text: string }>;
-  titleCase: (input: string) => string;
-  onPlayerInputChange: (value: string) => void;
   onSubmitQuickReply: (text: string) => Promise<void>;
-  onSubmitDialogue: (action: { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string }) => Promise<ActionResult>;
 };
 
 export function ScenePanel(props: Props) {
@@ -34,14 +30,10 @@ export function ScenePanel(props: Props) {
     popupDialogueText,
     popupTyping,
     engagedNpc,
-    playerInput,
     isAwaitingNpcReply,
     isResolved,
     dialogueQuickReplies,
-    titleCase,
-    onPlayerInputChange,
-    onSubmitQuickReply,
-    onSubmitDialogue
+    onSubmitQuickReply
   } = props;
   const [loadedBackground, setLoadedBackground] = useState(sceneBackgroundImage);
   useEffect(() => {
@@ -86,55 +78,24 @@ export function ScenePanel(props: Props) {
 
       <div className="scene-footer">
         {engagedNpc && (
-          <>
-            {dialogueQuickReplies.length > 0 && (
-              <div className="quick-reply-row" aria-label="Dialogue tone choices">
-                {dialogueQuickReplies.map((reply) => (
-                  <button
-                    key={reply.id}
-                    className="ghost quick-reply-btn"
-                    title={reply.text}
-                    disabled={isAwaitingNpcReply || isResolved}
-                    onClick={async () => {
-                      await onSubmitQuickReply(reply.text);
-                    }}
-                  >
-                    {reply.tone}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className="dialogue-box">
-              <input
-                value={playerInput}
-                onChange={(e) => onPlayerInputChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key !== "Enter") return;
-                  if (!playerInput.trim() || isResolved || isAwaitingNpcReply) return;
-                  e.preventDefault();
-                  void onSubmitDialogue({ type: "SUBMIT_DIALOGUE", npcId: engagedNpc, input: playerInput }).then(() => {
-                    onPlayerInputChange("");
-                  });
-                }}
-                placeholder={`Talk to ${titleCase(engagedNpc)}...`}
-                inputMode="text"
-                enterKeyHint="send"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="sentences"
-                disabled={isAwaitingNpcReply || isResolved}
-              />
-              <button
-                disabled={!playerInput.trim() || isResolved || isAwaitingNpcReply}
-                onClick={async () => {
-                  await onSubmitDialogue({ type: "SUBMIT_DIALOGUE", npcId: engagedNpc, input: playerInput });
-                  onPlayerInputChange("");
-                }}
-              >
-                {isAwaitingNpcReply ? "Typing..." : "Send"}
-              </button>
+          <div className="dialogue-choice-panel">
+            <p className="dialogue-choice-label">Choose your tone:</p>
+            <div className="quick-reply-row" aria-label="Dialogue tone choices">
+              {dialogueQuickReplies.map((reply) => (
+                <button
+                  key={reply.id}
+                  className={`quick-reply-btn quick-reply-btn-${reply.id}`}
+                  title={reply.text}
+                  disabled={isAwaitingNpcReply || isResolved}
+                  onClick={async () => {
+                    await onSubmitQuickReply(reply.text);
+                  }}
+                >
+                  {reply.tone}
+                </button>
+              ))}
             </div>
-          </>
+          </div>
         )}
       </div>
     </section>

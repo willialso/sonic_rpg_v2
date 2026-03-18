@@ -1284,7 +1284,7 @@ export function useGameController(): {
           removeInventory(state, "Glitter Flask");
           removeInventory(state, "Warm Beer");
           addInventory(state, "Glitter Bomb Brew");
-          result = { ok: true, message: "You mix a Glitter Bomb Brew. High chaos potential." };
+          result = { ok: true, message: "You mix a Glitter Bomb Brew. Warm Beer and Glitter Flask were consumed." };
           return;
         }
         case "MIX_BEANS_WARM_BEER": {
@@ -1299,7 +1299,7 @@ export function useGameController(): {
           removeInventory(state, "Super Dean Beans");
           removeInventory(state, "Warm Beer");
           addInventory(state, "Turbo Sludge");
-          result = { ok: true, message: "You mix Turbo Sludge. Strong effect, risky aftermath." };
+          result = { ok: true, message: "You mix Turbo Sludge. Warm Beer and Super Dean Beans were consumed." };
           return;
         }
         case "TRADE_THUNDERHEAD": {

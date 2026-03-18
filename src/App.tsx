@@ -115,7 +115,7 @@ function buildDialogueObjectivePrompt(
     if (state.sonic.drunkLevel >= ESCORT_READY_DRUNK_LEVEL) {
       return "You look ready. What gets you to follow me to Stadium right now?";
     }
-    return "What exactly do you need from me before you will follow me to Stadium?";
+    return "What setup, item, or vibe shift do you need first before we move?";
   }
   if (npcId === "frat_boys") {
     return "Should I challenge here now or rotate for a better Sonic setup?";
@@ -144,12 +144,12 @@ function buildDialogueToneReplies(
     {
       id: "sarcastic",
       tone: "Sarcastic",
-      text: `Cool, love the mystery vibe. ${base}`
+      text: `Love the chaos, truly. ${base}`
     },
     {
       id: "informative",
       tone: "Informative",
-      text: `Status check. ${base}`
+      text: `Quick briefing. ${base}`
     },
     {
       id: "neutral",
@@ -175,8 +175,8 @@ const ITEM_HELP: Record<string, { desc: string; useHint: string; targetHint?: st
   "Sorority Mascara": { desc: "Sorority contraband.", useHint: "Valid Thunderhead trade item.", targetHint: "Target: Thunderhead in Tunnel.", riskHint: "Theft can trigger ejection + ban." },
   "Sorority Composite": { desc: "Sorority contraband.", useHint: "Valid Thunderhead trade item.", targetHint: "Target: Thunderhead in Tunnel.", riskHint: "High social penalty if caught." },
   "Hairbrush": { desc: "Low-value filler.", useHint: "Not valid for Thunderhead trade.", riskHint: "Bad trade wastes time." },
-  "Warm Beer": { desc: "Mix base item.", useHint: "Use where Sonic is present or mix in Dorm Room.", targetHint: "Target: Sonic at current location or mix recipes.", riskHint: "Weak alone; best when mixed." },
-  "Super Dean Beans": { desc: "Volatile ingredient.", useHint: "Mix for high-impact sludge.", targetHint: "Target: mix path in Dorm Room.", riskHint: "Can backfire hard." },
+  "Warm Beer": { desc: "Mix base item.", useHint: "Use where Sonic is present, or consume it in a mix recipe.", targetHint: "Target: Sonic at current location or mix recipes.", riskHint: "Mixing consumes Warm Beer." },
+  "Super Dean Beans": { desc: "Volatile ingredient.", useHint: "Mix with Warm Beer for Turbo Sludge.", targetHint: "Target: mix path in Dorm Room.", riskHint: "Mixing consumes ingredients and can backfire later." },
   "Expired Energy Shot": { desc: "High-variance stim.", useHint: "Use only when gambling.", targetHint: "Target: Sonic at current location.", riskHint: "Can lower progress and raise pressure." },
   "Glitter Flask": { desc: "Mix container.", useHint: "Needed for Glitter Bomb Brew.", targetHint: "Target: mix path.", riskHint: "No direct value alone." },
   "Glitter Bomb Brew": { desc: "Chaotic mixed drink.", useHint: "Use where Sonic is present for swingy gain.", targetHint: "Target: Sonic at current location.", riskHint: "Can spike Dean warning." },
@@ -555,7 +555,6 @@ function App() {
   const [orientationIntroOpen, setOrientationIntroOpen] = useState(false);
   const [orientationIntroSubmitting, setOrientationIntroSubmitting] = useState(false);
   const [starterRoutePanelOpen, setStarterRoutePanelOpen] = useState(false);
-  const [starterRouteSubmitting, setStarterRouteSubmitting] = useState(false);
   const [missionTrackerCollapsed, setMissionTrackerCollapsed] = useState(false);
   const [latestHintText, setLatestHintText] = useState("");
   const [latestHintAtMs, setLatestHintAtMs] = useState(0);
@@ -653,13 +652,23 @@ function App() {
       setLatestHintAtMs(Date.now());
     }
     if (!silent && action.type !== "SUBMIT_DIALOGUE" && action.type !== "START_DIALOGUE" && action.type !== "MOVE") {
+      const itemOutcomeAction = action.type.startsWith("USE_")
+        || action.type.startsWith("GIVE_")
+        || action.type.startsWith("MIX_")
+        || action.type === "TRADE_THUNDERHEAD"
+        || action.type === "ANSWER_THUNDERHEAD"
+        || action.type === "GET_MYSTERY_MEAT"
+        || action.type === "GET_SUPER_DEAN_BEANS";
       const shouldShowNotice = !result.ok
         || action.type === "GET_HINT"
         || action.type === "COMPLETE_ORIENTATION_INTRO"
-        || action.type === "STADIUM_ENTRY";
+        || action.type === "STADIUM_ENTRY"
+        || itemOutcomeAction;
       if (shouldShowNotice) {
         setNotice({
-          title: result.ok ? (action.type === "GET_HINT" ? "Hint" : "Update") : "Blocked",
+          title: result.ok
+            ? (action.type === "GET_HINT" ? "Hint" : itemOutcomeAction ? "Item Outcome" : "Update")
+            : "Blocked",
           body: result.message || "No additional details."
         });
       }
@@ -671,7 +680,6 @@ function App() {
     setOrientationIntroOpen(false);
     setOrientationIntroSubmitting(false);
     setStarterRoutePanelOpen(false);
-    setStarterRouteSubmitting(false);
     setShowLandingPage(true);
   }, []);
   const closeLandingPage = useCallback(async (mode: "continue" | "enroll") => {
@@ -684,7 +692,6 @@ function App() {
       setOrientationIntroOpen(false);
       setOrientationIntroSubmitting(false);
       setStarterRoutePanelOpen(false);
-      setStarterRouteSubmitting(false);
       setShowLandingPage(false);
       setLandingClosing(false);
     }, 230);
@@ -696,7 +703,11 @@ function App() {
     setOrientationIntroSubmitting(false);
     if (result.ok) {
       setOrientationIntroOpen(false);
-      setStarterRoutePanelOpen(true);
+      setStarterRoutePanelOpen(false);
+      setNotice({
+        title: "Mission Live",
+        body: "Orientation complete. Open Menu for route checklist, then move fast toward the latest Sonic sighting."
+      });
       return;
     }
     setNotice({
@@ -704,36 +715,6 @@ function App() {
       body: result.message
     });
   }, [orientationIntroSubmitting, runAction]);
-  const beginStarterRoute = useCallback(async (route: "booze" | "intel" | "trick") => {
-    if (starterRouteSubmitting) return;
-    setStarterRouteSubmitting(true);
-    let resultMessage = "";
-    if (route === "booze") {
-      const move = await runAction({ type: "MOVE", target: "frat" }, true);
-      if (move.ok) {
-        await runAction({ type: "START_DIALOGUE", npcId: "frat_boys", auto: true }, true);
-        resultMessage = "Starter route set: Frat lane. Play beer pong early, then pivot to Sonic rumor sightings.";
-      } else {
-        resultMessage = move.message;
-      }
-    } else if (route === "intel") {
-      const search = await runAction({ type: "SEARCH_QUAD" }, true);
-      resultMessage = search.ok
-        ? "Starter route set: Intel lane. Quad search done. Follow Sonic Intel card and move fast."
-        : search.message;
-    } else {
-      const move = await runAction({ type: "MOVE", target: "eggman_classroom" }, true);
-      resultMessage = move.ok
-        ? "Starter route set: Trick lane. Move toward dorm-side map and prep Security Schedule + Sonic contact."
-        : move.message;
-    }
-    setStarterRouteSubmitting(false);
-    setStarterRoutePanelOpen(false);
-    setNotice({
-      title: "Quick Start Set",
-      body: resultMessage
-    });
-  }, [runAction, starterRouteSubmitting]);
   const clearSoggyTimers = useCallback(() => {
     if (soggyTimersRef.current.length === 0) return;
     soggyTimersRef.current.forEach((id) => window.clearTimeout(id));
@@ -3005,14 +2986,10 @@ function App() {
         popupDialogueText={popupDialogueText}
         popupTyping={popupTyping}
         engagedNpc={engagedNpc}
-        playerInput={playerInput}
         isAwaitingNpcReply={isAwaitingNpcReply}
         isResolved={isResolved || isSoggySequenceActive}
         dialogueQuickReplies={dialogueQuickReplies}
-        titleCase={titleCase}
-        onPlayerInputChange={setPlayerInput}
         onSubmitQuickReply={submitQuickDialogueTone}
-        onSubmitDialogue={submitDialogueLocked}
       />
 
       <PresenceBar
@@ -3419,18 +3396,10 @@ function App() {
                           if (isSearchAction(item.action)) {
                             const searchResult = await runAction(item.action, true);
                             if (searchResult.ok) {
-                              const autoLooted = /grabbed automatically|already in your inventory|nothing left/i.test(searchResult.message);
-                              if (autoLooted) {
-                                setNotice({
-                                  title: "Search",
-                                  body: searchResult.message
-                                });
-                              } else {
-                                setSearchLoot({
-                                  location: state.player.location,
-                                  message: searchResult.message
-                                });
-                              }
+                              setSearchLoot({
+                                location: state.player.location,
+                                message: searchResult.message
+                              });
                             } else {
                               const caughtByFrat = /diesel caught you searching|banned from frat/i.test(searchResult.message);
                               setNotice({
@@ -3992,43 +3961,6 @@ function App() {
         <aside className={`top-toast top-toast-${topToast.kind}`} aria-live="polite">
           {topToast.text}
         </aside>
-      )}
-
-      {starterRoutePanelOpen && (
-        <section className="modal-overlay">
-          <article className="modal-card starter-route-card">
-            <h3>Choose Your Starter Route</h3>
-            <p className="menu-inline-copy muted">
-              Pick one immediate path so you don't lose time in setup. You can pivot later.
-            </p>
-            <div className="button-grid action-grid">
-              <button
-                disabled={starterRouteSubmitting}
-                onClick={async () => {
-                  await beginStarterRoute("booze");
-                }}
-              >
-                Start Booze Route
-              </button>
-              <button
-                disabled={starterRouteSubmitting}
-                onClick={async () => {
-                  await beginStarterRoute("intel");
-                }}
-              >
-                Start Sonic Intel Route
-              </button>
-              <button
-                disabled={starterRouteSubmitting}
-                onClick={async () => {
-                  await beginStarterRoute("trick");
-                }}
-              >
-                Start Trick Route
-              </button>
-            </div>
-          </article>
-        </section>
       )}
 
       {orientationIntroOpen && (
