@@ -46,8 +46,7 @@ export class ScriptedDialogueService {
       ],
       frat_boys: [
         "Diesel: House rule one, no spectators. Bring heat or bring snacks.",
-        "Provolone Toney: Welcome to Frat. Reputation in, excuses out.",
-        "Frat Boys: Door's open, rank is not. Earn your seat."
+        "Provelony Toney: Welcome to Frat. Reputation in, excuses out."
       ],
       sorority_girls: [
         "Apple: Cute entrance. What's your angle?",
@@ -100,8 +99,7 @@ export class ScriptedDialogueService {
       ],
       frat_boys: [
         "Diesel: Back in the house. Momentum talks, posture walks.",
-        "Provolone Toney: Return visit logged. Performance still pending.",
-        "Frat Boys: Round two energy. Don't waste our music."
+        "Provelony Toney: Return visit logged. Performance still pending."
       ],
       sorority_girls: [
         "Apple: You came back. That's either confidence or a warning sign.",
@@ -293,34 +291,34 @@ export class ScriptedDialogueService {
       if (/(id|student id|clearance)/i.test(text)) {
         return state.player.inventory.includes("Student ID")
           ? "Diesel: You got the badge, cool. Now earn respect at the table."
-          : "Provolone Toney: No ID, no swagger. Go get official first.";
+          : "Provelony Toney: No ID, no swagger. Go get official first.";
       }
       if (/(where.*sonic|sonic.*where|seen sonic|find sonic)/i.test(text)) {
         if (state.world.presentNpcs[state.player.location]?.includes("sonic")) {
           return pickLine([
             "Diesel: He's right here. Ask less, play more.",
-            "Provolone Toney: Sonic is in the room, genius. Challenge him or keep sightseeing.",
-            "Provolone Toney: You found him. Now prove you're not just decorative."
+            "Provelony Toney: Sonic is in the room, genius. Challenge him or keep sightseeing.",
+            "Provelony Toney: You found him. Now prove you're not just decorative."
           ], `${voiceSeed}:frat:sonic-here`);
         }
         return pickLine([
           "Diesel: Not here. Track rumors at Quad/Cafeteria/Dorm Hall, then challenge him and drag him back.",
-          "Provolone Toney: You want Sonic? Get two real clues first. Frat gets him after the challenge.",
-          "Provolone Toney: Sonic pops in after callout. Ask around campus and stop hard-camping one room."
+          "Provelony Toney: You want Sonic? Get two real clues first. Frat gets him after the challenge.",
+          "Provelony Toney: Sonic pops in after callout. Ask around campus and stop hard-camping one room."
         ], `${voiceSeed}:frat:sonic-away`);
       }
       if (/(search|snoop|stash|steal|bong)/i.test(text) && state.world.presentNpcs.frat.includes("frat_boys")) {
         return pickLine([
           "Diesel: Keep your hands off house stash unless you want the whole porch on you.",
-          "Provolone Toney: You snoop in front of us again and we skip straight to consequences.",
-          "Provolone Toney: You can look, but if you grab, we're all suddenly very cardio-positive."
+          "Provelony Toney: You snoop in front of us again and we skip straight to consequences.",
+          "Provelony Toney: You can look, but if you grab, we're all suddenly very cardio-positive."
         ], `${voiceSeed}:frat:stash-warning`);
       }
       if (/(beer|pong|challenge|prove)/i.test(text)) {
         return pickLine([
           "Diesel: Good. Cups up. No speeches.",
-          "Provolone Toney: Prove it at the table, not with your mouth.",
-          "Provolone Toney: If this goes bad I'm calling my mom, but yeah, let's run it."
+          "Provelony Toney: Prove it at the table, not with your mouth.",
+          "Provelony Toney: If this goes bad I'm calling my mom, but yeah, let's run it."
         ], `${voiceSeed}:frat:challenge`);
       }
       if (progressBand === "endgame") {
@@ -328,8 +326,8 @@ export class ScriptedDialogueService {
       }
       return pickLine([
         "Diesel: No free passes in this house. Bring proof.",
-        "Provolone Toney: Status is rented nightly. Pay in results.",
-        "Provolone Toney: You look like a before photo. Let's fix that."
+        "Provelony Toney: Status is rented nightly. Pay in results.",
+        "Provelony Toney: You look like a before photo. Let's fix that."
       ], `${voiceSeed}:frat:general`);
     }
 

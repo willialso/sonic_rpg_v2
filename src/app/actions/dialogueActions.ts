@@ -1,8 +1,23 @@
 import type { DialogueTurn, GameStateData, LocationId, NpcId, NpcMemoryCard } from "../../types/game";
 
 const GROUP_SPEAKERS: Partial<Record<NpcId, string[]>> = {
-  frat_boys: ["Diesel", "Provolone Toney", "Provoloney Tony", "Frat Boys"],
+  frat_boys: ["Diesel", "Provelony Toney"],
   sorority_girls: ["Apple", "Fedora"]
+};
+
+const GROUP_SPEAKER_ALIASES: Partial<Record<NpcId, Record<string, string>>> = {
+  frat_boys: {
+    "frat boys": "Diesel",
+    "provolone toney": "Provelony Toney",
+    "provoloney tony": "Provelony Toney",
+    "provelony toney": "Provelony Toney",
+    diesel: "Diesel"
+  },
+  sorority_girls: {
+    "sorority girls": "Apple",
+    apple: "Apple",
+    fedora: "Fedora"
+  }
 };
 
 function speakerHash(input: string): number {
@@ -27,6 +42,9 @@ function normalizeDisplaySpeakerForGroup(npcId: NpcId, fallbackSpeaker: string |
   if (!fallbackSpeaker || !fallbackSpeaker.trim()) return undefined;
   const allowed = GROUP_SPEAKERS[npcId] ?? [];
   const trimmed = fallbackSpeaker.trim();
+  const aliasMap = GROUP_SPEAKER_ALIASES[npcId] ?? {};
+  const aliasHit = aliasMap[trimmed.toLowerCase()];
+  if (aliasHit) return aliasHit;
   if (allowed.length === 0) return trimmed;
   if (allowed.includes(trimmed)) return trimmed;
   const lowered = trimmed.toLowerCase();

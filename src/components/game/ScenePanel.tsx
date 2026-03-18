@@ -36,17 +36,48 @@ export function ScenePanel(props: Props) {
     dialogueQuickReplies,
     onSubmitQuickReply
   } = props;
-  const [loadedBackground, setLoadedBackground] = useState(sceneBackgroundImage);
+  const [activeBackground, setActiveBackground] = useState(sceneBackgroundImage);
+  const [previousBackground, setPreviousBackground] = useState("");
+  const [isBackgroundTransitioning, setIsBackgroundTransitioning] = useState(false);
+  const [selectedTone, setSelectedTone] = useState<DialogueTone | null>(null);
+
   useEffect(() => {
     if (!sceneBackgroundImage) return;
-    if (sceneBackgroundImage === loadedBackground) return;
+    if (sceneBackgroundImage === activeBackground) return;
     const img = new Image();
-    img.onload = () => setLoadedBackground(sceneBackgroundImage);
+    img.onload = () => {
+      setPreviousBackground(activeBackground);
+      setActiveBackground(sceneBackgroundImage);
+      setIsBackgroundTransitioning(true);
+    };
     img.src = sceneBackgroundImage;
-  }, [loadedBackground, sceneBackgroundImage]);
+  }, [activeBackground, sceneBackgroundImage]);
+
+  useEffect(() => {
+    if (!isBackgroundTransitioning) return;
+    const id = window.setTimeout(() => {
+      setIsBackgroundTransitioning(false);
+      setPreviousBackground("");
+    }, 220);
+    return () => window.clearTimeout(id);
+  }, [isBackgroundTransitioning]);
+
+  useEffect(() => {
+    setSelectedTone(null);
+  }, [engagedNpc]);
+
   return (
     <section className={`scene scene-${locationId}`}>
-      <div className="scene-bg-image-layer" style={{ backgroundImage: `url("${loadedBackground || sceneBackgroundImage}")` }} />
+      {previousBackground && (
+        <div
+          className={`scene-bg-image-layer scene-bg-image-prev ${isBackgroundTransitioning ? "is-transitioning" : ""}`}
+          style={{ backgroundImage: `url("${previousBackground}")` }}
+        />
+      )}
+      <div
+        className={`scene-bg-image-layer scene-bg-image-active ${isBackgroundTransitioning ? "is-transitioning" : ""}`}
+        style={{ backgroundImage: `url("${activeBackground || sceneBackgroundImage}")` }}
+      />
       {shouldShowDialoguePopup && (
         <div className={`scene-character-stage scene-character-stage-${scenePopupPlacement}`} aria-live="polite">
           <div className="scene-character-stage-dim" />
@@ -81,14 +112,18 @@ export function ScenePanel(props: Props) {
         {engagedNpc && (
           <div className="dialogue-choice-panel">
             <p className="dialogue-choice-label">Choose your tone:</p>
+            <p className="dialogue-tone-current">
+              Current tone: <strong>{selectedTone ? dialogueQuickReplies.find((reply) => reply.id === selectedTone)?.tone ?? "None" : "None"}</strong>
+            </p>
             <div className="quick-reply-row" aria-label="Dialogue tone choices">
               {dialogueQuickReplies.map((reply) => (
                 <button
                   key={reply.id}
-                  className={`quick-reply-btn quick-reply-btn-${reply.id}`}
+                  className={`quick-reply-btn quick-reply-btn-${reply.id} ${selectedTone === reply.id ? "quick-reply-btn-active" : ""}`}
                   title={reply.text}
                   disabled={isAwaitingNpcReply || isResolved}
                   onClick={async () => {
+                    setSelectedTone(reply.id);
                     await onSubmitQuickReply(reply.text, reply.id);
                   }}
                 >

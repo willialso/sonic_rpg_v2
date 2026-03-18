@@ -59,6 +59,7 @@
       },
       "speakerOverrides": {
         "Diesel": "characters/char_frat_group_hype.webp",
+        "Provelony Toney": "characters/char_frat_group_taunt.webp",
         "Provolone Toney": "characters/char_frat_group_taunt.webp",
         "Provoloney Tony": "characters/char_frat_group_taunt.webp"
       }

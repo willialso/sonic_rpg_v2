@@ -107,6 +107,7 @@ type GameAction =
   | { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string; tone?: "sarcastic" | "informative" | "neutral" };
 
 const LUIGI_CONTRABAND_ITEMS = ["Fake ID Wristband", "Exam Keycard", "Frat Bong"];
+const STRIP_POKER_CLOTHING_STAKES = ["Shirt", "Pants", "Shoes", "Socks", "Underwear"] as const;
 const DEAN_ZERO_TOLERANCE_ITEMS = ["Frat Bong"];
 const THUNDERHEAD_ACCEPTED_ITEMS = ["Lace Undies", "Sorority Mascara", "Sorority Composite"];
 const THUNDERHEAD_REJECTED_ITEMS = ["Hairbrush", "Fake ID Wristband", "Sorority House Key"];
@@ -1460,8 +1461,10 @@ export function useGameController(): {
             result = { ok: false, message: "No game right now. Sorority Girls are not at the table." };
             return;
           }
-          // Lightweight one-hand distraction: fixed cost, small upside chance.
-          state.world.minigames.stripPokerTableLocked = false;
+          if (!state.world.minigames.stripPokerTableLocked) {
+            state.world.minigames.stripPokerTableLocked = true;
+          }
+          // Quick-hand rules: fixed cost, visible stake progression, small upside chance.
           state.world.minigames.globalRound += 1;
           state.world.minigames.globalStreak = 0;
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 40);
@@ -1472,11 +1475,23 @@ export function useGameController(): {
             if (!state.player.inventory.includes(rewardItem)) {
               addInventory(state, rewardItem);
             }
+            state.world.minigames.stripPokerLosses = Math.max(0, state.world.minigames.stripPokerLosses - 1);
             state.world.events.push("Rumor update: Poker table chatter revealed a useful route clue.");
             result = { ok: true, message: `Quick hand done (-40s). You snag ${rewardItem} while everyone argues over side bets.` };
             return;
           }
-          result = { ok: true, message: "Quick hand done (-40s). You burn time, lose face, and walk away empty." };
+          state.world.minigames.stripPokerLosses += 1;
+          const losses = state.world.minigames.stripPokerLosses;
+          const forfeited = STRIP_POKER_CLOTHING_STAKES[Math.min(losses - 1, STRIP_POKER_CLOTHING_STAKES.length - 1)];
+          if (losses >= STRIP_POKER_CLOTHING_STAKES.length) {
+            state.world.minigames.stripPokerTableLocked = false;
+            state.world.restrictions.sororityBanned = true;
+            state.player.location = "quad";
+            state.world.visitCounts.quad = (state.world.visitCounts.quad ?? 0) + 1;
+            result = { ok: false, message: "Table tosses you out after the final stake. You are banned from Sorority for this run." };
+            return;
+          }
+          result = { ok: true, message: `Quick hand done (-40s). You lose this one and forfeit ${forfeited}.` };
           return;
         }
         case "GIVE_WHISKEY": {
@@ -2025,8 +2040,8 @@ export function useGameController(): {
               state.world.restrictions.fratChallengeForced = true;
               const challengeLine = pickDialogueVariant([
                 "Diesel: Mouth got loud. Table decides this now. Lose and you're banned.",
-                "Provolone Toney: You disrespected the house, now you play for access. Lose and you're done here.",
-                "Provolone Toney: Congrats, you unlocked consequences. Cups up, loser leaves."
+                "Provelony Toney: You disrespected the house, now you play for access. Lose and you're done here.",
+                "Provelony Toney: Congrats, you unlocked consequences. Cups up, loser leaves."
               ], `${state.meta.seed}:${state.timer.remainingSec}:frat-forced-challenge`);
               const [challengeSpeakerRaw, ...challengeBodyParts] = challengeLine.split(":");
               const challengeSpeaker = challengeBodyParts.length > 0 ? challengeSpeakerRaw.trim() : "Diesel";
@@ -2148,7 +2163,9 @@ export function useGameController(): {
         store.patch((state) => {
           const provisionalSpeaker = dialogueAction.npcId === "sorority_girls"
             ? (seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:sorority-provisional`) > 0.5 ? "Apple" : "Fedora")
-            : dialogueAction.npcId.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+            : dialogueAction.npcId === "frat_boys"
+              ? (seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:frat-provisional`) > 0.5 ? "Diesel" : "Provelony Toney")
+              : dialogueAction.npcId.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
           const provisional = createDialogueTurn(dialogueAction.npcId, "...", state, {
             npcId: dialogueAction.npcId,
             displaySpeaker: provisionalSpeaker,

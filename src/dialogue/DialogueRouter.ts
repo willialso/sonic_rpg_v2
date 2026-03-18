@@ -46,11 +46,8 @@ function finalizeNpcText(npcId: NpcId, text: string, seed = ""): string {
 }
 
 function applyToneFrame(text: string, tone?: DialogueTone): string {
-  if (!tone || tone === "neutral") return text;
-  if (tone === "informative") {
-    return /^quick answer:/i.test(text) ? text : `Quick answer: ${text}`;
-  }
-  return /^oh, sure[, ]/i.test(text) ? text : `Oh, sure, ${text.charAt(0).toLowerCase()}${text.slice(1)}`;
+  void tone;
+  return text;
 }
 
 export class DialogueRouter {

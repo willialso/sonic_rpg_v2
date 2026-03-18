@@ -104,6 +104,22 @@ p, li, span, input, button {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  opacity: 1;
+  transition: opacity 220ms var(--ease-standard);
+}
+
+.scene-bg-image-prev {
+  z-index: 1;
+  opacity: 1;
+}
+
+.scene-bg-image-prev.is-transitioning {
+  opacity: 0;
+}
+
+.scene-bg-image-active {
+  z-index: 0;
+  opacity: 1;
 }
 
 .scene-hud {
@@ -270,6 +286,12 @@ p, li, span, input, button {
   letter-spacing: 0.02em;
 }
 
+.dialogue-tone-current {
+  margin: 0;
+  font-size: 12px;
+  color: #dbe8ff;
+}
+
 .quick-reply-btn {
   min-height: 40px;
   padding: 7px 9px;
@@ -279,6 +301,11 @@ p, li, span, input, button {
   color: #f8fcff !important;
   background: rgba(20, 27, 77, 0.95) !important;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
+.quick-reply-btn-active {
+  box-shadow: 0 0 0 2px rgba(255, 236, 168, 0.86);
+  transform: translateY(-1px);
 }
 
 .quick-reply-btn-sarcastic {
@@ -1377,7 +1404,8 @@ button:disabled {
 }
 
 .official-body {
-  color: #2f2413;
+  color: #1e150a;
+  line-height: 1.5;
 }
 
 .top-toast {
@@ -1483,6 +1511,14 @@ button:disabled {
   flex-direction: column;
   gap: var(--space-3);
   animation: modalCardIn var(--motion-panel) var(--ease-standard) both;
+}
+
+.modal-card p {
+  color: #f3f8ff;
+}
+
+.official-notice-card p {
+  color: #1e150a;
 }
 
 .modal-card.action-sheet-card,

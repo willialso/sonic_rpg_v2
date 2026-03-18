@@ -295,6 +295,14 @@ type PlaytestRunSummary = {
   mission: { objective: string; subObjective: string };
   location: string;
   inventory: string[];
+  failReason: string | null;
+  dialogueSources: {
+    scripted: number;
+    llm: number;
+    fallback: number;
+    cache: number;
+    cooldown: number;
+  };
   eventsTail: string[];
 };
 type PlaytestTuningSnapshot = {
@@ -371,6 +379,14 @@ function toPlaytestRunSummary(state: GameStateData): PlaytestRunSummary {
     },
     location: state.player.location,
     inventory: [...state.player.inventory],
+    failReason: state.fail.reason ? state.fail.reason : null,
+    dialogueSources: {
+      scripted: state.quality.sourceCounts.scripted ?? 0,
+      llm: state.quality.sourceCounts.llm ?? 0,
+      fallback: state.quality.sourceCounts.fallback ?? 0,
+      cache: state.quality.sourceCounts.cache ?? 0,
+      cooldown: state.quality.sourceCounts.cooldown ?? 0
+    },
     eventsTail: state.world.events.slice(-12)
   };
 }
@@ -1862,10 +1878,10 @@ function App() {
       : memory?.won
         ? [
             { speaker: "Diesel", text: `You just posted ${memory.cupsHit} cups. Run it back.` },
-            { speaker: "Provolone Toney", text: `Previous round was ${memory.accuracy}% accuracy. Pressure's on now.` }
+            { speaker: "Provelony Toney", text: `Previous round was ${memory.accuracy}% accuracy. Pressure's on now.` }
           ]
         : [
-            { speaker: "Provolone Toney", text: "Last round you blinked. Don't blink this one." },
+            { speaker: "Provelony Toney", text: "Last round you blinked. Don't blink this one." },
             { speaker: "Diesel", text: `Reset. Last game was ${memory?.cupsHit ?? 0} cups. Earn your bounce-back.` }
           ];
 
@@ -1899,25 +1915,25 @@ function App() {
       opening: [
         ...(priorRoundPool || []),
         { speaker: "Diesel", text: "Cups are set. Bring execution." },
-        { speaker: "Frat Boys", text: "Rack up. Talk down." }
+        { speaker: "Diesel", text: "Rack up. Talk down." }
       ],
       sink: [
         { speaker: "Diesel", text: "That's one. Keep stacking." },
-        { speaker: "Provolone Toney", text: "Okay, that release wasn't tragic." },
-        { speaker: "Provolone Toney", text: "There it is. Real shot shape." }
+        { speaker: "Provelony Toney", text: "Okay, that release wasn't tragic." },
+        { speaker: "Provelony Toney", text: "There it is. Real shot shape." }
       ],
       miss: [
-        { speaker: "Provolone Toney", text: "You threw that like a resignation letter." },
+        { speaker: "Provelony Toney", text: "You threw that like a resignation letter." },
         { speaker: "Diesel", text: "Miss noted. Next rep cleaner." },
-        { speaker: "Provolone Toney", text: "That arc looked nervous." }
+        { speaker: "Provelony Toney", text: "That arc looked nervous." }
       ],
       clutch: [
         { speaker: "Diesel", text: "Last throws. Stay composed." },
-        { speaker: "Provolone Toney", text: "Clutch reps now. No tourist energy." },
-        { speaker: "Provolone Toney", text: "Hit this and I stop doubting your form." }
+        { speaker: "Provelony Toney", text: "Clutch reps now. No tourist energy." },
+        { speaker: "Provelony Toney", text: "Hit this and I stop doubting your form." }
       ],
       idle: [
-        { speaker: "Frat Boys", text: "Crowd's waiting. Send it." },
+        { speaker: "Diesel", text: "Crowd's waiting. Send it." },
         { speaker: "Diesel", text: "Take your read and launch." }
       ]
     };
@@ -2025,11 +2041,20 @@ function App() {
     const deck = shuffledDeck(seedRoot);
     const playerCards = deck.slice(0, 5);
     const deckRemainder = deck.slice(5);
+    const opponentNames = trimmedOpponents.map((npcId, idx) => {
+      if (npcId === "sorority_girls") {
+        return seededFloat(`${seedRoot}:speaker:sorority:${idx}`) > 0.5 ? "Apple" : "Fedora";
+      }
+      if (npcId === "frat_boys") {
+        return seededFloat(`${seedRoot}:speaker:frat:${idx}`) > 0.5 ? "Diesel" : "Provelony Toney";
+      }
+      return titleCase(npcId);
+    });
     setStripPokerDeal({
       round,
       guestId,
       opponentNpcIds: trimmedOpponents,
-      opponentNames: trimmedOpponents.map((npcId) => titleCase(npcId)),
+      opponentNames,
       playerCards,
       opponents: [],
       deckRemainder,
@@ -3459,7 +3484,15 @@ function App() {
                           }
                           if (item.key === "STRIP_POKER_MINIGAME") {
                             setActionMenuOpen(false);
-                            await runAction({ type: "PLAY_STRIP_POKER_ROUND" });
+                            const opponentNpcIds = [...new Set(sororityOccupants)].slice(0, 4);
+                            const setup = await runAction({ type: "START_STRIP_POKER_SESSION" }, true);
+                            if (!setup.ok) {
+                              setNotice({ title: "Blocked", body: setup.message });
+                              return;
+                            }
+                            const round = (state.world.minigames.globalRound ?? 0) + 1;
+                            startStripPokerRound(opponentNpcIds, round);
+                            setStripPokerOpen(true);
                             return;
                           }
                           if (item.key === "ASK_EGGMAN_QUIZ") {
@@ -4138,7 +4171,7 @@ function App() {
           <article className="modal-card">
             <>
               <img className="kickout-modal-image" src={soggyFratImage} alt="Frat bro laughing" />
-              <p><strong>Frat Boys:</strong> HAHAHAHAH Freak!</p>
+              <p><strong>Diesel:</strong> HAHAHAHAH Freak!</p>
             </>
           </article>
         </section>

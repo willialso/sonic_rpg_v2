@@ -61,19 +61,19 @@ export class FallbackDialogueBank {
         return state.world.presentNpcs[state.player.location]?.includes("sonic")
           ? pick([
             "Diesel: Sonic is right here. Stop asking and start challenging.",
-            "Provolone Toney: He's in front of you. Cups up or hush up.",
-            "Provolone Toney: Found him. Don't waste the moment."
+            "Provelony Toney: He's in front of you. Cups up or hush up.",
+            "Provelony Toney: Found him. Don't waste the moment."
           ], `${seed}:frat:sonic-here`)
           : pick([
             "Diesel: Not here. Find Sonic first, then bring him back to Frat by challenging him.",
-            "Provolone Toney: Sonic comes after the callout, not before.",
-            "Provolone Toney: Track him down, talk your trash, then run it here."
+            "Provelony Toney: Sonic comes after the callout, not before.",
+            "Provelony Toney: Track him down, talk your trash, then run it here."
           ], `${seed}:frat:sonic-away`);
       }
       return pick([
         "Diesel: No handouts. Earn your lane.",
-        "Provolone Toney: Reputation is rented nightly. Pay in results.",
-        "Provolone Toney: Don't embarrass us in front of the Bluetooth speaker."
+        "Provelony Toney: Reputation is rented nightly. Pay in results.",
+        "Provelony Toney: Don't embarrass us in front of the Bluetooth speaker."
       ], `${seed}:frat`);
     }
     if (npcId === "sorority_girls") {
