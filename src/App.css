@@ -249,13 +249,22 @@ p, li, span, input, button {
 
 .quick-reply-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
 }
 
 .quick-reply-btn {
-  padding: 6px 8px;
-  font-size: 12px;
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 4px 9px;
+  font-size: 11px;
+  border-radius: 999px;
+  border-color: rgba(255, 210, 74, 0.54);
+  color: #f3f8ff;
+  background: rgba(20, 27, 77, 0.75);
 }
 
 .dialogue-box {

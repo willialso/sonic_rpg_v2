@@ -15,8 +15,10 @@ type Props = {
   playerInput: string;
   isAwaitingNpcReply: boolean;
   isResolved: boolean;
+  dialogueQuickReplies: Array<{ id: string; tone: string; text: string }>;
   titleCase: (input: string) => string;
   onPlayerInputChange: (value: string) => void;
+  onSubmitQuickReply: (text: string) => Promise<void>;
   onSubmitDialogue: (action: { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string }) => Promise<ActionResult>;
 };
 
@@ -35,8 +37,10 @@ export function ScenePanel(props: Props) {
     playerInput,
     isAwaitingNpcReply,
     isResolved,
+    dialogueQuickReplies,
     titleCase,
     onPlayerInputChange,
+    onSubmitQuickReply,
     onSubmitDialogue
   } = props;
   const [loadedBackground, setLoadedBackground] = useState(sceneBackgroundImage);
@@ -83,6 +87,23 @@ export function ScenePanel(props: Props) {
       <div className="scene-footer">
         {engagedNpc && (
           <>
+            {dialogueQuickReplies.length > 0 && (
+              <div className="quick-reply-row" aria-label="Dialogue tone choices">
+                {dialogueQuickReplies.map((reply) => (
+                  <button
+                    key={reply.id}
+                    className="ghost quick-reply-btn"
+                    title={reply.text}
+                    disabled={isAwaitingNpcReply || isResolved}
+                    onClick={async () => {
+                      await onSubmitQuickReply(reply.text);
+                    }}
+                  >
+                    {reply.tone}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="dialogue-box">
               <input
                 value={playerInput}

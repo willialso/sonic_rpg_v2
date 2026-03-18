@@ -93,9 +93,70 @@ type ActionButtonDef = {
   disabled?: boolean;
   badge?: string;
 };
+type DialogueTone = "sarcastic" | "informative" | "neutral";
+type DialogueQuickReply = { id: DialogueTone; tone: string; text: string };
 
 function titleCase(input: string): string {
   return input.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function buildDialogueObjectivePrompt(
+  npcId: NpcId,
+  state: GameStateData,
+  rumoredLocationLabel: string
+): string {
+  if (npcId === "dean_cain") {
+    return state.player.inventory.includes("Student ID")
+      ? "Give me one concrete next move to finish the Sonic-to-Stadium mission cleanly."
+      : "Issue my Student ID and give me the fastest opening route to find Sonic.";
+  }
+  if (npcId === "sonic") {
+    if (state.sonic.following) return "You are following now. What is the cleanest move to reach Stadium safely?";
+    if (state.sonic.drunkLevel >= ESCORT_READY_DRUNK_LEVEL) {
+      return "You look ready. What gets you to follow me to Stadium right now?";
+    }
+    return "What exactly do you need from me before you will follow me to Stadium?";
+  }
+  if (npcId === "frat_boys") {
+    return "Should I challenge here now or rotate for a better Sonic setup?";
+  }
+  if (npcId === "sorority_girls") {
+    return "What should I grab or trade from here that directly helps the mission?";
+  }
+  if (npcId === "thunderhead") {
+    return "What trade gets me the fastest route progress right now?";
+  }
+  if (npcId === "tails" || npcId === "knuckles" || npcId === "eggman" || npcId === "luigi" || npcId === "earthworm_jim") {
+    return "Give me one concrete clue and one next move toward Sonic and Stadium.";
+  }
+  return rumoredLocationLabel
+    ? `Confirm the best move from here toward ${rumoredLocationLabel} and Stadium.`
+    : "Give me one concrete next move for this mission.";
+}
+
+function buildDialogueToneReplies(
+  npcId: NpcId,
+  state: GameStateData,
+  rumoredLocationLabel: string
+): DialogueQuickReply[] {
+  const base = buildDialogueObjectivePrompt(npcId, state, rumoredLocationLabel);
+  return [
+    {
+      id: "sarcastic",
+      tone: "Sarcastic",
+      text: `Cool, love the mystery vibe. ${base}`
+    },
+    {
+      id: "informative",
+      tone: "Informative",
+      text: `Status check. ${base}`
+    },
+    {
+      id: "neutral",
+      tone: "Neutral",
+      text: base
+    }
+  ];
 }
 
 type NoticeState = { title: string; body: string } | null;
@@ -789,6 +850,13 @@ function App() {
       return speakerA === target || speakerB === npc;
     });
   }, [state]);
+  const submitQuickDialogueTone = useCallback(async (text: string) => {
+    if (!engagedNpc || isResolved || isAwaitingNpcReply) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    await submitDialogueLocked({ type: "SUBMIT_DIALOGUE", npcId: engagedNpc, input: trimmed });
+    setPlayerInput("");
+  }, [engagedNpc, isAwaitingNpcReply, isResolved, submitDialogueLocked]);
   const focusNpcConversation = useCallback(async (npc: NpcId) => {
     if (isAwaitingNpcReply) return;
     setSearchLoot(null);
@@ -2429,6 +2497,10 @@ function App() {
         ? "Sighting is one move away. Jump there now before the rotation changes."
         : `Push toward ${rumoredLocationLabel}. Use route exits and avoid over-looting side areas.`;
   const compactSightingLabel = rumoredLocation ? rumoredLocationLabel : "No sighting";
+  const dialogueQuickReplies = useMemo(
+    () => (engagedNpc ? buildDialogueToneReplies(engagedNpc, state, rumoredLocationLabel || compactSightingLabel) : []),
+    [compactSightingLabel, engagedNpc, rumoredLocationLabel, state]
+  );
   const studentIdReady = state.player.inventory.includes("Student ID");
   const runStatusLabel = state.fail.hardFailed
     ? "Failed"
@@ -2937,8 +3009,10 @@ function App() {
         playerInput={playerInput}
         isAwaitingNpcReply={isAwaitingNpcReply}
         isResolved={isResolved || isSoggySequenceActive}
+        dialogueQuickReplies={dialogueQuickReplies}
         titleCase={titleCase}
         onPlayerInputChange={setPlayerInput}
+        onSubmitQuickReply={submitQuickDialogueTone}
         onSubmitDialogue={submitDialogueLocked}
       />
 
