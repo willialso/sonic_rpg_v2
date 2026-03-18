@@ -575,11 +575,32 @@ p, li, span, input, button {
 }
 
 .mission-compact-stats {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
+}
+
+.mission-compact-chip {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(171, 196, 255, 0.32);
+  background: rgba(17, 22, 64, 0.74);
   font-size: 11px;
-  color: rgba(220, 231, 255, 0.92);
+  color: rgba(236, 243, 255, 0.97);
+}
+
+.mission-compact-chip strong {
+  color: #fff8d9;
+  font-size: 12px;
+}
+
+.mission-compact-chip-label {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(205, 220, 255, 0.86);
+  font-size: 10px;
 }
 
 .mission-compact-actions {
@@ -840,6 +861,69 @@ p, li, span, input, button {
 
 .menu-inline-copy {
   margin: 0;
+}
+
+.menu-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.menu-status-chip {
+  border: 1px solid rgba(171, 196, 255, 0.32);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: rgba(18, 24, 68, 0.68);
+  color: #edf4ff;
+  font-size: 12px;
+}
+
+.menu-status-chip strong {
+  color: #ffeaa6;
+  margin-right: 4px;
+}
+
+.menu-status-chip-warnings {
+  grid-column: 1 / -1;
+}
+
+.menu-collapsible {
+  margin-top: 6px;
+  border: 1px solid rgba(171, 196, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(13, 18, 57, 0.6);
+  padding: 6px 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.menu-collapsible > summary {
+  cursor: pointer;
+  color: #f4f8ff;
+  font-size: 12px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.menu-collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+
+.menu-collapsible > summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 6px;
+  color: rgba(255, 210, 74, 0.95);
+  transform-origin: center;
+  transition: transform 140ms ease;
+}
+
+.menu-collapsible[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.menu-detail-grid {
+  margin-top: 2px;
 }
 
 .menu-chip-wrap {
@@ -1122,6 +1206,19 @@ button:disabled {
 
 .status-note-card {
   text-align: center;
+  color: #f4f8ff;
+}
+
+.status-note-card h3 {
+  margin: 0;
+  color: #fff1bb;
+}
+
+.status-note-body {
+  margin: 0;
+  color: #f7fbff;
+  line-height: 1.45;
+  font-size: 15px;
 }
 
 .official-letterhead {

@@ -229,7 +229,7 @@ type EggmanStir = "pulse" | "steady" | "whip";
 type EggmanLabProtocol = { catalyst: EggmanCatalyst; heat: EggmanHeat; stir: EggmanStir };
 type EggmanHintText = Partial<Record<keyof EggmanLabProtocol, string>>;
 type EggmanLabFx = "perfect" | "good" | "fail" | "meltdown" | null;
-type PlaytestResult = "win" | "fail";
+type PlaytestResult = "win" | "fail" | "in_progress";
 type PlaytestRunSummary = {
   capturedAt: string;
   seed: string;
@@ -280,10 +280,15 @@ function toPlaytestRunSummary(state: GameStateData): PlaytestRunSummary {
   const completedRoutes = Object.entries(state.routes)
     .filter(([, route]) => route.complete)
     .map(([id]) => id);
+  const result: PlaytestResult = state.fail.hardFailed
+    ? "fail"
+    : state.phase === "resolved"
+      ? "win"
+      : "in_progress";
   return {
     capturedAt: new Date().toISOString(),
     seed: state.meta.seed,
-    result: state.fail.hardFailed ? "fail" : "win",
+    result,
     phase: state.phase,
     routeMode: inferRouteMode(state),
     completedRoutes,
@@ -1048,7 +1053,7 @@ function App() {
     const relocateId = window.setTimeout(() => {
       void runAction({ type: "FORCE_MOVE", target }, true);
       pendingForcedRelocationTargetRef.current = null;
-      window.setTimeout(() => setNotice(null), 500);
+      window.setTimeout(() => setNotice(null), 1200);
     }, 1800);
     return () => window.clearTimeout(relocateId);
   }, [latestForcedRelocationEvent, runAction]);
@@ -2424,6 +2429,12 @@ function App() {
         ? "Sighting is one move away. Jump there now before the rotation changes."
         : `Push toward ${rumoredLocationLabel}. Use route exits and avoid over-looting side areas.`;
   const compactSightingLabel = rumoredLocation ? rumoredLocationLabel : "No sighting";
+  const studentIdReady = state.player.inventory.includes("Student ID");
+  const runStatusLabel = state.fail.hardFailed
+    ? "Failed"
+    : state.phase === "resolved"
+      ? "Won"
+      : "Active";
   const latestHintAgeSec = latestHintAtMs > 0 ? Math.max(0, Math.floor((Date.now() - latestHintAtMs) / 1000)) : null;
   const latestHintAgeLabel = latestHintAgeSec === null
     ? ""
@@ -2944,9 +2955,26 @@ function App() {
         <section className="mission-compact-bar" aria-label="Mission status">
           <p className="mission-compact-title">Mission: Get Sonic to Stadium</p>
           <div className="mission-compact-stats">
-            <span>Drunk {state.sonic.drunkLevel}/4</span>
-            <span>Following {state.sonic.following ? "yes" : "no"}</span>
-            <span>Sighting {compactSightingLabel}</span>
+            <span className="mission-compact-chip">
+              <span className="mission-compact-chip-label">Run</span>
+              <strong>{runStatusLabel}</strong>
+            </span>
+            <span className="mission-compact-chip">
+              <span className="mission-compact-chip-label">Sonic drunk</span>
+              <strong>{state.sonic.drunkLevel}/4</strong>
+            </span>
+            <span className="mission-compact-chip">
+              <span className="mission-compact-chip-label">Following</span>
+              <strong>{state.sonic.following ? "Yes" : "No"}</strong>
+            </span>
+            <span className="mission-compact-chip">
+              <span className="mission-compact-chip-label">Student ID</span>
+              <strong>{studentIdReady ? "Ready" : "Missing"}</strong>
+            </span>
+            <span className="mission-compact-chip">
+              <span className="mission-compact-chip-label">Last sighting</span>
+              <strong>{compactSightingLabel}</strong>
+            </span>
           </div>
           <div className="mission-compact-actions">
             {rumoredLocation && sonicIntelReachableNow && !isResolved && (
@@ -3081,12 +3109,19 @@ function App() {
             </header>
             <div className="action-groups">
               <section className="action-group">
-                <h4>Status</h4>
-                <p className="menu-inline-copy muted">Sonic: {state.sonic.drunkLevel}/4 • Following: {state.sonic.following ? "yes" : "no"} • ID: {state.player.inventory.includes("Student ID") ? "ready" : "missing"}</p>
-                <p className="menu-inline-copy muted">Warn: Dean {warningMeter(state.fail.warnings.dean, WARNING_LIMITS.dean)} • Luigi {warningMeter(state.fail.warnings.luigi, WARNING_LIMITS.luigi)} • Frat {warningMeter(state.fail.warnings.frat, WARNING_LIMITS.frat)}</p>
+                <h4>Run Status</h4>
+                <div className="menu-status-grid">
+                  <span className="menu-status-chip"><strong>Run</strong> {runStatusLabel}</span>
+                  <span className="menu-status-chip"><strong>Sonic drunk</strong> {state.sonic.drunkLevel}/4</span>
+                  <span className="menu-status-chip"><strong>Following</strong> {state.sonic.following ? "Yes" : "No"}</span>
+                  <span className="menu-status-chip"><strong>Student ID</strong> {studentIdReady ? "Ready" : "Missing"}</span>
+                  <span className="menu-status-chip menu-status-chip-warnings">
+                    <strong>Warnings</strong> Dean {warningMeter(state.fail.warnings.dean, WARNING_LIMITS.dean)} • Luigi {warningMeter(state.fail.warnings.luigi, WARNING_LIMITS.luigi)} • Frat {warningMeter(state.fail.warnings.frat, WARNING_LIMITS.frat)}
+                  </span>
+                </div>
               </section>
               <section className="action-group">
-                <h4>Mission Brief</h4>
+                <h4>Mission Intel</h4>
                 <p className="menu-inline-copy"><strong>{state.mission.objective}</strong></p>
                 <p className="menu-inline-copy muted">{state.mission.subObjective}</p>
                 <div className={`sonic-intel-card ${sonicIntelAtCurrent ? "on-target" : sonicIntelReachableNow ? "nearby" : "searching"}`}>
@@ -3101,20 +3136,37 @@ function App() {
                     {rumoredLocation ? rumoredLocationLabel : "No confirmed sighting yet"}
                   </p>
                   <p className="sonic-intel-line">{sonicIntelGuidance}</p>
+                  {rumoredLocation && sonicIntelReachableNow && !isResolved && (
+                    <button
+                      className="next-best-action"
+                      onClick={async () => {
+                        setHudMenuOpen(false);
+                        await runAction({ type: "MOVE", target: rumoredLocation });
+                      }}
+                    >
+                      Go to {rumoredLocationLabel}
+                    </button>
+                  )}
                 </div>
                 {latestHintText && (
-                  <p className="menu-inline-copy muted">Last hint {latestHintAgeLabel ? `(${latestHintAgeLabel})` : ""}: {latestHintText}</p>
+                  <div className="hint-memory-card">
+                    <p className="mission-kicker">Last Hint {latestHintAgeLabel ? `(${latestHintAgeLabel})` : ""}</p>
+                    <p className="sonic-intel-line">{latestHintText}</p>
+                  </div>
                 )}
-                <div className="route-matrix">
-                  {routeSnapshots.map((route) => (
-                    <div key={`menu-route-${route.id}`} className={`route-chip ${route.complete ? "complete" : ""}`}>
-                      <strong>Route {route.id}</strong> {route.label} - {route.note}
-                    </div>
-                  ))}
-                </div>
+                <details className="menu-collapsible">
+                  <summary>Route checklist</summary>
+                  <div className="route-matrix">
+                    {routeSnapshots.map((route) => (
+                      <div key={`menu-route-${route.id}`} className={`route-chip ${route.complete ? "complete" : ""}`}>
+                        <strong>Route {route.id}</strong> {route.label} - {route.note}
+                      </div>
+                    ))}
+                  </div>
+                </details>
               </section>
               <section className="action-group">
-                <h4>Utilities</h4>
+                <h4>Run Controls</h4>
                 <div className="button-grid action-grid">
                   <button
                     disabled={!canUseHint}
@@ -3127,33 +3179,6 @@ function App() {
                   >
                     Get Hint
                   </button>
-                  <button
-                    disabled={!state}
-                    onClick={() => {
-                      setHudMenuOpen(false);
-                      exportCurrentRunTelemetry();
-                    }}
-                  >
-                    Export Run Log
-                  </button>
-                  <button
-                    disabled={playtestLogCount <= 0}
-                    onClick={() => {
-                      setHudMenuOpen(false);
-                      exportPlaytestLogs();
-                    }}
-                  >
-                    Export All Logs
-                  </button>
-                  <button
-                    className="ghost"
-                    disabled={playtestLogCount <= 0}
-                    onClick={() => {
-                      clearPlaytestLogs();
-                    }}
-                  >
-                    Clear Logs
-                  </button>
                   <button onClick={async () => {
                     setHudMenuOpen(false);
                     setActiveNpc(null);
@@ -3164,7 +3189,41 @@ function App() {
                   }}>Restart Run</button>
                 </div>
                 <p className="menu-inline-copy muted">{hintButtonNote}</p>
-                <p className="menu-inline-copy muted">Playtest logs stored: {playtestLogCount}</p>
+              </section>
+              <section className="action-group">
+                <details className="menu-collapsible">
+                  <summary>Telemetry & Logs ({playtestLogCount})</summary>
+                  <div className="button-grid action-grid menu-detail-grid">
+                    <button
+                      disabled={!state}
+                      onClick={() => {
+                        setHudMenuOpen(false);
+                        exportCurrentRunTelemetry();
+                      }}
+                    >
+                      Export Run Log
+                    </button>
+                    <button
+                      disabled={playtestLogCount <= 0}
+                      onClick={() => {
+                        setHudMenuOpen(false);
+                        exportPlaytestLogs();
+                      }}
+                    >
+                      Export All Logs
+                    </button>
+                    <button
+                      className="ghost"
+                      disabled={playtestLogCount <= 0}
+                      onClick={() => {
+                        clearPlaytestLogs();
+                      }}
+                    >
+                      Clear Logs
+                    </button>
+                  </div>
+                  <p className="menu-inline-copy muted">Use logs to compare route consistency and blockers across runs.</p>
+                </details>
               </section>
             </div>
           </article>
@@ -3967,7 +4026,7 @@ function App() {
             ) : (
               <>
                 <h3>{notice?.title}</h3>
-                <p className="official-body">{notice?.body}</p>
+                <p className="status-note-body">{notice?.body}</p>
                 <button
                   onClick={async () => {
                     const forcedTarget = pendingForcedRelocationTargetRef.current;
