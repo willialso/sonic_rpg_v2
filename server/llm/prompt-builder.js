@@ -91,16 +91,6 @@ export class PromptBuilder {
       : clueRole === "misleading"
         ? "Clue role: misleading. Give plausible but recoverable misdirection, never pure nonsense."
         : "Clue role: neutral. Give flavor first, then only a soft directional nudge.";
-    const tonePreference = ["informative", "sarcastic", "neutral"].includes(String(context.tonePreference || ""))
-      ? String(context.tonePreference)
-      : "none";
-    const toneRule = tonePreference === "informative"
-      ? "Tone preference: informative. Lead with the concrete clue/action first, keep concise, and minimize decorative banter."
-      : tonePreference === "sarcastic"
-        ? "Tone preference: sarcastic. Use one sharp jab plus one concrete clue/action. Keep it short and punchy."
-        : tonePreference === "neutral"
-          ? "Tone preference: neutral. Keep straightforward phrasing with a clear, practical answer."
-          : "";
     const semanticAnchorRule = String(context.playerInput || "").trim()
       ? "Semantic anchor rule: reply must directly address the player's latest question/topic before any flavor."
       : "";
@@ -122,7 +112,6 @@ export class PromptBuilder {
       `INTENT: ${context.intent}`,
       `FUNCTION_ID: ${context.functionId || "GENERAL"}`,
       `INTENT_GOAL: ${context.intentContext?.goal || "Stay in character and respond naturally."}`,
-      tonePreference !== "none" ? `TONE_PREFERENCE: ${tonePreference}` : "",
       `MUST_INCLUDE: ${JSON.stringify(mustInclude)}`,
       `AVOID: ${JSON.stringify(avoid)}`,
       `CURRENT_CONTEXT: ${JSON.stringify(currentContext)}`,
@@ -156,7 +145,6 @@ export class PromptBuilder {
       forbiddenClichesRule,
       avoidFlatYesNoPrompt,
       clueRoleRule,
-      toneRule,
       semanticAnchorRule,
       locationQueryRule,
       sonicStadiumMoveRule,

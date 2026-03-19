@@ -800,7 +800,6 @@ export class DialogueOrchestrator {
       .join("|");
     return hash(JSON.stringify({
       c: context.characterId,
-      o: context.tonePreference || "",
       i: context.intent,
       l: context.gameContext?.location || "",
       d: context.gameContext?.sonic_drunk_level || 0,
@@ -860,7 +859,6 @@ export class DialogueOrchestrator {
       ts: new Date().toISOString(),
       request_id: requestId,
       character_id: context.characterId,
-      tone_preference: context.tonePreference || "none",
       intent: context.intent,
       location: context.gameContext?.location || "",
       player_input: context.playerInput || ""
@@ -1156,18 +1154,6 @@ export class DialogueOrchestrator {
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
-    const toneCounts = interactions.reduce((acc, row) => {
-      const key = String(row?.tone_preference || "none");
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-    const toneSourceCounts = interactions.reduce((acc, row) => {
-      const tone = String(row?.tone_preference || "none");
-      const source = String(row?.source || "unknown");
-      const key = `${tone}:${source}`;
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
     const latencyValues = interactions
       .map((row) => Number(row?.latency_ms))
       .filter((value) => Number.isFinite(value) && value >= 0);
@@ -1227,8 +1213,6 @@ export class DialogueOrchestrator {
       generated_at: new Date().toISOString(),
       window_rows: total,
       source_counts: sourceCounts,
-      tone_counts: toneCounts,
-      tone_source_counts: toneSourceCounts,
       rates_pct: {
         llm_direct: pct(sourceCounts.llm || 0),
         llm_regen: pct(sourceCounts.llm_regen || 0),

@@ -41,7 +41,7 @@ import {
   inferNpcPoseKey,
   createDialogueTurn
 } from "./actions/dialogueActions";
-import type { ActionResult, GameStateData, LocationId, NpcId, ReplyTone } from "../types/game";
+import type { ActionResult, GameStateData, LocationId, NpcId } from "../types/game";
 
 type MoveAction = { type: "MOVE"; target: LocationId };
 type ForceMoveAction = { type: "FORCE_MOVE"; target: LocationId };
@@ -49,6 +49,8 @@ type GameAction =
   | MoveAction
   | ForceMoveAction
   | { type: "RESET_GAME" }
+  | { type: "SET_TIMER_PAUSED"; paused: boolean }
+  | { type: "COMPLETE_ORIENTATION_INTRO"; preferredName?: string }
   | { type: "START_DIALOGUE"; npcId: NpcId; auto?: boolean }
   | { type: "PLAY_BEER_PONG_SCORE"; cupsHit: number; matchup: "frat" | "sonic" }
   | { type: "PLAY_BEER_PONG_SHOT"; shot: "safe" | "bank" | "hero" }
@@ -102,14 +104,32 @@ type GameAction =
   | { type: "ESCORT_SONIC" }
   | { type: "STADIUM_ENTRY" }
   | { type: "GET_HINT" }
-  | { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string; tone?: ReplyTone | null };
+  | { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string; tone?: "sarcastic" | "informative" | "neutral" };
 
-const STRIP_POKER_CLOTHING_STAKES = ["Shirt", "Pants", "Shoes", "Socks", "Underwear"] as const;
 const LUIGI_CONTRABAND_ITEMS = ["Fake ID Wristband", "Exam Keycard", "Frat Bong"];
+const STRIP_POKER_CLOTHING_STAKES = ["Shirt", "Pants", "Shoes", "Socks", "Underwear"] as const;
 const DEAN_ZERO_TOLERANCE_ITEMS = ["Frat Bong"];
 const THUNDERHEAD_ACCEPTED_ITEMS = ["Lace Undies", "Sorority Mascara", "Sorority Composite"];
 const THUNDERHEAD_REJECTED_ITEMS = ["Hairbrush", "Fake ID Wristband", "Sorority House Key"];
 const AUTOSAVE_DIRTY_FLUSH_MS = 12000;
+const MISSION_OBJECTIVE = "Get Sonic to Stadium.";
+const MISSION_SUBOBJECTIVE = "Pick a route (booze, handcuffs, or trick), secure Sonic, and clear stadium security with your Student ID.";
+const FRAT_MATCH_TIME_COST_SEC = 40;
+const BEER_SHOT_TIME_COST_SEC = {
+  safe: 28,
+  bank: 38,
+  hero: 50
+} as const;
+const HINT_TIME_COST_SEC = 6;
+const TRICK_ROUTE_TIME_COST_SEC = 12;
+const HANDCUFFS_UNREADY_TIME_PENALTY_SEC = 18;
+const HANDCUFFS_UNREADY_FAIL_THRESHOLD = 0.48;
+const SONIC_PONG_MAX_MATCHES = 2;
+const CAMPUS_MAP_TIME_COST_SEC = 6;
+const MOVE_TIME_COST_SEC = {
+  withMap: 8,
+  base: 12
+} as const;
 
 function extractPlayerName(rawInput: string): string | null {
   return extractPlayerNameAction(rawInput);
@@ -137,6 +157,51 @@ function setPressure(state: GameStateData): void {
 
 function syncSonicLocation(state: GameStateData): void {
   syncSonicLocationAction(state);
+}
+
+function formatLocationLabel(location: LocationId): string {
+  return location.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function formatSearchResult(found: string[]): string {
+  return found.length > 0
+    ? `Search complete. Found: ${found.join(", ")}.`
+    : "Already searched. Room is empty.";
+}
+
+function findShortestLocationPath(
+  bundle: ContentBundle | null,
+  start: LocationId,
+  goal: LocationId
+): LocationId[] {
+  if (!bundle) return [];
+  if (start === goal) return [start];
+  const byId = new Map(bundle.locations.map((loc) => [loc.id, loc]));
+  const queue: LocationId[] = [start];
+  const visited = new Set<LocationId>([start]);
+  const parent = new Map<LocationId, LocationId | null>([[start, null]]);
+  while (queue.length > 0) {
+    const current = queue.shift() as LocationId;
+    const node = byId.get(current);
+    if (!node) continue;
+    for (const next of node.exits) {
+      if (visited.has(next)) continue;
+      visited.add(next);
+      parent.set(next, current);
+      if (next === goal) {
+        const path: LocationId[] = [goal];
+        let cursor: LocationId | null = goal;
+        while (cursor) {
+          const previousLocation: LocationId | null = parent.get(cursor) ?? null;
+          if (previousLocation) path.push(previousLocation);
+          cursor = previousLocation;
+        }
+        return path.reverse();
+      }
+      queue.push(next);
+    }
+  }
+  return [];
 }
 
 function ensureMissionIntakeConsistency(state: GameStateData): void {
@@ -185,11 +250,6 @@ function clampDialogueForDisplay(npcId: NpcId, rawText: string): string {
   if (sentenceCapped.length <= maxChars) return sentenceCapped;
   const hard = sentenceCapped.slice(0, Math.max(16, maxChars - 1)).trimEnd();
   return /[.!?]$/.test(hard) ? hard : `${hard}.`;
-}
-
-function toneSourceKey(tonePreference: ReplyTone | null | undefined, source: string): string {
-  const tone = tonePreference ?? "none";
-  return `${tone}:${source}`;
 }
 
 export function useGameController(): {
@@ -314,15 +374,6 @@ export function useGameController(): {
       initial.world.analytics = {
         soggyBiscuitTriggered: Boolean(existingAnalytics.soggyBiscuitTriggered)
       };
-      if (!initial.quality || typeof initial.quality !== "object") {
-        initial.quality = { sourceCounts: {}, toneSourceCounts: {} };
-      }
-      if (!initial.quality.sourceCounts || typeof initial.quality.sourceCounts !== "object") {
-        initial.quality.sourceCounts = {};
-      }
-      if (!initial.quality.toneSourceCounts || typeof initial.quality.toneSourceCounts !== "object") {
-        initial.quality.toneSourceCounts = {};
-      }
       if (!initial.world.searchCaches || typeof initial.world.searchCaches !== "object") {
         initial.world.searchCaches = {};
       }
@@ -343,10 +394,6 @@ export function useGameController(): {
         updateNpcMemory(initial, "dean_cain", greet.text);
         initial.dialogue.source = "scripted";
         initial.quality.sourceCounts.scripted = (initial.quality.sourceCounts.scripted ?? 0) + 1;
-        {
-          const key = toneSourceKey(null, "scripted");
-          initial.quality.toneSourceCounts[key] = (initial.quality.toneSourceCounts[key] ?? 0) + 1;
-        }
         initial.dialogue.encounterCountByNpc.dean_cain = encounterCount + 1;
         initial.dialogue.deanStage = "name_pending";
       }
@@ -383,6 +430,7 @@ export function useGameController(): {
       let dirty = false;
       store.patch((state) => {
         if (state.phase === "resolved" || state.fail.hardFailed) return;
+        if (state.timer.paused) return;
         dirty = true;
         state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 1);
         setPressure(state);
@@ -468,6 +516,39 @@ export function useGameController(): {
       syncSonicLocation(state);
 
       switch (action.type) {
+        case "SET_TIMER_PAUSED": {
+          state.timer.paused = action.paused;
+          result = { ok: true, message: action.paused ? "Timer paused." : "Timer resumed." };
+          return;
+        }
+        case "COMPLETE_ORIENTATION_INTRO": {
+          const preferredName = action.preferredName?.trim();
+          if (preferredName) {
+            state.player.name = preferredName.slice(0, 24);
+          }
+          const origin = state.player.location;
+          addInventory(state, "Student ID");
+          state.dialogue.deanStage = "mission_given";
+          state.mission.objective = MISSION_OBJECTIVE;
+          state.mission.subObjective = MISSION_SUBOBJECTIVE;
+          state.dialogue.turns = [];
+          state.world.actionUnlocks.searchQuad = true;
+          state.world.actionUnlocks.searchDeanDesk = true;
+          state.world.actionUnlocks.searchFratHouse = true;
+          state.world.actionUnlocks.searchSororityHouse = true;
+          state.world.actionUnlocks.searchTunnel = true;
+          state.world.actionUnlocks.searchCafeteria = true;
+          state.world.actionUnlocks.searchDorms = true;
+          state.world.actionUnlocks.searchStadium = true;
+          state.player.location = "quad";
+          if (origin !== "quad") {
+            state.world.visitCounts.quad = (state.world.visitCounts.quad ?? 0) + 1;
+          }
+          safeTransition(machine, state, "hunt", "COMPLETE_ORIENTATION_INTRO");
+          state.world.events.push(`ORIENTATION_COMPLETE::${state.player.name}`);
+          result = { ok: true, message: "Orientation complete. Student ID issued and mission is now active." };
+          return;
+        }
         case "FORCE_MOVE": {
           const destination = action.target;
           if (state.player.location === destination) {
@@ -499,16 +580,11 @@ export function useGameController(): {
             state.world.restrictions.fratLastSafeLocation = origin;
           }
           state.player.location = action.target;
-          if (state.world.minigames.stripPokerLosses >= STRIP_POKER_CLOTHING_STAKES.length && action.target !== "sorority") {
-            state.fail.hardFailed = true;
-            state.fail.reason = "Campus police stop you for indecent exposure the moment you leave Sorority.";
-            safeTransition(machine, state, "resolved", "MOVE: indecent exposure fail");
-            result = { ok: false, message: state.fail.reason, gameOver: true };
-            return;
-          }
           state.world.visitCounts[action.target] = (state.world.visitCounts[action.target] ?? 0) + 1;
           state.dialogue.turns = [];
-          const travelCost = state.player.inventory.includes("Campus Map") ? 10 : 15;
+          const travelCost = state.player.inventory.includes("Campus Map")
+            ? MOVE_TIME_COST_SEC.withMap
+            : MOVE_TIME_COST_SEC.base;
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - travelCost);
           setPressure(state);
           state.world.events.push(`Moved to ${action.target}`);
@@ -519,6 +595,21 @@ export function useGameController(): {
           state.world.intents = postMoveWorld.intents;
           state.world.presentNpcs = postMoveWorld.presentNpcs;
           syncSonicLocation(state);
+          if (state.sonic.following && action.target !== "stadium") {
+            const sobrietyRoll = seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:${action.target}:escort-sober`);
+            if (sobrietyRoll > 0.78) {
+              state.sonic.drunkLevel = Math.max(0, state.sonic.drunkLevel - 1);
+              state.world.events.push("Sonic status: Sonic is getting sober. Keep drinks coming or move to Stadium now.");
+              state.world.events.push("telemetry:sonic-sobering");
+              if (state.sonic.drunkLevel <= 0) {
+                state.sonic.following = false;
+                state.sonic.location = "quad";
+                state.sonic.cooldownMoves = 2;
+                state.world.events.push("Rumor update: Sonic slipped away while sobering up. Last seen near Quad.");
+                state.world.events.push("telemetry:sonic-slip-away");
+              }
+            }
+          }
           const autoNpc = postMoveWorld.presentNpcs[state.player.location]?.[0];
           if (autoNpc) {
                     if (autoNpc === "frat_boys") state.world.actionUnlocks.beerPongFrat = true;
@@ -608,7 +699,7 @@ export function useGameController(): {
             return;
           }
           state.world.minigames.stripPokerTableLocked = true;
-          result = { ok: true, message: "Poker table session locked in." };
+          result = { ok: true, message: "Poker table opens for one quick hand." };
           return;
         }
         case "END_STRIP_POKER_SESSION": {
@@ -733,7 +824,7 @@ export function useGameController(): {
               result = { ok: false, message: state.fail.reason, gameOver: true };
             }
           }
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 50);
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - FRAT_MATCH_TIME_COST_SEC);
           setPressure(state);
           return;
         }
@@ -778,7 +869,7 @@ export function useGameController(): {
               result = { ok: false, message: state.fail.reason, gameOver: true };
             }
           }
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - (action.shot === "safe" ? 30 : action.shot === "bank" ? 40 : 55));
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - BEER_SHOT_TIME_COST_SEC[action.shot]);
           setPressure(state);
           return;
         }
@@ -788,42 +879,66 @@ export function useGameController(): {
             return;
           }
           const cups = Math.max(0, Math.min(6, Math.floor(action.cupsHit)));
+          const matchup = action.matchup;
           state.world.minigames.globalRound += 1;
           state.world.minigames.beerPongRound += 1;
-          if (cups >= 6) {
-            routeManager.progressRouteA(state);
-            routeManager.progressRouteA(state);
-            state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 3);
-            state.world.minigames.beerPongStreak += 2;
-            state.world.minigames.globalStreak += 2;
-            result = { ok: true, message: "Perfect sweep. Frat lane instantly spikes." };
-          } else if (cups >= 4) {
-            routeManager.progressRouteA(state);
-            state.world.minigames.beerPongStreak += 1;
-            state.world.minigames.globalStreak += 1;
-            state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 2);
-            result = { ok: true, message: "Strong round. Big drunk gain and route progress." };
-          } else if (cups >= 2) {
-            routeManager.progressRouteA(state);
-            state.world.minigames.beerPongStreak = 0;
-            state.world.minigames.globalStreak = 0;
-            state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 1);
-            result = { ok: true, message: "Solid round. You keep momentum." };
-          } else {
-            state.world.minigames.beerPongStreak = 0;
-            state.world.minigames.globalStreak = 0;
-            state.fail.warnings.frat += 1;
-            if (state.world.restrictions.fratChallengeForced) {
-              state.world.restrictions.fratBanned = true;
-              state.world.restrictions.fratChallengeForced = false;
-              const fallbackLocation = state.world.restrictions.fratLastSafeLocation ?? "quad";
-              const destination = fallbackLocation === "frat" ? "quad" : fallbackLocation;
-              state.world.events.push("Rumor update: Frat tossed you out after you lost their challenge.");
-              state.world.events.push(`FORCED_RELOCATE::${destination}::Kicked Out::${encodeURIComponent("You lose the forced challenge. Frat bans you and throws you out.")}`);
-              result = { ok: false, message: "You lose the forced challenge. Frat bans you and throws you out." };
-              return;
+          if (matchup === "sonic") {
+            const priorSonicRounds = state.world.events.filter((entry) => entry.startsWith("SONIC_PONG_MATCH::")).length;
+            state.world.events.push(`SONIC_PONG_MATCH::${priorSonicRounds + 1}::cups=${cups}`);
+            if (cups >= 4) {
+              routeManager.progressRouteA(state);
+              state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 3);
+              state.world.minigames.beerPongStreak = 0;
+              state.world.minigames.globalStreak = 0;
+              result = { ok: true, message: "You outplay Sonic hard. Sonic +3 drunk level." };
+            } else if (cups >= 3) {
+              routeManager.progressRouteA(state);
+              state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 2);
+              state.world.minigames.beerPongStreak = 0;
+              state.world.minigames.globalStreak = 0;
+              result = { ok: true, message: "Solid Sonic round. Sonic +2 drunk level." };
+            } else {
+              state.sonic.drunkLevel = Math.max(0, state.sonic.drunkLevel - 1);
+              state.world.minigames.beerPongStreak = 0;
+              state.world.minigames.globalStreak = 0;
+              result = { ok: true, message: "You lose momentum. Sonic sobers by 1." };
             }
-            result = { ok: true, message: "Cold round. Frat patience drops." };
+          } else {
+            if (cups >= 6) {
+              routeManager.progressRouteA(state);
+              routeManager.progressRouteA(state);
+              state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 3);
+              state.world.minigames.beerPongStreak += 2;
+              state.world.minigames.globalStreak += 2;
+              result = { ok: true, message: "Perfect sweep. Frat lane instantly spikes." };
+            } else if (cups >= 4) {
+              routeManager.progressRouteA(state);
+              state.world.minigames.beerPongStreak += 1;
+              state.world.minigames.globalStreak += 1;
+              state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 2);
+              result = { ok: true, message: "Strong round. Big drunk gain and route progress." };
+            } else if (cups >= 2) {
+              routeManager.progressRouteA(state);
+              state.world.minigames.beerPongStreak = 0;
+              state.world.minigames.globalStreak = 0;
+              state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 1);
+              result = { ok: true, message: "Solid round. You keep momentum." };
+            } else {
+              state.world.minigames.beerPongStreak = 0;
+              state.world.minigames.globalStreak = 0;
+              state.fail.warnings.frat += 1;
+              if (state.world.restrictions.fratChallengeForced) {
+                state.world.restrictions.fratBanned = true;
+                state.world.restrictions.fratChallengeForced = false;
+                const fallbackLocation = state.world.restrictions.fratLastSafeLocation ?? "quad";
+                const destination = fallbackLocation === "frat" ? "quad" : fallbackLocation;
+                state.world.events.push("Rumor update: Frat tossed you out after you lost their challenge.");
+                state.world.events.push(`FORCED_RELOCATE::${destination}::Kicked Out::${encodeURIComponent("You lose the forced challenge. Frat bans you and throws you out.")}`);
+                result = { ok: false, message: "You lose the forced challenge. Frat bans you and throws you out." };
+                return;
+              }
+              result = { ok: true, message: "Cold round. Frat patience drops." };
+            }
           }
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 45);
           setPressure(state);
@@ -833,7 +948,6 @@ export function useGameController(): {
             safeTransition(machine, state, "resolved", "PLAY_BEER_PONG_SCORE fail");
             result = { ok: false, message: state.fail.reason, gameOver: true };
           }
-          const matchup = action.matchup;
           if (state.world.restrictions.fratChallengeForced && cups >= 2) {
             state.world.restrictions.fratChallengeForced = false;
             state.fail.warnings.frat = Math.max(0, state.fail.warnings.frat - 1);
@@ -857,6 +971,11 @@ export function useGameController(): {
             result = { ok: false, message: "Find Sonic first, then challenge him." };
             return;
           }
+          const sonicRoundsUsed = state.world.events.filter((entry) => entry.startsWith("SONIC_PONG_MATCH::")).length;
+          if (sonicRoundsUsed >= SONIC_PONG_MAX_MATCHES) {
+            result = { ok: false, message: "Sonic refuses more rematches. Use items or another route setup now." };
+            return;
+          }
           if (state.world.restrictions.fratBanned && state.player.location !== "frat") {
             result = { ok: false, message: "Frat banned you. Sonic beer pong route is locked." };
             return;
@@ -874,7 +993,8 @@ export function useGameController(): {
           state.world.intents = refreshed.intents;
           state.world.presentNpcs = refreshed.presentNpcs;
           syncSonicLocation(state);
-          result = { ok: true, message: "Sonic grins and drags you to Frat. Table is live." };
+          const roundsLeft = Math.max(0, SONIC_PONG_MAX_MATCHES - sonicRoundsUsed);
+          result = { ok: true, message: `Sonic grins and drags you to Frat. Table is live. Sonic rematches left: ${roundsLeft}.` };
           return;
         }
         case "PLAY_SOGGY_BISCUIT": {
@@ -899,7 +1019,7 @@ export function useGameController(): {
             return;
           }
           const found = revealSearchCache(state, "dean_office", ["Dean Whiskey", "Exam Keycard"]);
-          result = { ok: true, message: `Desk stash spotted: ${found.join(", ")}. Choose what to take.` };
+          result = { ok: true, message: formatSearchResult(found) };
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 35);
           setPressure(state);
           return;
@@ -909,10 +1029,10 @@ export function useGameController(): {
             result = { ok: false, message: "You can only search while at Quad." };
             return;
           }
-          const found = revealSearchCache(state, "quad", ["Campus Map", "Lost Lanyard"]);
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 10);
+          const found = revealSearchCache(state, "quad", ["Campus Map"]);
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 8);
           setPressure(state);
-          result = { ok: true, message: `You scan the benches and spot: ${found.join(", ")}.` };
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_EGGMAN_CLASSROOM": {
@@ -923,7 +1043,7 @@ export function useGameController(): {
           const found = revealSearchCache(state, "eggman_classroom", ["Campus Map"]);
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 12);
           setPressure(state);
-          result = { ok: true, message: `You check the lab desks and find: ${found.join(", ")}.` };
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_FRAT_HOUSE": {
@@ -948,9 +1068,9 @@ export function useGameController(): {
             return;
           }
           const found = revealSearchCache(state, "frat", ["Frat Bong", "Warm Beer"]);
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 16);
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 14);
           setPressure(state);
-          result = { ok: true, message: `You poke around the house and notice: ${found.join(", ")}.` };
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_SORORITY_HOUSE": {
@@ -963,7 +1083,7 @@ export function useGameController(): {
             return;
           }
           const girlsPresent = state.world.presentNpcs.sorority.includes("sorority_girls");
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 18);
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 15);
           setPressure(state);
           if (girlsPresent) {
             pendingSystemReactions.push({
@@ -981,7 +1101,7 @@ export function useGameController(): {
             "Sorority Mascara",
             "Sorority Composite"
           ]);
-          result = { ok: true, message: `Spotted: ${found.join(", ")}.` };
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_TUNNEL": {
@@ -992,7 +1112,7 @@ export function useGameController(): {
           const found = revealSearchCache(state, "tunnel", ["Gate Stamp"]);
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 12);
           setPressure(state);
-          result = { ok: true, message: `You search the damp walls and find: ${found.join(", ")}.` };
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_CAFETERIA": {
@@ -1003,8 +1123,8 @@ export function useGameController(): {
           state.world.actionUnlocks.searchCafeteria = true;
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 12);
           setPressure(state);
-          const found = revealSearchCache(state, "cafeteria", ["Mystery Meat", "Super Dean Beans", "Expired Energy Shot"]);
-          result = { ok: true, message: `Spotted: ${found.join(", ")}.` };
+          const found = revealSearchCache(state, "cafeteria", ["Mystery Meat", "Super Dean Beans", "Warm Beer"]);
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_DORMS": {
@@ -1012,10 +1132,10 @@ export function useGameController(): {
             result = { ok: false, message: "Search works only in Dorm Hall." };
             return;
           }
-          const found = revealSearchCache(state, "dorms", ["Spare Socks", "RA Whistle"]);
+          const found = revealSearchCache(state, "dorms", ["RA Whistle", "Warm Beer"]);
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 10);
           setPressure(state);
-          result = { ok: true, message: `Dorm hallway loot spotted: ${found.join(", ")}.` };
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_DORM_ROOM": {
@@ -1026,10 +1146,18 @@ export function useGameController(): {
           state.world.actionUnlocks.giveWhiskey = true;
           state.world.actionUnlocks.giveAsswine = true;
           state.world.actionUnlocks.escortSonic = true;
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 12);
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 10);
           setPressure(state);
-          const found = revealSearchCache(state, "dorm_room", ["Warm Beer"]);
-          result = { ok: true, message: `You scan the room and spot: ${found.join(", ")}.` };
+          let found = revealSearchCache(state, "dorm_room", ["Warm Beer"]);
+          if (found.length === 0) {
+            const dormRoomVisits = state.world.visitCounts.dorm_room ?? 0;
+            if (dormRoomVisits > 0 && dormRoomVisits % 3 === 0) {
+              state.world.searchCaches.dorm_room = ["Warm Beer"];
+              found = state.world.searchCaches.dorm_room ?? [];
+              state.world.events.push("Search update: Dorm Room got restocked with Warm Beer.");
+            }
+          }
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "SEARCH_STADIUM": {
@@ -1040,7 +1168,7 @@ export function useGameController(): {
           const found = revealSearchCache(state, "stadium", ["Gate Stamp", "Security Schedule"]);
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 8);
           setPressure(state);
-          result = { ok: true, message: `Near the gate, you spot: ${found.join(", ")}.` };
+          result = { ok: true, message: formatSearchResult(found) };
           return;
         }
         case "USE_CAMPUS_MAP": {
@@ -1052,9 +1180,15 @@ export function useGameController(): {
           state.world.actionUnlocks.searchCafeteria = true;
           state.world.actionUnlocks.searchDorms = true;
           state.world.actionUnlocks.searchTunnel = true;
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 5);
+          state.world.actionUnlocks.searchStadium = true;
+          const path = findShortestLocationPath(content, state.player.location, "stadium");
+          const routeText = path.length > 1
+            ? path.map((loc) => formatLocationLabel(loc)).join(" -> ")
+            : "No direct route found from this spot.";
+          const nextHop = path.length > 1 ? formatLocationLabel(path[1]) : "Move toward Quad/Cafeteria lanes.";
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - CAMPUS_MAP_TIME_COST_SEC);
           setPressure(state);
-          result = { ok: true, message: "Map read. Search lanes unlocked. -5s." };
+          result = { ok: true, message: `Map read (-${CAMPUS_MAP_TIME_COST_SEC}s). Suggested gate path: ${routeText}. Next move: ${nextHop}.` };
           return;
         }
         case "USE_GATE_STAMP": {
@@ -1163,6 +1297,28 @@ export function useGameController(): {
             result = { ok: false, message: "No Security Schedule in inventory." };
             return;
           }
+          if (state.player.location === "dorm_room" && (state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
+            removeInventory(state, "Security Schedule");
+            if (!state.player.inventory.includes("Student ID")) {
+              state.fail.warnings.dean += 1;
+              result = {
+                ok: false,
+                message: "Sonic calls the bluff instantly. Without a Student ID, the VIP pitch collapses and Dean warning +1."
+              };
+              return;
+            }
+            state.sonic.following = true;
+            state.sonic.location = state.player.location;
+            state.world.actionUnlocks.escortSonic = true;
+            state.world.actionUnlocks.stadiumEntry = true;
+            safeTransition(machine, state, "escort", "USE_SECURITY_SCHEDULE trick escort");
+            state.timer.remainingSec = Math.max(0, state.timer.remainingSec - TRICK_ROUTE_TIME_COST_SEC);
+            setPressure(state);
+            state.world.events.push("ESCORT_MODE::trick");
+            state.world.events.push("Rumor update: Sonic bought your VIP timing pitch and agreed to move.");
+            result = { ok: true, message: "You pitch a VIP timing window. Sonic agrees to follow you to Stadium." };
+            return;
+          }
           removeInventory(state, "Security Schedule");
           if (state.player.location === "stadium") {
             state.timer.remainingSec = Math.min(900, state.timer.remainingSec + 20);
@@ -1227,7 +1383,7 @@ export function useGameController(): {
           removeInventory(state, "Glitter Flask");
           removeInventory(state, "Warm Beer");
           addInventory(state, "Glitter Bomb Brew");
-          result = { ok: true, message: "You mix a Glitter Bomb Brew. High chaos potential." };
+          result = { ok: true, message: "You mix a Glitter Bomb Brew. Warm Beer and Glitter Flask were consumed." };
           return;
         }
         case "MIX_BEANS_WARM_BEER": {
@@ -1242,7 +1398,7 @@ export function useGameController(): {
           removeInventory(state, "Super Dean Beans");
           removeInventory(state, "Warm Beer");
           addInventory(state, "Turbo Sludge");
-          result = { ok: true, message: "You mix Turbo Sludge. Strong effect, risky aftermath." };
+          result = { ok: true, message: "You mix Turbo Sludge. Warm Beer and Super Dean Beans were consumed." };
           return;
         }
         case "TRADE_THUNDERHEAD": {
@@ -1299,48 +1455,48 @@ export function useGameController(): {
             result = { ok: false, message: "Sorority table ban is active. No games for you after that theft stunt." };
             return;
           }
+          const occupants = state.world.presentNpcs.sorority;
+          const girlsPresent = occupants.includes("sorority_girls");
+          if (!girlsPresent) {
+            result = { ok: false, message: "No game right now. Sorority Girls are not at the table." };
+            return;
+          }
           if (!state.world.minigames.stripPokerTableLocked) {
-            const occupants = state.world.presentNpcs.sorority;
-            const girlsPresent = occupants.includes("sorority_girls");
-            if (!girlsPresent) {
-              result = { ok: false, message: "No game right now. Sorority Girls are not at the table." };
-              return;
-            }
             state.world.minigames.stripPokerTableLocked = true;
           }
+          // Quick-hand rules: fixed cost, visible stake progression, small upside chance.
           state.world.minigames.globalRound += 1;
           state.world.minigames.globalStreak = 0;
-          if (state.player.inventory.includes("Spare Socks")) {
-            removeInventory(state, "Spare Socks");
-            state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 20);
-            setPressure(state);
-            result = { ok: true, message: "You toss Spare Socks into the side pot to dodge a clothing forfeit this hand." };
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 40);
+          setPressure(state);
+          const roll = seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:strip-poker-quick`);
+          if (roll > 0.82) {
+            const rewardItem = state.player.inventory.includes("Warm Beer") ? "Security Schedule" : "Warm Beer";
+            if (!state.player.inventory.includes(rewardItem)) {
+              addInventory(state, rewardItem);
+            }
+            state.world.minigames.stripPokerLosses = Math.max(0, state.world.minigames.stripPokerLosses - 1);
+            state.world.events.push("Rumor update: Poker table chatter revealed a useful route clue.");
+            result = { ok: true, message: `Quick hand done (-40s). You snag ${rewardItem} while everyone argues over side bets.` };
             return;
           }
           state.world.minigames.stripPokerLosses += 1;
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 55);
-          setPressure(state);
           const losses = state.world.minigames.stripPokerLosses;
           const forfeited = STRIP_POKER_CLOTHING_STAKES[Math.min(losses - 1, STRIP_POKER_CLOTHING_STAKES.length - 1)];
           if (losses >= STRIP_POKER_CLOTHING_STAKES.length) {
             state.world.minigames.stripPokerTableLocked = false;
+            state.world.restrictions.sororityBanned = true;
             state.player.location = "quad";
-            state.fail.hardFailed = true;
-            state.fail.reason = "You lose every clothing stake. Sorority kicks you out, and campus expels you for indecent exposure.";
-            safeTransition(machine, state, "resolved", "PLAY_STRIP_POKER_ROUND fail");
-            result = { ok: false, message: state.fail.reason, gameOver: true };
+            state.world.visitCounts.quad = (state.world.visitCounts.quad ?? 0) + 1;
+            result = { ok: false, message: "Table tosses you out after the final stake. You are banned from Sorority for this run." };
             return;
           }
-          result = { ok: true, message: `You lose the hand and forfeit ${forfeited}. They keep you at the table for another hand.` };
+          result = { ok: true, message: `Quick hand done (-40s). You lose this one and forfeit ${forfeited}.` };
           return;
         }
         case "GIVE_WHISKEY": {
-          if (state.player.location !== "dorm_room") {
-            result = { ok: false, message: "Give drinks in Dorm Room." };
-            return;
-          }
           if (!(state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
-            result = { ok: false, message: "Sonic is not here. You can only give this when Sonic is in Dorm Room." };
+            result = { ok: false, message: "Sonic is not here. Give this where Sonic is present." };
             return;
           }
           if (!state.player.inventory.includes("Dean Whiskey")) {
@@ -1348,17 +1504,15 @@ export function useGameController(): {
             return;
           }
           removeInventory(state, "Dean Whiskey");
-          state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 2);
-          result = { ok: true, message: "Sonic drank Dean Whiskey." };
+          const dose = state.player.location === "dorm_room" ? 2 : 1;
+          state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + dose);
+          if (state.sonic.drunkLevel >= 1) state.world.actionUnlocks.beerPongSonic = true;
+          result = { ok: true, message: dose >= 2 ? "Sonic drank Dean Whiskey. Heavy hit in the dorm setup." : "Sonic takes a quick swig. Better effect if you set him up in Dorm Room." };
           return;
         }
         case "GIVE_ASSWINE": {
-          if (state.player.location !== "dorm_room") {
-            result = { ok: false, message: "Give drinks in Dorm Room." };
-            return;
-          }
           if (!(state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
-            result = { ok: false, message: "Sonic is not here. You can only give this when Sonic is in Dorm Room." };
+            result = { ok: false, message: "Sonic is not here. Give this where Sonic is present." };
             return;
           }
           if (!state.player.inventory.includes("Asswine")) {
@@ -1366,8 +1520,10 @@ export function useGameController(): {
             return;
           }
           removeInventory(state, "Asswine");
-          state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 3);
-          result = { ok: true, message: "Sonic took Asswine and got heavily drunk." };
+          const dose = state.player.location === "dorm_room" ? 3 : 2;
+          state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + dose);
+          state.world.actionUnlocks.beerPongSonic = true;
+          result = { ok: true, message: dose >= 3 ? "Sonic took Asswine and got heavily drunk." : "Sonic drinks Asswine but wants a better setup before full commitment." };
           return;
         }
         case "USE_ITEM_ON_TARGET": {
@@ -1389,19 +1545,24 @@ export function useGameController(): {
               return;
             }
             if (!isEscortReady(state.sonic.drunkLevel)) {
-              state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 20);
+              state.timer.remainingSec = Math.max(0, state.timer.remainingSec - HANDCUFFS_UNREADY_TIME_PENALTY_SEC);
               state.fail.warnings.luigi += 1;
-              result = {
-                ok: false,
-                message: `Sonic slips out and roasts you publicly. Escort readiness needs drunk level ${ESCORT_READY_DRUNK_LEVEL}+ first.`
-              };
-              return;
+              state.fail.warnings.dean += 1;
+              const chance = seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:handcuffs-targeted`);
+              if (chance <= HANDCUFFS_UNREADY_FAIL_THRESHOLD) {
+                result = {
+                  ok: false,
+                  message: `Cuff attempt fails. Sonic slips free, warnings spike, and you lose time. Safer fallback: reach drunk level ${ESCORT_READY_DRUNK_LEVEL}+ or run the VIP schedule trick.`
+                };
+                return;
+              }
             }
             removeInventory(state, "Furry Handcuffs");
             state.sonic.following = true;
             state.sonic.location = state.player.location;
             state.world.actionUnlocks.stadiumEntry = true;
             state.fail.warnings.dean += 1;
+            state.world.events.push("ESCORT_MODE::handcuffs");
             safeTransition(machine, state, "escort", "USE_ITEM_ON_TARGET handcuffs sonic");
             result = { ok: true, message: "Cuffs lock. Sonic is furious but moving with you. Head for Stadium now." };
             return;
@@ -1458,19 +1619,24 @@ export function useGameController(): {
             return;
           }
           if (!isEscortReady(state.sonic.drunkLevel)) {
-            state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 20);
+            state.timer.remainingSec = Math.max(0, state.timer.remainingSec - HANDCUFFS_UNREADY_TIME_PENALTY_SEC);
             state.fail.warnings.luigi += 1;
-            result = {
-              ok: false,
-              message: `Sonic slips out and roasts you publicly. Escort readiness needs drunk level ${ESCORT_READY_DRUNK_LEVEL}+ before trying that.`
-            };
-            return;
+            state.fail.warnings.dean += 1;
+            const chance = seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:handcuffs-general`);
+            if (chance <= HANDCUFFS_UNREADY_FAIL_THRESHOLD) {
+              result = {
+                ok: false,
+                message: `Cuff attempt fails. Sonic slips free, warnings spike, and heat climbs. Safer fallback: boost Sonic to drunk level ${ESCORT_READY_DRUNK_LEVEL}+ or use Security Schedule leverage.`
+              };
+              return;
+            }
           }
           removeInventory(state, "Furry Handcuffs");
           state.sonic.following = true;
           state.sonic.location = state.player.location;
           state.world.actionUnlocks.stadiumEntry = true;
           state.fail.warnings.dean += 1;
+          state.world.events.push("ESCORT_MODE::handcuffs");
           safeTransition(machine, state, "escort", "USE_FURRY_HANDCUFFS success");
           result = {
             ok: true,
@@ -1479,12 +1645,8 @@ export function useGameController(): {
           return;
         }
         case "USE_SUPER_DEAN_BEANS": {
-          if (state.player.location !== "dorm_room") {
-            result = { ok: false, message: "Use this in Dorm Room." };
-            return;
-          }
           if (!(state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
-            result = { ok: false, message: "Sonic is not here. Use this when Sonic is in Dorm Room." };
+            result = { ok: false, message: "Sonic is not here. Use this where Sonic is present." };
             return;
           }
           if (!state.player.inventory.includes("Super Dean Beans")) {
@@ -1504,12 +1666,8 @@ export function useGameController(): {
           return;
         }
         case "USE_EXPIRED_ENERGY_SHOT": {
-          if (state.player.location !== "dorm_room") {
-            result = { ok: false, message: "Use this in Dorm Room." };
-            return;
-          }
           if (!(state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
-            result = { ok: false, message: "Sonic is not here. Use this when Sonic is in Dorm Room." };
+            result = { ok: false, message: "Sonic is not here. Use this where Sonic is present." };
             return;
           }
           if (!state.player.inventory.includes("Expired Energy Shot")) {
@@ -1523,12 +1681,8 @@ export function useGameController(): {
           return;
         }
         case "USE_WARM_BEER": {
-          if (state.player.location !== "dorm_room") {
-            result = { ok: false, message: "Use this in Dorm Room." };
-            return;
-          }
           if (!(state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
-            result = { ok: false, message: "Sonic is not here. Use this when Sonic is in Dorm Room." };
+            result = { ok: false, message: "Sonic is not here. Use this where Sonic is present." };
             return;
           }
           if (!state.player.inventory.includes("Warm Beer")) {
@@ -1536,17 +1690,15 @@ export function useGameController(): {
             return;
           }
           removeInventory(state, "Warm Beer");
-          state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + 1);
-          result = { ok: true, message: "Warm beer works. Not elegant, but effective." };
+          const dose = state.player.location === "dorm_room" ? 1 : 1;
+          state.sonic.drunkLevel = Math.min(4, state.sonic.drunkLevel + dose);
+          state.world.actionUnlocks.beerPongSonic = true;
+          result = { ok: true, message: state.player.location === "dorm_room" ? "Warm beer works. Not elegant, but effective." : "Warm beer lands. Sonic starts talking about a beer pong challenge." };
           return;
         }
         case "USE_GLITTER_BOMB_BREW": {
-          if (state.player.location !== "dorm_room") {
-            result = { ok: false, message: "Use this in Dorm Room." };
-            return;
-          }
           if (!(state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
-            result = { ok: false, message: "Sonic is not here. Use this when Sonic is in Dorm Room." };
+            result = { ok: false, message: "Sonic is not here. Use this where Sonic is present." };
             return;
           }
           if (!state.player.inventory.includes("Glitter Bomb Brew")) {
@@ -1566,12 +1718,8 @@ export function useGameController(): {
           return;
         }
         case "USE_TURBO_SLUDGE": {
-          if (state.player.location !== "dorm_room") {
-            result = { ok: false, message: "Use this in Dorm Room." };
-            return;
-          }
           if (!(state.world.presentNpcs[state.player.location] ?? []).includes("sonic")) {
-            result = { ok: false, message: "Sonic is not here. Use this when Sonic is in Dorm Room." };
+            result = { ok: false, message: "Sonic is not here. Use this where Sonic is present." };
             return;
           }
           if (!state.player.inventory.includes("Turbo Sludge")) {
@@ -1591,6 +1739,10 @@ export function useGameController(): {
           return;
         }
         case "ESCORT_SONIC": {
+          if (state.sonic.following) {
+            result = { ok: true, message: "Sonic is already following you." };
+            return;
+          }
           if (!isEscortReady(state.sonic.drunkLevel)) {
             result = { ok: false, message: `Sonic is not in the right state to follow yet. Reach drunk level ${ESCORT_READY_DRUNK_LEVEL}+ first.` };
             return;
@@ -1602,7 +1754,10 @@ export function useGameController(): {
           state.sonic.following = true;
           state.sonic.location = state.player.location;
           state.world.actionUnlocks.stadiumEntry = true;
-          safeTransition(machine, state, "escort", "ESCORT_SONIC success");
+          state.world.events.push("ESCORT_MODE::drunk");
+          if (state.phase !== "escort") {
+            safeTransition(machine, state, "escort", "ESCORT_SONIC success");
+          }
           result = { ok: true, message: "Sonic is following you." };
           return;
         }
@@ -1635,13 +1790,24 @@ export function useGameController(): {
             safeTransition(machine, state, "resolved", "STADIUM_ENTRY success");
             result = { ok: true, message: "Mission complete. Sonic reached Stadium.", won: true, gameOver: true };
           } else {
-            result = { ok: false, message: "Win conditions not met. You are missing a key setup." };
+            if (!state.sonic.following) {
+              result = { ok: false, message: "Sonic is not following. Escort him first (drunk route, handcuffs route, or VIP schedule trick)." };
+              return;
+            }
+            const hasAltEscortMode = state.world.events.some((entry) =>
+              entry.startsWith("ESCORT_MODE::trick") || entry.startsWith("ESCORT_MODE::handcuffs")
+            );
+            if (!isEscortReady(state.sonic.drunkLevel) && !hasAltEscortMode) {
+              result = { ok: false, message: `Sonic is not escort-ready. Reach drunk level ${ESCORT_READY_DRUNK_LEVEL}+ or complete a trick/handcuffs escort setup.` };
+              return;
+            }
+            result = { ok: false, message: "Security blocks entry. Recheck escort setup and mission credentials." };
           }
           return;
         }
         case "GET_HINT": {
           result = { ok: true, message: hintManager.getHint(state) };
-          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 8);
+          state.timer.remainingSec = Math.max(0, state.timer.remainingSec - HINT_TIME_COST_SEC);
           setPressure(state);
           return;
         }
@@ -1671,7 +1837,9 @@ export function useGameController(): {
             .slice(-2)
             .some((turn) => String(turn.npcId || "") === action.npcId);
           if (!hasRecentNpcLine) {
-            if (action.npcId === "dean_cain" && (state.dialogue.deanStage === "intro_pending" || state.dialogue.deanStage === "name_pending")) {
+            const shouldUseScriptedGreeting = encounterCount === 0
+              || (action.npcId === "dean_cain" && (state.dialogue.deanStage === "intro_pending" || state.dialogue.deanStage === "name_pending"));
+            if (shouldUseScriptedGreeting) {
               const greet = dialogue.greeting(action.npcId, encounterCount, `${state.meta.seed}:${state.timer.remainingSec}:tap-open`);
               state.dialogue.turns.push(createDialogueTurn(action.npcId, greet.text, state, {
                 npcId: action.npcId,
@@ -1681,10 +1849,6 @@ export function useGameController(): {
               updateNpcMemory(state, action.npcId, greet.text);
               state.dialogue.source = greet.source;
               state.quality.sourceCounts[greet.source] = (state.quality.sourceCounts[greet.source] ?? 0) + 1;
-              {
-                const key = toneSourceKey(null, greet.source);
-                state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
-              }
             } else {
               pendingSystemReactions.push({
                 npcId: action.npcId,
@@ -1704,7 +1868,11 @@ export function useGameController(): {
         }
         case "SUBMIT_DIALOGUE": {
           const dialogueInput = isSystemDialogue ? action.input.replace(/^__SYSTEM__:\s*/i, "").trim() : action.input;
-          const selectedTone = isSystemDialogue ? null : (action.tone ?? null);
+          const npcPresentHere = (state.world.presentNpcs[state.player.location] ?? []).includes(action.npcId);
+          if (!isSystemDialogue && !npcPresentHere) {
+            result = { ok: false, message: `${formatNpcName(action.npcId)} is no longer here. Follow the latest Sonic Intel sighting and reconnect.` };
+            return;
+          }
           if (!state.dialogue.greetedNpcIds.includes(action.npcId)) {
             state.dialogue.greetedNpcIds.push(action.npcId);
             state.dialogue.encounterCountByNpc[action.npcId] = (state.dialogue.encounterCountByNpc[action.npcId] ?? 0) + 1;
@@ -1726,8 +1894,8 @@ export function useGameController(): {
               state.player.name = parsedName;
               addInventory(state, "Student ID");
               state.dialogue.deanStage = "mission_given";
-              state.mission.objective = "Get Sonic to Stadium.";
-              state.mission.subObjective = "Build a route, intoxicate Sonic, escort him, and clear gate security.";
+              state.mission.objective = MISSION_OBJECTIVE;
+              state.mission.subObjective = MISSION_SUBOBJECTIVE;
               const handoffLine = pickDialogueVariant([
                 `${parsedName}, right. Student ID issued. Mission starts now: get Sonic to Stadium and do not embarrass this office.`,
                 `${parsedName}, got it. You're cleared. Get Sonic to Stadium before this turns into my paperwork nightmare.`,
@@ -1748,8 +1916,6 @@ export function useGameController(): {
               updateNpcMemory(state, "dean_cain", handoffLine);
               state.dialogue.source = "scripted";
               state.quality.sourceCounts.scripted = (state.quality.sourceCounts.scripted ?? 0) + 1;
-              const key = toneSourceKey(selectedTone, "scripted");
-              state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
               state.world.events.push(`MISSION_INTAKE::${parsedName}::orientation_agenda`);
               result = { ok: true, message: "Dean logs your name, issues your ID, and assigns the mission." };
               handledScriptedReply = true;
@@ -1769,8 +1935,6 @@ export function useGameController(): {
             updateNpcMemory(state, "dean_cain", "No name, no ID, no campus clearance. Come back when you can answer one basic question.");
               state.dialogue.source = "scripted";
               state.quality.sourceCounts.scripted = (state.quality.sourceCounts.scripted ?? 0) + 1;
-              const key = toneSourceKey(selectedTone, "scripted");
-              state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
               result = { ok: true, message: "Dean refuses to proceed without your name." };
               handledScriptedReply = true;
               return;
@@ -1792,8 +1956,6 @@ export function useGameController(): {
             result = { ok: true, message: "Dean asks for your name before issuing Student ID." };
             state.dialogue.source = "scripted";
             state.quality.sourceCounts.scripted = (state.quality.sourceCounts.scripted ?? 0) + 1;
-            const key = toneSourceKey(selectedTone, "scripted");
-            state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
             handledScriptedReply = true;
             return;
           }
@@ -1876,24 +2038,11 @@ export function useGameController(): {
             state.world.actionUnlocks.beerPongFrat = true;
             if (evaluateFratWarning(state.fail.warnings.frat).hardFail && !state.world.restrictions.fratChallengeForced) {
               state.world.restrictions.fratChallengeForced = true;
-              const challengeVariants = selectedTone === "informative"
-                ? [
-                    "Diesel: House penalty active. Play now. Lose and Frat access is revoked.",
-                    "Provelony Toney: Rule is simple: win this game or lose Frat access.",
-                    "Provelony Toney: Consequence unlocked. Table decides entry right now."
-                  ]
-                : selectedTone === "neutral"
-                  ? [
-                      "Diesel: You disrespected the house. Play now or lose access.",
-                      "Provelony Toney: Cups up. Lose and you're out of Frat.",
-                      "Provelony Toney: Challenge is live. Win to stay, lose to leave."
-                    ]
-                  : [
-                      "Diesel: Mouth got loud. Table decides this now. Lose and you're banned.",
-                      "Provelony Toney: You disrespected the house, now you play for access. Lose and you're done here.",
-                      "Provelony Toney: Congrats, you unlocked consequences. Cups up, loser leaves."
-                    ];
-              const challengeLine = pickDialogueVariant(challengeVariants, `${state.meta.seed}:${state.timer.remainingSec}:frat-forced-challenge:${selectedTone || "none"}`);
+              const challengeLine = pickDialogueVariant([
+                "Diesel: Mouth got loud. Table decides this now. Lose and you're banned.",
+                "Provelony Toney: You disrespected the house, now you play for access. Lose and you're done here.",
+                "Provelony Toney: Congrats, you unlocked consequences. Cups up, loser leaves."
+              ], `${state.meta.seed}:${state.timer.remainingSec}:frat-forced-challenge`);
               const [challengeSpeakerRaw, ...challengeBodyParts] = challengeLine.split(":");
               const challengeSpeaker = challengeBodyParts.length > 0 ? challengeSpeakerRaw.trim() : "Diesel";
               const challengeBody = challengeBodyParts.length > 0 ? challengeBodyParts.join(":").trim() : challengeLine;
@@ -1905,8 +2054,6 @@ export function useGameController(): {
               updateNpcMemory(state, "frat_boys", challengeBody);
               state.dialogue.source = "scripted";
               state.quality.sourceCounts.scripted = (state.quality.sourceCounts.scripted ?? 0) + 1;
-              const key = toneSourceKey(selectedTone, "scripted");
-              state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
               result = { ok: true, message: "Frat challenges you to beer pong. Lose and you're banned." };
               handledScriptedReply = true;
               return;
@@ -1925,24 +2072,11 @@ export function useGameController(): {
                 state.sonic.location = "quad";
                 state.sonic.cooldownMoves = 2;
                 state.sonic.patience = 2;
-                const sonicExitVariants = selectedTone === "informative"
-                  ? [
-                      "Conversation failed the vibe check. I'm leaving now. Bring leverage if you want me back.",
-                      "No movement on your side, so I'm exiting. Return with one clear play.",
-                      "You're pushing without setup. I'm gone until you bring a real route step."
-                    ]
-                  : selectedTone === "neutral"
-                    ? [
-                        "This exchange is dead. I'm leaving. Come back with a better play.",
-                        "You're forcing it, so I'm out. Bring leverage next time.",
-                        "No momentum here. I'm gone for now."
-                      ]
-                    : [
-                        "This is lame and your vibe is busted. I'm out. Catch me when you have a real play.",
-                        "Nah, this pitch is dead. I'm ghosting this room before my reputation catches feelings.",
-                        "You're forcing it. I'm gone - bring chaos or don't bring me anything."
-                      ];
-                const sonicExitLine = pickDialogueVariant(sonicExitVariants, `${state.meta.seed}:${state.timer.remainingSec}:sonic-exit:${selectedTone || "none"}`);
+                const sonicExitLine = pickDialogueVariant([
+                  "This is lame and your vibe is busted. I'm out. Catch me when you have a real play.",
+                  "Nah, this pitch is dead. I'm ghosting this room before my reputation catches feelings.",
+                  "You're forcing it. I'm gone - bring chaos or don't bring me anything."
+                ], `${state.meta.seed}:${state.timer.remainingSec}:sonic-exit`);
                 state.dialogue.turns.push(createDialogueTurn("sonic", sonicExitLine, state, {
                   npcId: "sonic",
                   displaySpeaker: "Sonic",
@@ -1951,32 +2085,17 @@ export function useGameController(): {
                 updateNpcMemory(state, "sonic", sonicExitLine);
                 state.dialogue.source = "scripted";
                 state.quality.sourceCounts.scripted = (state.quality.sourceCounts.scripted ?? 0) + 1;
-                const key = toneSourceKey(selectedTone, "scripted");
-                state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
                 state.world.events.push("Rumor update: Sonic dipped after a bad exchange. Last seen heading toward Quad.");
                 state.world.events.push("telemetry:sonic-leave-triggered");
                 result = { ok: true, message: "Sonic bails after the exchange. Try rebuilding rapport before asking for Stadium again." };
                 handledScriptedReply = true;
                 return;
               }
-              const sonicWarnVariants = selectedTone === "informative"
-                ? [
-                    "Current approach is not working. Bring one concrete leverage move.",
-                    "Direct note: pressure without setup makes me leave.",
-                    "One more low-value push and this lane closes."
-                  ]
-                : selectedTone === "neutral"
-                  ? [
-                      "Easy. Push like that again and I leave.",
-                      "Tone check. Bring leverage, not pressure.",
-                      "One more bad push and I'm gone."
-                    ]
-                  : [
-                      "Easy. Keep barking orders and I'll bounce.",
-                      "Tone check. You want movement, bring leverage not whining.",
-                      "One more lame push and I'm gone."
-                    ];
-              const sonicWarnLine = pickDialogueVariant(sonicWarnVariants, `${state.meta.seed}:${state.timer.remainingSec}:sonic-warn:${state.sonic.patience}:${selectedTone || "none"}`);
+              const sonicWarnLine = pickDialogueVariant([
+                "Easy. Keep barking orders and I'll bounce.",
+                "Tone check. You want movement, bring leverage not whining.",
+                "One more lame push and I'm gone."
+              ], `${state.meta.seed}:${state.timer.remainingSec}:sonic-warn:${state.sonic.patience}`);
               state.dialogue.turns.push(createDialogueTurn("sonic", sonicWarnLine, state, {
                 npcId: "sonic",
                 displaySpeaker: "Sonic",
@@ -1985,8 +2104,6 @@ export function useGameController(): {
               updateNpcMemory(state, "sonic", sonicWarnLine);
               state.dialogue.source = "scripted";
               state.quality.sourceCounts.scripted = (state.quality.sourceCounts.scripted ?? 0) + 1;
-              const key = toneSourceKey(selectedTone, "scripted");
-              state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
               result = { ok: true, message: "Sonic pushes back. Adjust your approach and try again." };
               handledScriptedReply = true;
               return;
@@ -2011,7 +2128,7 @@ export function useGameController(): {
       for (const reaction of pendingSystemReactions) {
         const latest = store.get();
         if (latest.phase === "resolved" || latest.fail.hardFailed) break;
-        const reply = await dialogue.reply(reaction.npcId, reaction.input, latest, null);
+        const reply = await dialogue.reply(reaction.npcId, reaction.input, latest);
         store.patch((state) => {
           if (reaction.resetTurns) state.dialogue.turns = [];
           const clampedText = clampDialogueForDisplay(reaction.npcId, reply.text);
@@ -2026,8 +2143,6 @@ export function useGameController(): {
           })));
           state.dialogue.source = reply.source;
           state.quality.sourceCounts[reply.source] = (state.quality.sourceCounts[reply.source] ?? 0) + 1;
-          const key = toneSourceKey(null, reply.source);
-          state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
           updateNpcMemory(state, reaction.npcId, reply.text);
           ensureMissionIntakeConsistency(state);
           const world = director.updateWorld(state);
@@ -2043,53 +2158,56 @@ export function useGameController(): {
       const dialogueInput = isSystemDialogue
         ? dialogueAction.input.replace(/^__SYSTEM__:\s*/i, "").trim()
         : dialogueAction.input;
-      const tonePreference = isSystemDialogue ? null : (dialogueAction.tone ?? null);
       let provisionalCreatedAt: string | undefined;
       if (!isSystemDialogue) {
         store.patch((state) => {
+          const provisionalSpeaker = dialogueAction.npcId === "sorority_girls"
+            ? (seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:sorority-provisional`) > 0.5 ? "Apple" : "Fedora")
+            : dialogueAction.npcId === "frat_boys"
+              ? (seededRoll(`${state.meta.seed}:${state.timer.remainingSec}:frat-provisional`) > 0.5 ? "Diesel" : "Provelony Toney")
+              : dialogueAction.npcId.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
           const provisional = createDialogueTurn(dialogueAction.npcId, "...", state, {
             npcId: dialogueAction.npcId,
-            displaySpeaker: dialogueAction.npcId.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()),
+            displaySpeaker: provisionalSpeaker,
             poseKey: "neutral"
           });
           provisionalCreatedAt = provisional.createdAt;
           state.dialogue.turns.push(provisional);
         });
       }
-      const reply = await dialogue.reply(dialogueAction.npcId, dialogueInput, snapshot, tonePreference);
+      const toneForReply = isSystemDialogue ? undefined : (dialogueAction.tone ?? "neutral");
+      const routed = await dialogue.reply(dialogueAction.npcId, dialogueInput, snapshot, toneForReply);
       store.patch((state) => {
         if (provisionalCreatedAt) {
           state.dialogue.turns = state.dialogue.turns.filter((turn) => !(turn.createdAt === provisionalCreatedAt && turn.text === "..."));
         }
-        state.dialogue.source = reply.source;
-        const clampedText = clampDialogueForDisplay(dialogueAction.npcId, reply.text);
-        if (dialogueAction.npcId === "sorority_girls" && clampedText.length < reply.text.length) {
+        state.dialogue.source = routed.source;
+        const clampedText = clampDialogueForDisplay(dialogueAction.npcId, routed.text);
+        if (dialogueAction.npcId === "sorority_girls" && clampedText.length < routed.text.length) {
           state.world.events.push("telemetry:sorority-trimmed");
         }
-        const parsedTurns = parseDisplayTurns(dialogueAction.npcId, clampedText, reply.displaySpeaker);
+        const parsedTurns = parseDisplayTurns(dialogueAction.npcId, clampedText, routed.displaySpeaker);
         parsedTurns.forEach((turn) => state.dialogue.turns.push(createDialogueTurn(turn.speaker, turn.text, state, {
           npcId: dialogueAction.npcId,
           displaySpeaker: turn.displaySpeaker,
-          poseKey: inferNpcPoseKey(dialogueAction.npcId, turn.text, state, reply.intent)
+          poseKey: inferNpcPoseKey(dialogueAction.npcId, turn.text, state, routed.intent)
         })));
-        state.quality.sourceCounts[reply.source] = (state.quality.sourceCounts[reply.source] ?? 0) + 1;
-        const key = toneSourceKey(tonePreference, reply.source);
-        state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
-        updateNpcMemory(state, dialogueAction.npcId, reply.text);
+        state.quality.sourceCounts[routed.source] = (state.quality.sourceCounts[routed.source] ?? 0) + 1;
+        updateNpcMemory(state, dialogueAction.npcId, routed.text);
         ensureMissionIntakeConsistency(state);
         const world = director.updateWorld(state);
         state.world.intents = world.intents;
         state.world.presentNpcs = world.presentNpcs;
         syncSonicLocation(state);
-        if (reply.safetyAbort) {
+        if (routed.safetyAbort) {
           state.safety.status = "abort";
           state.fail.hardFailed = true;
           state.fail.reason = "Safety policy triggered.";
           safeTransition(machine, state, "resolved", "SUBMIT_DIALOGUE safety abort");
-          result = { ok: false, message: reply.text, gameOver: true };
+          result = { ok: false, message: routed.text, gameOver: true };
           return;
         }
-        result = { ok: true, message: reply.text };
+        result = { ok: true, message: routed.text };
       });
     }
 

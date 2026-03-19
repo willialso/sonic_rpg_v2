@@ -27,7 +27,6 @@ export type GamePhase = "onboarding" | "hunt" | "escort" | "resolved";
 export type SafetyStatus = "ok" | "abort";
 export type DialogueSource = "scripted" | "llm" | "llm_regen" | "fallback" | "cache" | "cooldown";
 export type DeanConversationStage = "intro_pending" | "name_pending" | "mission_given" | "dismiss_mode" | "expelled";
-export type ReplyTone = "informative" | "sarcastic" | "neutral";
 
 export interface LocationContent {
   id: LocationId;
@@ -130,6 +129,7 @@ export interface GameStateData {
   };
   timer: {
     remainingSec: number;
+    paused?: boolean;
   };
   phase: GamePhase;
   player: {
@@ -212,7 +212,6 @@ export interface GameStateData {
   };
   quality: {
     sourceCounts: Record<string, number>;
-    toneSourceCounts: Record<string, number>;
   };
 }
 

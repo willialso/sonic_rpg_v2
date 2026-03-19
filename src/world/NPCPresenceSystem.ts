@@ -79,8 +79,7 @@ export class NPCPresenceSystem {
       || state.routes.routeA.progress > 0
       || state.routes.routeB.progress > 0
       || state.routes.routeC.progress > 0
-      || state.player.inventory.includes("Campus Map")
-      || state.player.inventory.includes("Lost Lanyard");
+      || state.player.inventory.includes("Campus Map");
     if (!hasProgressSignal) {
       return;
     }
@@ -100,11 +99,28 @@ export class NPCPresenceSystem {
 
   resolve(state: GameStateData): PresenceMap {
     const p = emptyPresence();
+    const deanLockedToOffice = state.dialogue.deanStage === "intro_pending" || state.dialogue.deanStage === "name_pending";
+    const deanTick = Math.floor((900 - state.timer.remainingSec) / 40);
+    if (deanLockedToOffice || deanTick % 3 !== 1) {
+      p.dean_office.push("dean_cain");
+    } else {
+      this.pushWithCap(p, "quad", "dean_cain", 2);
+    }
 
-    // Fixed anchors.
-    p.dean_office.push("dean_cain");
-    p.frat.push("frat_boys");
-    p.sorority.push("sorority_girls");
+    const fratTick = Math.floor((900 - state.timer.remainingSec) / 45);
+    if (state.world.restrictions.fratChallengeForced || fratTick % 3 !== 2) {
+      p.frat.push("frat_boys");
+    } else {
+      this.pushWithCap(p, "quad", "frat_boys", 2);
+    }
+
+    const sororityTick = Math.floor((900 - state.timer.remainingSec) / 50);
+    if (state.world.minigames.stripPokerTableLocked || sororityTick % 3 !== 1) {
+      p.sorority.push("sorority_girls");
+    } else {
+      this.pushWithCap(p, "cafeteria", "sorority_girls", 2);
+    }
+
     p.tunnel.push("thunderhead");
     p.eggman_classroom.push("eggman");
 

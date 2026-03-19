@@ -17,8 +17,12 @@ export function PresenceBar({
   resolveNpcImage,
   onFocusNpc
 }: Props) {
+  const count = presentNpcs.length;
   return (
     <section className="presence-bar presence-markers" aria-label="Nearby people">
+      <p className="presence-caption">
+        {count > 0 ? `Characters in this location (${count}) — tap to talk` : "No characters visible in this location."}
+      </p>
       {presentNpcs.length > 0 && (
         <div className="presence-marker-row">
           {presentNpcs.map((npc, idx) => (

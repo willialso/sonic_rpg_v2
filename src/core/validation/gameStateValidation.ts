@@ -49,6 +49,7 @@ export function validateGameStateCandidate(candidate: unknown): candidate is Gam
   const state = candidate;
   if (!isRecord(state.meta) || typeof state.meta.seed !== "string" || typeof state.meta.version !== "string") return false;
   if (!isRecord(state.timer) || typeof state.timer.remainingSec !== "number") return false;
+  if (state.timer.paused !== undefined && typeof state.timer.paused !== "boolean") return false;
   if (!PHASES.includes(state.phase as GamePhase)) return false;
 
   if (!isRecord(state.player)) return false;
@@ -68,7 +69,6 @@ export function validateGameStateCandidate(candidate: unknown): candidate is Gam
 
   if (!isRecord(state.dialogue) || !Array.isArray(state.dialogue.turns) || !isStringArray(state.dialogue.greetedNpcIds)) return false;
   if (!isRecord(state.quality) || !isRecord(state.quality.sourceCounts)) return false;
-  if (state.quality.toneSourceCounts !== undefined && !isRecord(state.quality.toneSourceCounts)) return false;
 
   const presentNpcs = state.world.presentNpcs;
   for (const location of LOCATION_IDS) {
@@ -83,13 +83,11 @@ export function normalizeGameState(candidate: unknown): GameStateData | null {
   if (!validateGameStateCandidate(candidate)) return null;
   const state = structuredClone(candidate);
   state.timer.remainingSec = Math.max(0, Math.floor(state.timer.remainingSec));
+  state.timer.paused = Boolean(state.timer.paused);
   state.sonic.drunkLevel = Math.max(0, Math.min(4, Math.floor(state.sonic.drunkLevel)));
   state.fail.warnings.dean = Math.max(0, Math.floor(state.fail.warnings.dean));
   state.fail.warnings.luigi = Math.max(0, Math.floor(state.fail.warnings.luigi));
   state.fail.warnings.frat = Math.max(0, Math.floor(state.fail.warnings.frat));
   state.world.events = state.world.events.slice(-100);
-  if (!isRecord(state.quality.toneSourceCounts)) {
-    state.quality.toneSourceCounts = {};
-  }
   return state;
 }

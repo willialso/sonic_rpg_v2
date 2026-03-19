@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { ActionResult, LocationId, NpcId, ReplyTone } from "../../types/game";
-import { canonicalizeDisplaySpeaker, stripLeadingSpeakerPrefix } from "../../app/actions/dialogueActions";
+import type { LocationId, NpcId } from "../../types/game";
+import type { DialogueTone } from "../../dialogue/types";
 
 type Props = {
   locationId: LocationId;
@@ -13,14 +13,10 @@ type Props = {
   popupDialogueText: string;
   popupTyping: boolean;
   engagedNpc: NpcId | null;
-  selectedReplyTone: ReplyTone | null;
-  playerInput: string;
   isAwaitingNpcReply: boolean;
   isResolved: boolean;
-  titleCase: (input: string) => string;
-  onReplyToneChange: (tone: ReplyTone | null) => void;
-  onPlayerInputChange: (value: string) => void;
-  onSubmitDialogue: (action: { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string; tone?: ReplyTone | null }) => Promise<ActionResult>;
+  dialogueQuickReplies: Array<{ id: DialogueTone; tone: string; text: string }>;
+  onSubmitQuickReply: (text: string, tone: DialogueTone) => Promise<void>;
 };
 
 export function ScenePanel(props: Props) {
@@ -35,37 +31,53 @@ export function ScenePanel(props: Props) {
     popupDialogueText,
     popupTyping,
     engagedNpc,
-    selectedReplyTone,
-    playerInput,
     isAwaitingNpcReply,
     isResolved,
-    titleCase,
-    onReplyToneChange,
-    onPlayerInputChange,
-    onSubmitDialogue
+    dialogueQuickReplies,
+    onSubmitQuickReply
   } = props;
-  const renderedSpeaker = engagedNpc
-    ? (canonicalizeDisplaySpeaker(engagedNpc, popupDisplaySpeaker) ?? popupDisplaySpeaker)
-    : popupDisplaySpeaker;
-  const renderedDialogueText = popupTyping
-    ? ""
-    : (engagedNpc ? stripLeadingSpeakerPrefix(engagedNpc, popupDialogueText, renderedSpeaker) : popupDialogueText);
-  const toneOptions: Array<{ key: ReplyTone; label: string }> = [
-    { key: "informative", label: "Informative" },
-    { key: "sarcastic", label: "Sarcastic" },
-    { key: "neutral", label: "Neutral" }
-  ];
-  const [loadedBackground, setLoadedBackground] = useState(sceneBackgroundImage);
+  const [activeBackground, setActiveBackground] = useState(sceneBackgroundImage);
+  const [previousBackground, setPreviousBackground] = useState("");
+  const [isBackgroundTransitioning, setIsBackgroundTransitioning] = useState(false);
+  const [selectedTone, setSelectedTone] = useState<DialogueTone | null>(null);
+
   useEffect(() => {
     if (!sceneBackgroundImage) return;
-    if (sceneBackgroundImage === loadedBackground) return;
+    if (sceneBackgroundImage === activeBackground) return;
     const img = new Image();
-    img.onload = () => setLoadedBackground(sceneBackgroundImage);
+    img.onload = () => {
+      setPreviousBackground(activeBackground);
+      setActiveBackground(sceneBackgroundImage);
+      setIsBackgroundTransitioning(true);
+    };
     img.src = sceneBackgroundImage;
-  }, [loadedBackground, sceneBackgroundImage]);
+  }, [activeBackground, sceneBackgroundImage]);
+
+  useEffect(() => {
+    if (!isBackgroundTransitioning) return;
+    const id = window.setTimeout(() => {
+      setIsBackgroundTransitioning(false);
+      setPreviousBackground("");
+    }, 220);
+    return () => window.clearTimeout(id);
+  }, [isBackgroundTransitioning]);
+
+  useEffect(() => {
+    setSelectedTone(null);
+  }, [engagedNpc]);
+
   return (
     <section className={`scene scene-${locationId}`}>
-      <div className="scene-bg-image-layer" style={{ backgroundImage: `url("${loadedBackground || sceneBackgroundImage}")` }} />
+      {previousBackground && (
+        <div
+          className={`scene-bg-image-layer scene-bg-image-prev ${isBackgroundTransitioning ? "is-transitioning" : ""}`}
+          style={{ backgroundImage: `url("${previousBackground}")` }}
+        />
+      )}
+      <div
+        className={`scene-bg-image-layer scene-bg-image-active ${isBackgroundTransitioning ? "is-transitioning" : ""}`}
+        style={{ backgroundImage: `url("${activeBackground || sceneBackgroundImage}")` }}
+      />
       {shouldShowDialoguePopup && (
         <div className={`scene-character-stage scene-character-stage-${scenePopupPlacement}`} aria-live="polite">
           <div className="scene-character-stage-dim" />
@@ -74,22 +86,22 @@ export function ScenePanel(props: Props) {
               {popupCharacterImage ? (
                 <img
                   src={popupCharacterImage}
-                  alt={`${renderedSpeaker || (engagedNpc ? titleCase(engagedNpc) : "NPC")} portrait`}
+                  alt={`${popupDisplaySpeaker} portrait`}
                   className={`scene-character-stage-portrait ${engagedNpc === "thunderhead" ? "scene-character-stage-portrait-thunderhead" : ""}`}
                 />
               ) : (
                 <div className="scene-character-stage-portrait scene-character-stage-portrait-fallback" aria-hidden="true">
-                  <span>{renderedSpeaker ? renderedSpeaker.charAt(0).toUpperCase() : "?"}</span>
+                  <span>{popupDisplaySpeaker ? popupDisplaySpeaker.charAt(0).toUpperCase() : "?"}</span>
                 </div>
               )}
             </div>
             <div className="scene-character-stage-text-wrap">
               <p className="bubble bubble-npc scene-character-stage-text">
                 <strong>
-                  {(renderedSpeaker || (engagedNpc ? titleCase(engagedNpc) : "NPC"))}:
+                  {popupDisplaySpeaker}
+                  {popupTyping && <span className="typing-wave" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>}
                 </strong>{" "}
-                {renderedDialogueText}
-                {popupTyping && <span className="typing-wave" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>}
+                {popupDialogueText}
               </p>
             </div>
           </article>
@@ -98,52 +110,28 @@ export function ScenePanel(props: Props) {
 
       <div className="scene-footer">
         {engagedNpc && (
-          <>
-            <div className="quick-reply-row" role="group" aria-label="Reply tone">
-              {toneOptions.map((tone) => (
+          <div className="dialogue-choice-panel">
+            <p className="dialogue-choice-label">Choose your tone:</p>
+            <p className="dialogue-tone-current">
+              Current tone: <strong>{selectedTone ? dialogueQuickReplies.find((reply) => reply.id === selectedTone)?.tone ?? "None" : "None"}</strong>
+            </p>
+            <div className="quick-reply-row" aria-label="Dialogue tone choices">
+              {dialogueQuickReplies.map((reply) => (
                 <button
-                  key={`tone-${tone.key}`}
-                  type="button"
-                  className={`quick-reply-btn quick-reply-btn-tone-${tone.key} ${selectedReplyTone === tone.key ? "quick-reply-btn-active" : ""}`}
-                  aria-pressed={selectedReplyTone === tone.key}
-                  onClick={() => onReplyToneChange(selectedReplyTone === tone.key ? null : tone.key)}
+                  key={reply.id}
+                  className={`quick-reply-btn quick-reply-btn-${reply.id} ${selectedTone === reply.id ? "quick-reply-btn-active" : ""}`}
+                  title={reply.text}
                   disabled={isAwaitingNpcReply || isResolved}
+                  onClick={async () => {
+                    setSelectedTone(reply.id);
+                    await onSubmitQuickReply(reply.text, reply.id);
+                  }}
                 >
-                  {tone.label}
+                  {reply.tone}
                 </button>
               ))}
             </div>
-            <div className="dialogue-box">
-              <input
-                value={playerInput}
-                onChange={(e) => onPlayerInputChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key !== "Enter") return;
-                  if (!playerInput.trim() || isResolved || isAwaitingNpcReply) return;
-                  e.preventDefault();
-                  void onSubmitDialogue({ type: "SUBMIT_DIALOGUE", npcId: engagedNpc, input: playerInput, tone: selectedReplyTone }).then(() => {
-                    onPlayerInputChange("");
-                  });
-                }}
-                placeholder={`Talk to ${titleCase(engagedNpc)}...`}
-                inputMode="text"
-                enterKeyHint="send"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="sentences"
-                disabled={isAwaitingNpcReply || isResolved}
-              />
-              <button
-                disabled={!playerInput.trim() || isResolved || isAwaitingNpcReply}
-                onClick={async () => {
-                  await onSubmitDialogue({ type: "SUBMIT_DIALOGUE", npcId: engagedNpc, input: playerInput, tone: selectedReplyTone });
-                  onPlayerInputChange("");
-                }}
-              >
-                {isAwaitingNpcReply ? "Typing..." : "Send"}
-              </button>
-            </div>
-          </>
+          </div>
         )}
       </div>
     </section>
