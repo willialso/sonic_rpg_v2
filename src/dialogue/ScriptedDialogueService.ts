@@ -135,7 +135,8 @@ export class ScriptedDialogueService {
     return pickLine(rows, key);
   }
 
-  respond(npcId: NpcId, input: string, state: GameStateData, intentId = "generic", _tonePreference: ReplyTone | null = null): string {
+  respond(npcId: NpcId, input: string, state: GameStateData, intentId = "generic", tonePreference: ReplyTone | null = null): string {
+    void tonePreference;
     const text = input.toLowerCase();
     const voiceSeed = `${state.timer.remainingSec}:${state.player.location}:${state.routes.routeA.progress}:${state.routes.routeB.progress}:${state.routes.routeC.progress}:${text.length}`;
     const progressBand = inferProgressBand(state);
