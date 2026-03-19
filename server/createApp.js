@@ -2,6 +2,7 @@ import express from "express";
 import fs from "node:fs";
 import path from "node:path";
 import compression from "compression";
+import cors from "cors";
 import { validateDialogueRequest } from "./llm/validators.js";
 
 function setStaticCacheHeaders(res, filePath) {
@@ -31,11 +32,40 @@ function setStaticCacheHeaders(res, filePath) {
   res.setHeader("Cache-Control", "public, max-age=3600");
 }
 
+function buildApiCorsOptions() {
+  const configured = String(
+    process.env.CORS_ALLOWED_ORIGINS
+    || process.env.FRONTEND_ORIGIN
+    || ""
+  )
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const allowAll = configured.length === 0;
+  const allowed = new Set(configured);
+
+  return {
+    origin(origin, callback) {
+      if (!origin || allowAll || allowed.has(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error("Origin not allowed by CORS policy"));
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    maxAge: 86400
+  };
+}
+
 export function createApp(orchestrator) {
   const app = express();
   const distDir = path.join(process.cwd(), "dist");
   const indexHtmlPath = path.join(distDir, "index.html");
+  const apiCorsOptions = buildApiCorsOptions();
   app.use(compression());
+  app.use("/api", cors(apiCorsOptions));
+  app.options(/^\/api(?:\/.*)?$/, cors(apiCorsOptions));
   app.use(express.json({ limit: "1mb" }));
 
   // Silence browser default favicon probe when no .ico is packaged.

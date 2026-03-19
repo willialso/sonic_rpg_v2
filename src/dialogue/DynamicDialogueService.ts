@@ -1,6 +1,7 @@
 import type { DialogueRequest, DialogueResponse, TurnIntent } from "./types";
 import { FallbackDialogueBank } from "./FallbackDialogueBank";
 import { CHARACTER_CONTRACTS } from "./CharacterContracts";
+import { apiUrl } from "../api/apiUrl";
 
 const FALLBACK_SOURCE: DialogueResponse["source"] = "fallback";
 const seenValidationIssueHashes = new Set<string>();
@@ -101,7 +102,7 @@ export class DynamicDialogueService {
     try {
       const controller = new AbortController();
       timeoutId = window.setTimeout(() => controller.abort(), DIALOGUE_CLIENT_TIMEOUT_MS);
-      const response = await fetch("/api/dialogue", {
+      const response = await fetch(apiUrl("/api/dialogue"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,

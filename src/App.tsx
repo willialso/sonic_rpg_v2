@@ -4,6 +4,7 @@ import { seededRoll } from "./app/actions/minigameActions";
 import type { GameStateData, LocationId, NpcId } from "./types/game";
 import { ESCORT_READY_DRUNK_LEVEL, WARNING_LIMITS, warningMeter } from "./gameplay/progressionRules";
 import { resolveBackgroundImage, resolveCharacterImage } from "./assets/AssetManifest";
+import { apiUrl } from "./api/apiUrl";
 import asswineIcon from "./assets/items/items_assswine.png";
 import beansIcon from "./assets/items/items_beans.png";
 import campusMapIcon from "./assets/items/items_campus_map.png";
@@ -958,7 +959,7 @@ function App() {
     const trimmed = action.input.trim();
     if (import.meta.env.DEV && /^\/refresh(\s+persona)?$/i.test(trimmed) && (action.npcId === "sonic" || action.npcId === "thunderhead")) {
       try {
-        const response = await fetch("/api/dialogue/refresh", {
+        const response = await fetch(apiUrl("/api/dialogue/refresh"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ character_id: action.npcId })
