@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { LocationId, NpcId } from "../../types/game";
 import type { DialogueTone } from "../../dialogue/types";
 
@@ -19,7 +19,7 @@ type Props = {
   onSubmitQuickReply: (text: string, tone: DialogueTone) => Promise<void>;
 };
 
-export function ScenePanel(props: Props) {
+function ScenePanelComponent(props: Props) {
   const {
     locationId,
     sceneBackgroundImage,
@@ -118,3 +118,5 @@ export function ScenePanel(props: Props) {
     </section>
   );
 }
+
+export const ScenePanel = memo(ScenePanelComponent);

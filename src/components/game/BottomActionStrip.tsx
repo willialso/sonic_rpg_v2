@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 type Props = {
   engagedNpc: string | null;
   playerInput: string;
@@ -7,7 +9,7 @@ type Props = {
   onOpenMenu: () => void;
 };
 
-export function BottomActionStrip({
+function BottomActionStripComponent({
   engagedNpc,
   playerInput,
   isResolved,
@@ -34,3 +36,5 @@ export function BottomActionStrip({
     </section>
   );
 }
+
+export const BottomActionStrip = memo(BottomActionStripComponent);
