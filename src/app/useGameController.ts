@@ -343,6 +343,10 @@ export function useGameController(): {
         updateNpcMemory(initial, "dean_cain", greet.text);
         initial.dialogue.source = "scripted";
         initial.quality.sourceCounts.scripted = (initial.quality.sourceCounts.scripted ?? 0) + 1;
+        {
+          const key = toneSourceKey(null, "scripted");
+          initial.quality.toneSourceCounts[key] = (initial.quality.toneSourceCounts[key] ?? 0) + 1;
+        }
         initial.dialogue.encounterCountByNpc.dean_cain = encounterCount + 1;
         initial.dialogue.deanStage = "name_pending";
       }
@@ -1677,6 +1681,10 @@ export function useGameController(): {
               updateNpcMemory(state, action.npcId, greet.text);
               state.dialogue.source = greet.source;
               state.quality.sourceCounts[greet.source] = (state.quality.sourceCounts[greet.source] ?? 0) + 1;
+              {
+                const key = toneSourceKey(null, greet.source);
+                state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
+              }
             } else {
               pendingSystemReactions.push({
                 npcId: action.npcId,

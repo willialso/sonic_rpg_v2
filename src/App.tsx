@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useGameController } from "./app/useGameController";
 import { seededRoll } from "./app/actions/minigameActions";
-import type { LocationId, NpcId, ReplyTone } from "./types/game";
+import type { GameStateData, LocationId, NpcId, ReplyTone } from "./types/game";
 import { canonicalizeDisplaySpeaker } from "./app/actions/dialogueActions";
 import { ESCORT_READY_DRUNK_LEVEL, WARNING_LIMITS, warningMeter } from "./gameplay/progressionRules";
 import { resolveBackgroundImage, resolveCharacterImage } from "./assets/AssetManifest";
@@ -101,6 +101,57 @@ type NoticeState = { title: string; body: string } | null;
 type SearchLootState = { location: LocationId; message: string } | null;
 type TopToastKind = "rumor" | "status";
 type TopToastState = { id: string; text: string; kind: TopToastKind } | null;
+type DialogueTelemetryExport = {
+  exportedAt: string;
+  seed: string;
+  phase: string;
+  result: "win" | "fail" | "in_progress";
+  location: string;
+  dialogueSourceCounts: Record<string, number>;
+  toneSourceCounts: Record<string, number>;
+  toneTotals: Record<string, number>;
+};
+
+function summarizeToneTotals(toneSourceCounts: Record<string, number>): Record<string, number> {
+  return Object.entries(toneSourceCounts).reduce<Record<string, number>>((acc, [key, count]) => {
+    const [tone = "none"] = key.split(":");
+    acc[tone] = (acc[tone] ?? 0) + count;
+    return acc;
+  }, {});
+}
+
+function buildDialogueTelemetryExport(state: GameStateData): DialogueTelemetryExport {
+  const result = state.fail.hardFailed
+    ? "fail"
+    : state.phase === "resolved"
+      ? "win"
+      : "in_progress";
+  const sourceCounts = { ...(state.quality.sourceCounts ?? {}) };
+  const toneSourceCounts = { ...(state.quality.toneSourceCounts ?? {}) };
+  return {
+    exportedAt: new Date().toISOString(),
+    seed: state.meta.seed,
+    phase: state.phase,
+    result,
+    location: state.player.location,
+    dialogueSourceCounts: sourceCounts,
+    toneSourceCounts,
+    toneTotals: summarizeToneTotals(toneSourceCounts)
+  };
+}
+
+function downloadJsonFile(filename: string, payload: unknown): void {
+  if (typeof window === "undefined") return;
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
 const ITEM_HELP: Record<string, { desc: string; useHint: string; targetHint?: string; riskHint?: string }> = {
   "Student ID": { desc: "Campus clearance pass.", useHint: "Needed for key checks and entry." },
   "Dean Whiskey": { desc: "Heavy liquor stash.", useHint: "Use in Dorm Room to push Sonic up.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Carrying contraband can trigger warnings." },
@@ -652,6 +703,16 @@ function App() {
       : hintSignalStrong
         ? "Hint available."
         : "No urgent hint.";
+  const exportRunDialogueTelemetry = useCallback(() => {
+    if (!state) return;
+    const payload = buildDialogueTelemetryExport(state);
+    const shortSeed = state.meta.seed.replace(/[^a-z0-9]/gi, "").slice(-10) || "run";
+    downloadJsonFile(`dialogue-telemetry-${shortSeed}.json`, payload);
+    setNotice({
+      title: "Telemetry Exported",
+      body: "Dialogue tone/source telemetry exported as JSON."
+    });
+  }, [state]);
 
   useEffect(() => {
     if (!beerGameOpen) {
@@ -2581,6 +2642,12 @@ function App() {
                     openLandingPage();
                     setHintCooldownUntilMs(0);
                   }}>Restart Run</button>
+                  <button onClick={() => {
+                    setHudMenuOpen(false);
+                    exportRunDialogueTelemetry();
+                  }}>
+                    Export Telemetry
+                  </button>
                 </div>
                 <p className="menu-inline-copy muted">{hintButtonNote}</p>
               </section>
