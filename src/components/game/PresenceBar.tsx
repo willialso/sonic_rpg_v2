@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { NpcId } from "../../types/game";
 
 type Props = {
@@ -9,7 +10,7 @@ type Props = {
   onFocusNpc: (npc: NpcId) => void;
 };
 
-export function PresenceBar({
+function PresenceBarComponent({
   presentNpcs,
   engagedNpc,
   isResolved,
@@ -45,3 +46,5 @@ export function PresenceBar({
     </section>
   );
 }
+
+export const PresenceBar = memo(PresenceBarComponent);

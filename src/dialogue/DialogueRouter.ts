@@ -16,6 +16,21 @@ function compactDialogue(text: string): string {
   return cleaned;
 }
 
+function splitSentences(text: string): string[] {
+  return compactDialogue(text)
+    .match(/[^.!?]+[.!?]+(?:["')\]]+)?|[^.!?]+$/g)
+    ?.map((part) => part.trim())
+    .filter(Boolean) ?? [];
+}
+
+function hashToneSeed(input: string): number {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = ((hash * 33) ^ input.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
 function enforceKnucklesCadence(text: string, seed = ""): string {
   const cadenceRx = /\b[a-z]{3,}in['g]?\s+and\s+[a-z]{3,}in['g]?\b/gi;
   const matches = [...text.matchAll(cadenceRx)];
@@ -45,9 +60,31 @@ function finalizeNpcText(npcId: NpcId, text: string, seed = ""): string {
   return compacted;
 }
 
-function applyToneFrame(text: string, tone?: DialogueTone): string {
-  void tone;
-  return compactDialogue(text);
+function applyScriptedToneFrame(text: string, tone: DialogueTone): string {
+  const normalized = compactDialogue(text);
+  if (!normalized) return normalized;
+  if (tone === "neutral") return normalized;
+  if (tone === "informative") {
+    const concise = normalized
+      .replace(/\b(old sport|sport|bud|chief)\b/gi, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    const slices = splitSentences(concise);
+    if (slices.length === 0) return concise;
+    return slices.slice(0, 2).join(" ");
+  }
+  const shortLead = normalized.slice(0, 28);
+  if (/^(sure|right|wow|bold|great|love that|cute|adorable)\b/i.test(shortLead)) {
+    return normalized;
+  }
+  const jabs = ["Sure.", "Bold strategy.", "Love that for us."];
+  return `${jabs[hashToneSeed(normalized) % jabs.length]} ${normalized}`;
+}
+
+function applyToneFrame(text: string, tone: DialogueTone | undefined, source: "scripted" | "dynamic"): string {
+  const normalized = compactDialogue(text);
+  if (!tone || source === "dynamic") return normalized;
+  return applyScriptedToneFrame(normalized, tone);
 }
 
 export class DialogueRouter {
@@ -98,7 +135,7 @@ export class DialogueRouter {
       return {
         text: finalizeNpcText(
           npcId,
-          applyToneFrame(scripted, tone),
+          applyToneFrame(scripted, tone, "scripted"),
           `${state.meta.seed}:${state.timer.remainingSec}:${intent.id}`
         ),
         source: "scripted",
@@ -112,7 +149,7 @@ export class DialogueRouter {
       ...generated,
       text: finalizeNpcText(
         npcId,
-        applyToneFrame(generated.text, tone),
+        applyToneFrame(generated.text, tone, "dynamic"),
         `${state.meta.seed}:${state.timer.remainingSec}:${intent.id}:dyn`
       )
     };

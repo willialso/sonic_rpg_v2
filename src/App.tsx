@@ -394,6 +394,8 @@ const EGGMAN_STIRS: EggmanStir[] = ["pulse", "steady", "whip"];
 const PLAYTEST_LOG_KEY = "sonic_rpg_playtest_runs_v1";
 const MAX_PLAYTEST_LOGS = 40;
 const LOCATION_SPLASH_ENABLED = false;
+const LANDING_BG_SHELL_URL = "/assets/images/backgrounds/bg_landing_base.webp";
+const LANDING_SIGN_SHELL_URL = "/assets/images/backgrounds/landing_sign.webp";
 
 function inferRouteMode(state: GameStateData): string {
   const events = state.world.events ?? [];
@@ -756,7 +758,9 @@ function App() {
   const soggyTimersRef = useRef<number[]>([]);
   const timerPauseSyncRef = useRef<boolean | null>(null);
   const lastCapturedResolvedSeedRef = useRef("");
+  const dialogueQuickRepliesCacheRef = useRef<{ key: string; value: DialogueQuickReply[] }>({ key: "", value: [] });
   const preloadedAssetUrlsRef = useRef<Set<string>>(new Set());
+  const inflightAssetUrlsRef = useRef<Set<string>>(new Set());
   const beerRoundMemoryRef = useRef<Record<BeerMatchup, BeerRoundMemory | null>>({
     frat: null,
     sonic: null
@@ -802,6 +806,7 @@ function App() {
       const value = String(url || "").trim();
       if (!value) return;
       if (preloadedAssetUrlsRef.current.has(value)) return;
+      if (inflightAssetUrlsRef.current.has(value)) return;
       queue.add(value);
     };
 
@@ -813,10 +818,8 @@ function App() {
     };
     const nearbyNpcIds = nearbyNpcPreloadKey ? nearbyNpcPreloadKey.split("|").slice(0, 3) : [];
     for (const npc of nearbyNpcIds) {
+      if (activeNpc && npc === activeNpc) continue;
       addNpcPortrait(npc as NpcId);
-    }
-    if (activeNpc) {
-      addNpcPortrait(activeNpc);
     }
 
     const scheduleWindow = window as Window & {
@@ -828,11 +831,18 @@ function App() {
 
     const flushQueue = () => {
       queue.forEach((url) => {
+        inflightAssetUrlsRef.current.add(url);
         const img = new Image();
         img.decoding = "async";
         img.fetchPriority = "low";
+        img.onload = () => {
+          inflightAssetUrlsRef.current.delete(url);
+          preloadedAssetUrlsRef.current.add(url);
+        };
+        img.onerror = () => {
+          inflightAssetUrlsRef.current.delete(url);
+        };
         img.src = url;
-        preloadedAssetUrlsRef.current.add(url);
       });
     };
 
@@ -851,6 +861,13 @@ function App() {
       }
     };
   }, [activeNpc, content, currentLocation, landingClosing, locationRecord?.exits, nearbyNpcPreloadKey, showLandingPage]);
+
+  useEffect(() => {
+    const value = String(sceneBackgroundImage || "").trim();
+    if (!value) return;
+    preloadedAssetUrlsRef.current.add(value);
+    inflightAssetUrlsRef.current.delete(value);
+  }, [sceneBackgroundImage]);
 
   const runAction = useCallback(async (action: UiAction, silent = false) => {
     if (action.type !== "TAKE_FOUND_ITEM") {
@@ -1068,6 +1085,9 @@ function App() {
       setIsAwaitingNpcReply(false);
     }
   }, [engagedNpc, isAwaitingNpcReply, npcHasFreshLine, runAction]);
+  const handleFocusNpc = useCallback((npc: NpcId) => {
+    void focusNpcConversation(npc);
+  }, [focusNpcConversation]);
   const hintSignalStrong = useMemo(() => {
     if (!state) return false;
     if (state.timer.remainingSec < 180) return true;
@@ -2526,9 +2546,23 @@ function App() {
   if (!ready || !state || !content) {
     return (
       <main className="app">
-        <section className="panel">
-          <h1>Sonic RPG V2</h1>
-          <p>Bootstrapping deterministic world systems...</p>
+        <section className="landing-overlay landing-overlay-open">
+          <article className="landing-card">
+            <div
+              className="landing-background"
+              style={{ backgroundImage: `url("${LANDING_BG_SHELL_URL}")` }}
+              role="img"
+              aria-label="Console University landing page"
+            />
+            <div className="landing-sign-wrap" aria-hidden="true">
+              <img className="landing-sign-image" src={LANDING_SIGN_SHELL_URL} alt="" loading="eager" fetchPriority="high" />
+            </div>
+            <div className="landing-content">
+              <div className="landing-action-row">
+                <button disabled>Loading campus...</button>
+              </div>
+            </div>
+          </article>
         </section>
       </main>
     );
@@ -2679,9 +2713,26 @@ function App() {
         ? "Sighting is one move away. Jump there now before the rotation changes."
         : `Push toward ${rumoredLocationLabel}. Use route exits and avoid over-looting side areas.`;
   const compactSightingLabel = rumoredLocation ? rumoredLocationLabel : "No sighting";
-  const dialogueQuickReplies = engagedNpc
-    ? buildDialogueToneReplies(engagedNpc, state, rumoredLocationLabel || compactSightingLabel)
-    : [];
+  const dialogueQuickReplyKey = engagedNpc
+    ? [
+        engagedNpc,
+        rumoredLocationLabel || compactSightingLabel,
+        state.dialogue.turns.length,
+        state.dialogue.encounterCountByNpc[engagedNpc] ?? 0,
+        Number(state.player.inventory.includes("Student ID")),
+        state.sonic.drunkLevel,
+        Number(state.sonic.following)
+      ].join("|")
+    : "";
+  if (dialogueQuickRepliesCacheRef.current.key !== dialogueQuickReplyKey) {
+    dialogueQuickRepliesCacheRef.current = {
+      key: dialogueQuickReplyKey,
+      value: engagedNpc
+        ? buildDialogueToneReplies(engagedNpc, state, rumoredLocationLabel || compactSightingLabel)
+        : []
+    };
+  }
+  const dialogueQuickReplies = dialogueQuickRepliesCacheRef.current.value;
   const studentIdReady = state.player.inventory.includes("Student ID");
   const runStatusLabel = state.fail.hardFailed
     ? "Failed"
@@ -3226,7 +3277,7 @@ function App() {
         isResolved={isResolved || isSoggySequenceActive}
         titleCase={titleCase}
         resolveNpcImage={resolveNpcImage}
-        onFocusNpc={(npc) => { void focusNpcConversation(npc); }}
+        onFocusNpc={handleFocusNpc}
       />
 
       {showCompactMissionBar && (
