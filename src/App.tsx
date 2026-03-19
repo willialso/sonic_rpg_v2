@@ -788,12 +788,9 @@ function App() {
     () => (content ? resolveBackgroundImage(content.assetManifest, currentLocation ?? "quad") : ""),
     [content, currentLocation]
   );
-  const currentPresentNpcs = state?.world.presentNpcs;
-  const currentPlayerLocation = state?.player.location;
-  const nearbyNpcIds = useMemo(
-    () => (currentPlayerLocation && currentPresentNpcs ? (currentPresentNpcs[currentPlayerLocation] ?? []) : []),
-    [currentPlayerLocation, currentPresentNpcs]
-  );
+  const nearbyNpcPreloadKey = state
+    ? (state.world.presentNpcs[state.player.location] ?? []).join("|")
+    : "";
   const isSoggySequenceActive = soggySequenceStage !== null;
 
   useEffect(() => {
@@ -810,6 +807,7 @@ function App() {
     for (const nextLocation of locationRecord?.exits ?? []) {
       add(resolveBackgroundImage(content.assetManifest, nextLocation));
     }
+    const nearbyNpcIds = nearbyNpcPreloadKey ? nearbyNpcPreloadKey.split("|") : [];
     for (const npc of nearbyNpcIds) {
       add(resolveCharacterImage(content.assetManifest, npc, "neutral"));
     }
@@ -823,7 +821,46 @@ function App() {
       img.src = url;
       preloadedAssetUrlsRef.current.add(url);
     });
-  }, [activeNpc, content, currentLocation, locationRecord?.exits, nearbyNpcIds, sceneBackgroundImage]);
+  }, [activeNpc, content, currentLocation, locationRecord?.exits, nearbyNpcPreloadKey, sceneBackgroundImage]);
+
+  useEffect(() => {
+    if (!content) return;
+    const scheduleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    let cancelled = false;
+    let idleId: number | null = null;
+    let timeoutId: number | null = null;
+
+    const warmAllSceneBackgrounds = () => {
+      if (cancelled) return;
+      for (const location of content.locations) {
+        const url = resolveBackgroundImage(content.assetManifest, location.id);
+        if (!url || preloadedAssetUrlsRef.current.has(url)) continue;
+        const img = new Image();
+        img.decoding = "async";
+        img.src = url;
+        preloadedAssetUrlsRef.current.add(url);
+      }
+    };
+
+    if (scheduleWindow.requestIdleCallback) {
+      idleId = scheduleWindow.requestIdleCallback(warmAllSceneBackgrounds, { timeout: 1400 });
+    } else {
+      timeoutId = window.setTimeout(warmAllSceneBackgrounds, 500);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId !== null && scheduleWindow.cancelIdleCallback) {
+        scheduleWindow.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [content]);
 
   const runAction = useCallback(async (action: UiAction, silent = false) => {
     if (action.type !== "TAKE_FOUND_ITEM") {
