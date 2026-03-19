@@ -1,12 +1,41 @@
 import express from "express";
 import fs from "node:fs";
 import path from "node:path";
+import compression from "compression";
 import { validateDialogueRequest } from "./llm/validators.js";
+
+function setStaticCacheHeaders(res, filePath) {
+  const normalizedPath = String(filePath || "").replace(/\\/g, "/");
+  if (normalizedPath.endsWith("/index.html")) {
+    res.setHeader("Cache-Control", "no-cache");
+    return;
+  }
+
+  // Vite build assets are content-hashed; they are safe to cache aggressively.
+  if (/\/assets\/.+-[A-Za-z0-9_-]{6,}\.(js|css)$/.test(normalizedPath)) {
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    return;
+  }
+
+  // Character/background images are large and dominate first-interaction latency.
+  if (/\/assets\/images\/.+\.(webp|png|jpe?g|gif|svg)$/i.test(normalizedPath)) {
+    res.setHeader("Cache-Control", "public, max-age=2592000, stale-while-revalidate=604800");
+    return;
+  }
+
+  if (/\/content\/.+\.json$/i.test(normalizedPath)) {
+    res.setHeader("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
+    return;
+  }
+
+  res.setHeader("Cache-Control", "public, max-age=3600");
+}
 
 export function createApp(orchestrator) {
   const app = express();
   const distDir = path.join(process.cwd(), "dist");
   const indexHtmlPath = path.join(distDir, "index.html");
+  app.use(compression());
   app.use(express.json({ limit: "1mb" }));
 
   // Silence browser default favicon probe when no .ico is packaged.
@@ -73,7 +102,7 @@ export function createApp(orchestrator) {
   });
 
   if (fs.existsSync(indexHtmlPath)) {
-    app.use(express.static(distDir));
+    app.use(express.static(distDir, { setHeaders: setStaticCacheHeaders }));
     app.use((req, res, next) => {
       if (req.method !== "GET" || req.path.startsWith("/api/")) {
         next();
