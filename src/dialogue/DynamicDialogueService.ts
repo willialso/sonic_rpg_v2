@@ -5,6 +5,7 @@ import { CHARACTER_CONTRACTS } from "./CharacterContracts";
 const FALLBACK_SOURCE: DialogueResponse["source"] = "fallback";
 const seenValidationIssueHashes = new Set<string>();
 const DIALOGUE_BACKEND_COOLDOWN_MS = 10 * 60 * 1000;
+const DIALOGUE_CLIENT_TIMEOUT_MS = 3800;
 
 interface DynamicDialogueOptions {
   maxSentencesPerReply?: number;
@@ -96,10 +97,14 @@ export class DynamicDialogueService {
     if (this.backendCooldownUntilMs > now) {
       return { text: fallbackText, source: FALLBACK_SOURCE, safetyAbort: false };
     }
+    let timeoutId: number | null = null;
     try {
+      const controller = new AbortController();
+      timeoutId = window.setTimeout(() => controller.abort(), DIALOGUE_CLIENT_TIMEOUT_MS);
       const response = await fetch("/api/dialogue", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           character_id: request.npcId,
           player_input: request.input,
@@ -170,6 +175,10 @@ export class DynamicDialogueService {
     } catch {
       this.backendCooldownUntilMs = Date.now() + DIALOGUE_BACKEND_COOLDOWN_MS;
       return { text: fallbackText, source: FALLBACK_SOURCE, safetyAbort: false };
+    } finally {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
     }
   }
 }
