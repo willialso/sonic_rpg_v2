@@ -712,6 +712,7 @@ function App() {
   const [showLandingPage, setShowLandingPage] = useState(true);
   const [landingClosing, setLandingClosing] = useState(false);
   const [landingTransitionMask, setLandingTransitionMask] = useState(false);
+  const [landingMaskFadeOut, setLandingMaskFadeOut] = useState(false);
   const [soggySequenceStage, setSoggySequenceStage] = useState<SoggySequenceStage>(null);
   const [selectedActionItem, setSelectedActionItem] = useState<string | null>(null);
   const beerCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -904,6 +905,7 @@ function App() {
     return result;
   }, [performAction]);
   const openLandingPage = useCallback(() => {
+    setLandingMaskFadeOut(false);
     setLandingTransitionMask(false);
     setLandingClosing(false);
     setOrientationIntroOpen(false);
@@ -913,6 +915,7 @@ function App() {
   }, []);
   const closeLandingPage = useCallback(async (mode: "continue" | "enroll") => {
     if (landingClosing) return;
+    setLandingMaskFadeOut(false);
     setLandingTransitionMask(true);
     setLandingClosing(true);
     window.setTimeout(async () => {
@@ -925,8 +928,12 @@ function App() {
       setShowLandingPage(false);
       setLandingClosing(false);
       window.setTimeout(() => {
-        setLandingTransitionMask(false);
-      }, 180);
+        setLandingMaskFadeOut(true);
+        window.setTimeout(() => {
+          setLandingTransitionMask(false);
+          setLandingMaskFadeOut(false);
+        }, 220);
+      }, 40);
     }, 230);
   }, [landingClosing, runAction]);
   const completeOrientationIntro = useCallback(async () => {
@@ -4374,7 +4381,9 @@ function App() {
         </section>
       )}
 
-      {landingTransitionMask && <div className="landing-transition-mask" aria-hidden="true" />}
+      {landingTransitionMask && (
+        <div className={`landing-transition-mask ${landingMaskFadeOut ? "is-fading" : ""}`} aria-hidden="true" />
+      )}
 
       {showLandingPage && (
         <section className={`landing-overlay ${landingClosing ? "landing-overlay-closing" : "landing-overlay-open"}`}>
