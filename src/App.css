@@ -272,7 +272,7 @@ p, li, span, input, button {
 .dialogue-choice-panel {
   display: grid;
   gap: 7px;
-  padding: 8px 9px;
+  padding: 8px 10px;
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(10, 16, 52, 0.82), rgba(8, 13, 44, 0.82));
   border: 1px solid rgba(171, 196, 255, 0.3);
@@ -299,10 +299,11 @@ p, li, span, input, button {
   margin: 0;
   font-size: 11px;
   border-radius: 999px;
-  padding: 3px 8px;
+  padding: 3px 9px;
   border: 1px solid rgba(171, 196, 255, 0.3);
   background: rgba(22, 31, 86, 0.55);
   color: rgba(216, 229, 255, 0.9);
+  font-weight: 700;
 }
 
 .dialogue-tone-current.is-selected {
@@ -316,9 +317,9 @@ p, li, span, input, button {
 }
 
 .quick-reply-btn {
-  min-height: 40px;
-  padding: 7px 9px;
-  font-size: 13px;
+  min-height: 38px;
+  padding: 7px 10px;
+  font-size: 12.5px;
   border-radius: 10px;
   border: 1px solid rgba(171, 196, 255, 0.44);
   color: #f8fcff;
@@ -336,7 +337,7 @@ p, li, span, input, button {
 .quick-reply-btn-active {
   border-color: rgba(255, 222, 134, 0.95) !important;
   color: #fff7de;
-  box-shadow: 0 0 0 1px rgba(255, 236, 168, 0.88), 0 9px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 1px rgba(255, 236, 168, 0.88), 0 8px 14px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
 }
 

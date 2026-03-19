@@ -102,7 +102,8 @@ export function ScenePanel(props: Props) {
                 <strong>
                   {popupDisplaySpeaker}
                   {popupTyping && <span className="typing-wave" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>}
-                </strong>{" "}
+                </strong>
+                {!popupTyping && popupDisplaySpeaker ? ":" : ""}{" "}
                 {popupDialogueText}
               </p>
             </div>
@@ -117,8 +118,8 @@ export function ScenePanel(props: Props) {
               <p className="dialogue-choice-label">Tone</p>
               <p className={`dialogue-tone-current ${selectedTone ? "is-selected" : "is-empty"}`}>
                 {selectedTone
-                  ? `Current: ${dialogueQuickReplies.find((reply) => reply.id === selectedTone)?.tone ?? "Neutral"}`
-                  : "Current: Unselected"}
+                  ? `Current • ${dialogueQuickReplies.find((reply) => reply.id === selectedTone)?.tone ?? "Neutral"}`
+                  : "Current • Unselected"}
               </p>
             </div>
             <div className="quick-reply-row" aria-label="Dialogue tone choices">
