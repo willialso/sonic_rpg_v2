@@ -759,6 +759,7 @@ function App() {
   const soggyTimersRef = useRef<number[]>([]);
   const timerPauseSyncRef = useRef<boolean | null>(null);
   const lastCapturedResolvedSeedRef = useRef("");
+  const lastAutoScrollAtRef = useRef(0);
   const dialogueQuickRepliesCacheRef = useRef<{ key: string; value: DialogueQuickReply[] }>({ key: "", value: [] });
   const preloadedAssetUrlsRef = useRef<Set<string>>(new Set());
   const inflightAssetUrlsRef = useRef<Set<string>>(new Set());
@@ -1054,6 +1055,8 @@ function App() {
   const beerThrowsTotal = activeMode.throws;
   const beerThrowsUsed = Math.max(0, beerThrowsTotal - beerThrowsLeft);
   const engagedNpc = activeNpc;
+  const dialogueTurnCount = state?.dialogue.turns.length ?? 0;
+  const playerLocationForScroll = state?.player.location ?? null;
   const presentNpcs = useMemo(() => presentNpcsRaw, [presentNpcsRaw]);
   const clockText = `${Math.floor((state?.timer.remainingSec ?? 0) / 60).toString().padStart(2, "0")}:${((state?.timer.remainingSec ?? 0) % 60).toString().padStart(2, "0")}`;
   const resolveNpcImage = useCallback((npc: NpcId) => {
@@ -1078,8 +1081,26 @@ function App() {
     await submitDialogueLocked({ type: "SUBMIT_DIALOGUE", npcId: engagedNpc, input: trimmed, tone });
     setPlayerInput("");
   }, [engagedNpc, isAwaitingNpcReply, isResolved, submitDialogueLocked]);
+  const scrollToTopIfNeeded = useCallback((behavior: ScrollBehavior = "smooth") => {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    if (window.scrollY < 24) return;
+    const now = Date.now();
+    if (now - lastAutoScrollAtRef.current < 240) return;
+    const activeEl = document.activeElement as HTMLElement | null;
+    if (activeEl && (
+      activeEl.tagName === "INPUT"
+      || activeEl.tagName === "TEXTAREA"
+      || activeEl.tagName === "SELECT"
+      || activeEl.isContentEditable
+    )) {
+      return;
+    }
+    lastAutoScrollAtRef.current = now;
+    window.scrollTo({ top: 0, behavior });
+  }, []);
   const focusNpcConversation = useCallback(async (npc: NpcId) => {
     if (isAwaitingNpcReply) return;
+    scrollToTopIfNeeded("smooth");
     setSearchLoot(null);
     setActiveNpcFocusAtMs(Date.now());
     setActiveNpc(npc);
@@ -1091,7 +1112,7 @@ function App() {
     } finally {
       setIsAwaitingNpcReply(false);
     }
-  }, [engagedNpc, isAwaitingNpcReply, npcHasFreshLine, runAction]);
+  }, [engagedNpc, isAwaitingNpcReply, npcHasFreshLine, runAction, scrollToTopIfNeeded]);
   const handleFocusNpc = useCallback((npc: NpcId) => {
     void focusNpcConversation(npc);
   }, [focusNpcConversation]);
@@ -1161,6 +1182,27 @@ function App() {
   useEffect(() => {
     setPlaytestLogCount(loadPlaytestLogStore().length);
   }, []);
+
+  useEffect(() => {
+    if (showLandingPage || landingClosing) return;
+    if (!engagedNpc && !isAwaitingNpcReply) return;
+    scrollToTopIfNeeded("smooth");
+  }, [dialogueTurnCount, engagedNpc, isAwaitingNpcReply, landingClosing, playerLocationForScroll, showLandingPage, scrollToTopIfNeeded]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const jumpTopAuto = () => {
+      window.setTimeout(() => {
+        scrollToTopIfNeeded("auto");
+      }, 0);
+    };
+    window.addEventListener("popstate", jumpTopAuto);
+    window.addEventListener("pageshow", jumpTopAuto);
+    return () => {
+      window.removeEventListener("popstate", jumpTopAuto);
+      window.removeEventListener("pageshow", jumpTopAuto);
+    };
+  }, [scrollToTopIfNeeded]);
 
   useEffect(() => {
     if (!state || !isResolved) return;
