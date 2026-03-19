@@ -59,6 +59,7 @@
       },
       "speakerOverrides": {
         "Diesel": "characters/char_frat_group_hype.webp",
+        "Provelony Toney": "characters/char_frat_group_taunt.webp",
         "Provolone Toney": "characters/char_frat_group_taunt.webp",
         "Provoloney Tony": "characters/char_frat_group_taunt.webp"
       }
@@ -72,9 +73,7 @@
       },
       "speakerOverrides": {
         "Apple": "characters/char_sorority_group_social.webp",
-        "Tiffany": "characters/char_sorority_group_annoyed.webp",
-        "Madison": "characters/char_sorority_group_social.webp",
-        "Brittany": "characters/char_sorority_group_annoyed.webp"
+        "Fedora": "characters/char_sorority_group_annoyed.webp"
       }
     },
     "thunderhead": {

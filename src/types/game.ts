@@ -129,6 +129,7 @@ export interface GameStateData {
   };
   timer: {
     remainingSec: number;
+    paused?: boolean;
   };
   phase: GamePhase;
   player: {

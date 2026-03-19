@@ -24,7 +24,10 @@ export class RouteManager {
   }
 
   canWin(state: GameStateData): boolean {
-    return isEscortReady(state.sonic.drunkLevel)
+    const hasAlternativeEscortMode = state.world.events.some((entry) =>
+      entry.startsWith("ESCORT_MODE::trick") || entry.startsWith("ESCORT_MODE::handcuffs")
+    );
+    return (isEscortReady(state.sonic.drunkLevel) || hasAlternativeEscortMode)
       && state.sonic.following
       && state.player.location === "stadium"
       && state.player.inventory.includes("Student ID");

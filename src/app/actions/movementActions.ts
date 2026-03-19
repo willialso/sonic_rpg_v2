@@ -61,7 +61,7 @@ export function ensureMissionIntakeConsistency(state: GameStateData): void {
   }
   if (state.dialogue.deanStage === "mission_given") {
     state.mission.objective = "Get Sonic to Stadium.";
-    state.mission.subObjective = "Build a route, intoxicate Sonic, escort him, and clear gate security.";
+    state.mission.subObjective = "Pick a route (booze, handcuffs, or trick), secure Sonic, and clear stadium security with your Student ID.";
   }
   if (state.world.events.length > 40) state.world.events = state.world.events.slice(-40);
 }

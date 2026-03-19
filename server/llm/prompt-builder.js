@@ -6,6 +6,19 @@ export class PromptBuilder {
     const mustInclude = Array.isArray(context.intentContext?.must_include) ? context.intentContext.must_include : [];
     const avoid = Array.isArray(context.intentContext?.avoid) ? context.intentContext.avoid : [];
     const contract = context.contract || {};
+    const requestedToneRaw = String(
+      context.intentContext?.requested_tone
+      || context.gameContext?.requested_tone
+      || "neutral"
+    ).toLowerCase();
+    const requestedTone = requestedToneRaw === "sarcastic" || requestedToneRaw === "informative"
+      ? requestedToneRaw
+      : "neutral";
+    const toneDirective = requestedTone === "informative"
+      ? "Tone directive: informative. Lead with the concrete clue/action first, then optional flavor."
+      : requestedTone === "sarcastic"
+        ? "Tone directive: sarcastic. Open with a short jab, then include one concrete clue/action."
+        : "Tone directive: neutral. Keep delivery straightforward with one concrete clue/action.";
     const currentContextRaw = context.gameContext || {};
     const currentContext = {
       location: currentContextRaw.location || "",
@@ -112,6 +125,7 @@ export class PromptBuilder {
       `INTENT: ${context.intent}`,
       `FUNCTION_ID: ${context.functionId || "GENERAL"}`,
       `INTENT_GOAL: ${context.intentContext?.goal || "Stay in character and respond naturally."}`,
+      `REQUESTED_TONE: ${requestedTone}`,
       `MUST_INCLUDE: ${JSON.stringify(mustInclude)}`,
       `AVOID: ${JSON.stringify(avoid)}`,
       `CURRENT_CONTEXT: ${JSON.stringify(currentContext)}`,
@@ -132,6 +146,7 @@ export class PromptBuilder {
         ? "For mission-critical turns, naturally anchor to movement/progression (route, move, challenge, escort, or stadium) without sounding forced."
         : "Do not force mission talk; only mention mission if the player directly asks.",
       "Treat MUST_INCLUDE as semantic goals, not literal phrases.",
+      toneDirective,
       responseLengthRule,
       globalVarietyRule,
       knucklesCadenceRule,

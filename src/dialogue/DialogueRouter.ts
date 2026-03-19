@@ -4,7 +4,7 @@ import { ScriptedDialogueService } from "./ScriptedDialogueService";
 import { DynamicDialogueService } from "./DynamicDialogueService";
 import { IntentResolver } from "./IntentResolver";
 import { InteractionRouter } from "./InteractionRouter";
-import type { DialogueRequest, DialogueResponse, TurnIntent } from "./types";
+import type { DialogueRequest, DialogueResponse, DialogueTone, TurnIntent } from "./types";
 
 export interface DialogueRouterOptions {
   maxSentencesPerReply?: number;
@@ -45,6 +45,11 @@ function finalizeNpcText(npcId: NpcId, text: string, seed = ""): string {
   return compacted;
 }
 
+function applyToneFrame(text: string, tone?: DialogueTone): string {
+  void tone;
+  return compactDialogue(text);
+}
+
 export class DialogueRouter {
   private readonly scripted = new ScriptedDialogueService();
   private readonly safetyGuard: SafetyGuard;
@@ -67,7 +72,7 @@ export class DialogueRouter {
     };
   }
 
-  async reply(npcId: NpcId, input: string, state: GameStateData): Promise<DialogueResponse> {
+  async reply(npcId: NpcId, input: string, state: GameStateData, tone?: DialogueTone): Promise<DialogueResponse> {
     if (this.safetyGuard.shouldAbort(input)) {
       return {
         text: "Game halted. Report to campus infirmary or a trusted real-world support resource now.",
@@ -76,8 +81,8 @@ export class DialogueRouter {
       };
     }
 
-    const request: DialogueRequest = { npcId, input, state };
-    const intent: TurnIntent = this.intentResolver.resolve(npcId, input, state);
+    const request: DialogueRequest = { npcId, input, tone, state };
+    const intent: TurnIntent = this.intentResolver.resolve(npcId, input, state, tone);
     const routeDecision = this.interactionRouter.decide(request);
 
     if (intent.mode === "SYSTEM_SAFETY") {
@@ -91,7 +96,11 @@ export class DialogueRouter {
     if (routeDecision.interactionClass === "CRITICAL_SCRIPTED" || routeDecision.interactionClass === "HINT_PRIORITY") {
       const scripted = this.scripted.respond(npcId, input, state, intent.id);
       return {
-        text: finalizeNpcText(npcId, scripted, `${state.meta.seed}:${state.timer.remainingSec}:${intent.id}`),
+        text: finalizeNpcText(
+          npcId,
+          applyToneFrame(scripted, tone),
+          `${state.meta.seed}:${state.timer.remainingSec}:${intent.id}`
+        ),
         source: "scripted",
         safetyAbort: false,
         intent: intent.id
@@ -101,7 +110,11 @@ export class DialogueRouter {
     const generated = await this.dynamicService.generate(request, intent);
     return {
       ...generated,
-      text: finalizeNpcText(npcId, generated.text, `${state.meta.seed}:${state.timer.remainingSec}:${intent.id}:dyn`)
+      text: finalizeNpcText(
+        npcId,
+        applyToneFrame(generated.text, tone),
+        `${state.meta.seed}:${state.timer.remainingSec}:${intent.id}:dyn`
+      )
     };
   }
 }
