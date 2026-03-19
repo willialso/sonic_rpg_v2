@@ -66,6 +66,14 @@ export function ScenePanel(props: Props) {
     setSelectedTone(null);
   }, [engagedNpc]);
 
+  const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const normalizedSpeaker = popupDisplaySpeaker?.trim() || "Character";
+  const speakerPrefixedRx = new RegExp(`^${escapeRegExp(normalizedSpeaker)}\\s*:\\s*`, "i");
+  const normalizedDialogue = String(popupDialogueText || "")
+    .replace(/^(frat boys|sorority girls)\s*:\s*/i, "")
+    .replace(speakerPrefixedRx, "")
+    .trim();
+
   return (
     <section className={`scene scene-${locationId}`}>
       {previousBackground && (
@@ -98,10 +106,10 @@ export function ScenePanel(props: Props) {
             <div className="scene-character-stage-text-wrap">
               <p className="bubble bubble-npc scene-character-stage-text">
                 <strong>
-                  {popupDisplaySpeaker}
+                  {normalizedSpeaker}:
                   {popupTyping && <span className="typing-wave" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>}
                 </strong>{" "}
-                {popupDialogueText}
+                {normalizedDialogue}
               </p>
             </div>
           </article>

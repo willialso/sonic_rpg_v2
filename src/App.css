@@ -297,30 +297,31 @@ p, li, span, input, button {
   padding: 7px 9px;
   font-size: 13px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 210, 74, 0.62);
+  border: 1px solid rgba(171, 196, 255, 0.58);
   color: #f8fcff !important;
-  background: rgba(20, 27, 77, 0.95) !important;
+  background: rgba(25, 33, 90, 0.92) !important;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
 }
 
 .quick-reply-btn-active {
-  box-shadow: 0 0 0 2px rgba(255, 236, 168, 0.86);
+  border-color: rgba(255, 236, 168, 0.94) !important;
+  background: rgba(33, 44, 112, 0.98) !important;
+  outline: 2px solid rgba(255, 236, 168, 0.94);
+  outline-offset: 1px;
+  box-shadow: inset 0 -2px 0 rgba(255, 236, 168, 0.76);
   transform: translateY(-1px);
 }
 
 .quick-reply-btn-sarcastic {
-  border-color: rgba(255, 171, 98, 0.72);
-  background: linear-gradient(180deg, rgba(120, 58, 20, 0.96), rgba(75, 35, 12, 0.96)) !important;
+  box-shadow: inset 0 -2px 0 rgba(255, 171, 98, 0.76);
 }
 
 .quick-reply-btn-informative {
-  border-color: rgba(126, 206, 255, 0.74);
-  background: linear-gradient(180deg, rgba(34, 78, 138, 0.96), rgba(21, 49, 92, 0.96)) !important;
+  box-shadow: inset 0 -2px 0 rgba(126, 206, 255, 0.76);
 }
 
 .quick-reply-btn-neutral {
-  border-color: rgba(171, 196, 255, 0.72);
-  background: linear-gradient(180deg, rgba(56, 72, 138, 0.96), rgba(35, 45, 96, 0.96)) !important;
+  box-shadow: inset 0 -2px 0 rgba(181, 174, 255, 0.76);
 }
 
 .dialogue-box {
@@ -1311,6 +1312,12 @@ button:disabled {
   color: #f4f8ff;
 }
 
+.status-note-card p,
+.status-note-card .muted {
+  color: #f3f8ff !important;
+  opacity: 1 !important;
+}
+
 .status-note-card h3 {
   margin: 0;
   color: #fff1bb;
@@ -1517,8 +1524,18 @@ button:disabled {
   color: #f3f8ff;
 }
 
+.modal-card .muted {
+  color: #dce8ff;
+  opacity: 1;
+}
+
 .official-notice-card p {
   color: #1e150a;
+}
+
+.official-notice-card .muted {
+  color: #3a2a15;
+  opacity: 1;
 }
 
 .modal-card.action-sheet-card,

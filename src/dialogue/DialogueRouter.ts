@@ -45,9 +45,32 @@ function finalizeNpcText(npcId: NpcId, text: string, seed = ""): string {
   return compacted;
 }
 
+function toneHash(input: string): number {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = ((hash * 33) ^ input.charCodeAt(i)) >>> 0;
+  }
+  return hash >>> 0;
+}
+
 function applyToneFrame(text: string, tone?: DialogueTone): string {
-  void tone;
-  return text;
+  if (!tone || tone === "neutral") return text;
+  const cleaned = compactDialogue(text);
+  if (!cleaned) return cleaned;
+  const sarcasticTags = [
+    "Totally normal campus behavior.",
+    "Absolutely no red flags there.",
+    "What could possibly go wrong."
+  ];
+  const informativeTags = [
+    "Use that as your next move.",
+    "Keep the route efficient.",
+    "Apply that immediately."
+  ];
+  const tags = tone === "sarcastic" ? sarcasticTags : informativeTags;
+  const tag = tags[toneHash(`${cleaned}:${tone}`) % tags.length];
+  if (cleaned.endsWith(tag)) return cleaned;
+  return `${cleaned} ${tag}`;
 }
 
 export class DialogueRouter {
