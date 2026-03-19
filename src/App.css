@@ -2696,6 +2696,8 @@ button:disabled {
     gap: 5px;
     overflow-x: auto;
     scrollbar-width: none;
+    align-items: center;
+    padding-top: 2px;
     padding-bottom: 2px;
   }
 
@@ -2710,6 +2712,11 @@ button:disabled {
     border-radius: 8px;
     flex: 0 0 auto;
     white-space: nowrap;
+  }
+
+  .quick-reply-btn:hover:not(:disabled),
+  .quick-reply-btn-active {
+    transform: none;
   }
 
   .action-strip-float {
@@ -2851,6 +2858,11 @@ button:disabled {
     min-height: 30px;
     font-size: 10.5px;
     padding: 4px 7px;
+  }
+
+  .quick-reply-btn:hover:not(:disabled),
+  .quick-reply-btn-active {
+    transform: none;
   }
 
   .actions-primary-btn {
