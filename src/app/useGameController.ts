@@ -169,6 +169,11 @@ function formatSearchResult(found: string[]): string {
     : "Already searched. Room is empty.";
 }
 
+function hasCampusMapInRun(state: GameStateData): boolean {
+  if (state.player.inventory.includes("Campus Map")) return true;
+  return Object.values(state.world.searchCaches).some((cache) => Array.isArray(cache) && cache.includes("Campus Map"));
+}
+
 function findShortestLocationPath(
   bundle: ContentBundle | null,
   start: LocationId,
@@ -1035,7 +1040,7 @@ export function useGameController(): {
             result = { ok: false, message: "You can only search while at Quad." };
             return;
           }
-          const found = revealSearchCache(state, "quad", ["Campus Map"]);
+          const found = revealSearchCache(state, "quad", hasCampusMapInRun(state) ? [] : ["Campus Map"]);
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 8);
           setPressure(state);
           result = { ok: true, message: formatSearchResult(found) };
@@ -1046,7 +1051,7 @@ export function useGameController(): {
             result = { ok: false, message: "Classroom stash is only in Eggman Classroom." };
             return;
           }
-          const found = revealSearchCache(state, "eggman_classroom", ["Campus Map"]);
+          const found = revealSearchCache(state, "eggman_classroom", hasCampusMapInRun(state) ? [] : ["Campus Map"]);
           state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 12);
           setPressure(state);
           result = { ok: true, message: formatSearchResult(found) };

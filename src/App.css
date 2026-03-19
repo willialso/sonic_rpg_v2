@@ -342,8 +342,8 @@ p, li, span, input, button {
 }
 
 .quick-reply-btn-sarcastic {
-  border-color: rgba(220, 168, 132, 0.56);
-  background: linear-gradient(180deg, rgba(95, 58, 35, 0.95), rgba(65, 38, 24, 0.95));
+  border-color: rgba(168, 154, 242, 0.62);
+  background: linear-gradient(180deg, rgba(83, 66, 154, 0.95), rgba(58, 45, 124, 0.95));
 }
 
 .quick-reply-btn-informative {
@@ -1579,6 +1579,15 @@ button:disabled {
   transition: opacity 220ms ease, transform 220ms ease;
 }
 
+.landing-transition-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 89;
+  pointer-events: none;
+  background: #050713;
+  animation: landingMaskFade 220ms ease-out both;
+}
+
 .landing-overlay-open {
   opacity: 1;
   transform: translateY(0);
@@ -1829,6 +1838,11 @@ button:disabled {
 @keyframes modalSheetIn {
   from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes landingMaskFade {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 @keyframes stageIn {

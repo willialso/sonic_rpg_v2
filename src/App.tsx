@@ -106,6 +106,48 @@ function defaultDialogueSpeaker(npcId: NpcId): string {
   return titleCase(npcId);
 }
 
+function sanitizePopupSpeaker(npcId: NpcId | null, rawSpeaker: string): string {
+  const speaker = String(rawSpeaker || "").trim();
+  if (!npcId) return speaker;
+  if (npcId === "frat_boys") {
+    if (/^frat boys?$/i.test(speaker)) return "Diesel";
+    if (/^provolone toney$/i.test(speaker)) return "Provelony Toney";
+    if (/^diesel$|^provelony toney$/i.test(speaker)) return speaker;
+    return "Diesel";
+  }
+  if (npcId === "sorority_girls") {
+    if (/^sorority girls?$/i.test(speaker)) return "Apple";
+    if (/^apple$|^fedora$/i.test(speaker)) return speaker;
+    return "Apple";
+  }
+  return speaker || defaultDialogueSpeaker(npcId);
+}
+
+function stripLeadingSpeakerNoise(npcId: NpcId | null, speaker: string, rawText: string): string {
+  let text = String(rawText || "").trim();
+  if (!text) return "";
+  const labelRx = /^(direct answer|quick read|first clue|quick briefing)\s*:\s*/i;
+  while (labelRx.test(text)) {
+    text = text.replace(labelRx, "").trim();
+  }
+  const known: string[] = [];
+  if (speaker) known.push(speaker);
+  if (npcId === "frat_boys") known.push("Frat Boys", "Frat Boy", "Diesel", "Provelony Toney", "Provolone Toney");
+  if (npcId === "sorority_girls") known.push("Sorority Girls", "Sorority Girl", "Apple", "Fedora");
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const name of known) {
+      const rx = new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*:\\s*`, "i");
+      if (rx.test(text)) {
+        text = text.replace(rx, "").trim();
+        changed = true;
+      }
+    }
+  }
+  return text;
+}
+
 function buildDialogueObjectivePrompt(
   npcId: NpcId,
   state: GameStateData,
@@ -146,21 +188,37 @@ function buildDialogueToneReplies(
   rumoredLocationLabel: string
 ): DialogueQuickReply[] {
   const base = buildDialogueObjectivePrompt(npcId, state, rumoredLocationLabel);
+  const turnSeed = (state.dialogue.turns.length + (state.dialogue.encounterCountByNpc[npcId] ?? 0)) % 3;
+  const informativeVariants = [
+    `${base} Keep it concise and concrete.`,
+    `${base} Lead with the clearest clue, then one next move.`,
+    `${base} Keep it tactical and specific.`
+  ];
+  const sarcasticVariants = [
+    `${base} Keep it snarky but useful.`,
+    `${base} Give one jab, then the actionable move.`,
+    `${base} Roast lightly, then give the clue.`
+  ];
+  const neutralVariants = [
+    `${base} Keep it natural and in character.`,
+    `${base} Keep it straightforward.`,
+    base
+  ];
   return [
     {
       id: "sarcastic",
       tone: "Sarcastic",
-      text: `Love the chaos, truly. ${base}`
+      text: sarcasticVariants[turnSeed]
     },
     {
       id: "informative",
       tone: "Informative",
-      text: `Quick briefing. ${base}`
+      text: informativeVariants[turnSeed]
     },
     {
       id: "neutral",
       tone: "Neutral",
-      text: base
+      text: neutralVariants[turnSeed]
     }
   ];
 }
@@ -280,7 +338,6 @@ type StripPokerDeal = {
   winningOpponentHand: string;
   edgeNote: string;
 } | null;
-type StripRiskMode = "safe" | "balanced" | "bluff";
 type EggmanCatalyst = "red" | "green" | "blue";
 type EggmanHeat = "low" | "mid" | "high";
 type EggmanStir = "pulse" | "steady" | "whip";
@@ -567,7 +624,6 @@ function App() {
   const [stripPokerOpen, setStripPokerOpen] = useState(false);
   const [stripPokerDeal, setStripPokerDeal] = useState<StripPokerDeal>(null);
   const [stripPokerBusy, setStripPokerBusy] = useState(false);
-  const [stripRiskMode, setStripRiskMode] = useState<StripRiskMode>("balanced");
   const [eggmanLabOpen, setEggmanLabOpen] = useState(false);
   const [eggmanLabBusy, setEggmanLabBusy] = useState(false);
   const [eggmanLabRound, setEggmanLabRound] = useState(1);
@@ -617,6 +673,7 @@ function App() {
   const [campusMapOpen, setCampusMapOpen] = useState(false);
   const [showLandingPage, setShowLandingPage] = useState(true);
   const [landingClosing, setLandingClosing] = useState(false);
+  const [landingTransitionMask, setLandingTransitionMask] = useState(false);
   const [soggySequenceStage, setSoggySequenceStage] = useState<SoggySequenceStage>(null);
   const [selectedActionItem, setSelectedActionItem] = useState<string | null>(null);
   const beerCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -733,6 +790,7 @@ function App() {
     return result;
   }, [performAction]);
   const openLandingPage = useCallback(() => {
+    setLandingTransitionMask(false);
     setLandingClosing(false);
     setOrientationIntroOpen(false);
     setOrientationIntroSubmitting(false);
@@ -741,6 +799,7 @@ function App() {
   }, []);
   const closeLandingPage = useCallback(async (mode: "continue" | "enroll") => {
     if (landingClosing) return;
+    setLandingTransitionMask(true);
     setLandingClosing(true);
     window.setTimeout(async () => {
       if (mode === "enroll") {
@@ -751,6 +810,9 @@ function App() {
       setStarterRoutePanelOpen(false);
       setShowLandingPage(false);
       setLandingClosing(false);
+      window.setTimeout(() => {
+        setLandingTransitionMask(false);
+      }, 180);
     }, 230);
   }, [landingClosing, runAction]);
   const completeOrientationIntro = useCallback(async () => {
@@ -2105,10 +2167,10 @@ function App() {
       const playerEval = evalHand(nextPlayer);
       const opponentNames = prev.opponentNames.length > 0 ? prev.opponentNames : [titleCase(prev.guestId)];
       let opponentPool = [...remainingDeck];
-      const forceChance = stripRiskMode === "safe" ? 0.58 : stripRiskMode === "bluff" ? 0.76 : 0.68;
-      const shouldForceWinner = seededFloat(`${state?.meta.seed ?? "seed"}:strip:force-roll:${prev.guestId}:${prev.round}:${stripRiskMode}`) <= forceChance;
+      const forceChance = 0.68;
+      const shouldForceWinner = seededFloat(`${state?.meta.seed ?? "seed"}:strip:force-roll:${prev.guestId}:${prev.round}:balanced`) <= forceChance;
       const forcedWinner = shouldForceWinner
-        ? pickWinningHandFromPool(opponentPool, nextPlayer, `${state?.meta.seed ?? "seed"}:strip:force:${prev.guestId}:${prev.round}:${stripRiskMode}`)
+        ? pickWinningHandFromPool(opponentPool, nextPlayer, `${state?.meta.seed ?? "seed"}:strip:force:${prev.guestId}:${prev.round}:balanced`)
         : null;
       const opponents: StripOpponent[] = [];
       if (forcedWinner) {
@@ -2144,10 +2206,10 @@ function App() {
       const strongestEval = strongest ? evalHand(strongest.cards) : null;
       const rankGap = Math.max(0, (strongestEval?.rank ?? 0) - playerEval.rank);
       const telemetryHint = rankGap >= 2
-        ? "Telemetry: table is hot; switch to Safe next hand."
+        ? "Telemetry: table is hot; tighten your discard picks next hand."
         : rankGap === 1
-          ? "Telemetry: close loss; Balanced line is stable."
-          : "Telemetry: window open; Bluff line can pressure the table.";
+          ? "Telemetry: close loss; keep a balanced discard line."
+          : "Telemetry: window open; push for stronger draw value.";
       const edgeNote = strongest && strongestEval
         ? strongestEval.rank === playerEval.rank
           ? `${strongest.name} ties your hand class and wins on kicker. ${telemetryHint}`
@@ -2168,34 +2230,7 @@ function App() {
         edgeNote
       };
     });
-  }, [state?.meta.seed, stripRiskMode]);
-
-  const autoPickStripDiscards = useCallback((mode: StripRiskMode) => {
-    setStripRiskMode(mode);
-    setStripPokerDeal((prev) => {
-      if (!prev || prev.stage !== "deal") return prev;
-      const sortedByValue = prev.playerCards
-        .map((card, idx) => ({ idx, value: card.value }))
-        .sort((a, b) => a.value - b.value);
-      const counts = new Map<number, number>();
-      prev.playerCards.forEach((c) => counts.set(c.value, (counts.get(c.value) ?? 0) + 1));
-      let picks: number[];
-      if (mode === "safe") {
-        picks = sortedByValue
-          .filter(({ idx, value }) => (counts.get(prev.playerCards[idx].value) ?? 0) < 2 && value < 11)
-          .slice(0, 2)
-          .map(({ idx }) => idx);
-      } else if (mode === "bluff") {
-        picks = sortedByValue.slice(0, 3).map(({ idx }) => idx);
-      } else {
-        picks = sortedByValue
-          .filter(({ idx }) => (counts.get(prev.playerCards[idx].value) ?? 0) < 2)
-          .slice(0, 3)
-          .map(({ idx }) => idx);
-      }
-      return { ...prev, selectedDiscard: picks };
-    });
-  }, []);
+  }, [state?.meta.seed]);
 
   const openEggmanLab = useCallback(() => {
     const round = (state?.world.minigames.loreRound ?? 0) + 1;
@@ -2414,8 +2449,13 @@ function App() {
     : undefined;
   const popupNpcId: NpcId | null = engagedNpc;
   const popupTyping = Boolean(engagedNpc && isAwaitingNpcReply);
-  const popupDialogueText = popupTyping ? "" : (latestNpcTurn?.text ?? "");
-  const popupDisplaySpeaker = latestNpcTurn?.displaySpeaker ?? (popupNpcId ? defaultDialogueSpeaker(popupNpcId) : "");
+  const popupDisplaySpeaker = sanitizePopupSpeaker(
+    popupNpcId,
+    latestNpcTurn?.displaySpeaker ?? (popupNpcId ? defaultDialogueSpeaker(popupNpcId) : "")
+  );
+  const popupDialogueText = popupTyping
+    ? ""
+    : stripLeadingSpeakerNoise(popupNpcId, popupDisplaySpeaker, latestNpcTurn?.text ?? "");
   const popupPoseState = latestNpcTurn?.poseKey ?? "neutral";
   const popupCharacterImage = popupNpcId && content
     ? resolveCharacterImage(content.assetManifest, popupNpcId, popupPoseState, popupDisplaySpeaker)
@@ -3440,18 +3480,6 @@ function App() {
                         </button>
                       )}
                     </div>
-                    {selectedActionItem === "Campus Map" && (
-                      <div className="button-grid action-grid" style={{ marginTop: 8 }}>
-                        <button
-                          onClick={() => {
-                            setActionMenuOpen(false);
-                            setCampusMapOpen(true);
-                          }}
-                        >
-                          Open Map
-                        </button>
-                      </div>
-                    )}
                   </div>
                 )}
               </section>
@@ -3991,7 +4019,7 @@ function App() {
               )}
             </div>
             <p className="muted">
-              {stripPokerDeal.stage === "deal" ? `Select up to 3 cards, then draw. Strategy: ${titleCase(stripRiskMode)}.` : "Showdown locked."}
+              {stripPokerDeal.stage === "deal" ? "Select up to 3 cards, then draw." : "Showdown locked."}
               {stripPokerDeal.stage === "showdown" && stripPokerDeal.drawnCards.length > 0
                 ? ` | Drew: ${stripPokerDeal.drawnCards.map((c) => c.code).join(" ")}`
                 : ""}
@@ -4000,19 +4028,6 @@ function App() {
               <p className="muted">
                 {stripPokerDeal.edgeNote}
               </p>
-            )}
-            {stripPokerDeal.stage === "deal" && (
-              <div className="beer-control-actions">
-                <button className="beer-control-btn" onClick={() => autoPickStripDiscards("safe")} disabled={stripPokerBusy}>
-                  Auto Safe
-                </button>
-                <button className="beer-control-btn" onClick={() => autoPickStripDiscards("balanced")} disabled={stripPokerBusy}>
-                  Auto Balanced
-                </button>
-                <button className="beer-control-btn" onClick={() => autoPickStripDiscards("bluff")} disabled={stripPokerBusy}>
-                  Auto Bluff
-                </button>
-              </div>
             )}
             <div className="button-grid strip-poker-actions">
               {stripPokerDeal.stage === "deal" ? (
@@ -4215,6 +4230,8 @@ function App() {
           </article>
         </section>
       )}
+
+      {landingTransitionMask && <div className="landing-transition-mask" aria-hidden="true" />}
 
       {showLandingPage && (
         <section className={`landing-overlay ${landingClosing ? "landing-overlay-closing" : "landing-overlay-open"}`}>
