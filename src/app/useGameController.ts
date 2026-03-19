@@ -225,6 +225,12 @@ function formatNpcName(npcId: NpcId): string {
   return npcId.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
+function defaultDialogueSpeaker(npcId: NpcId): string {
+  if (npcId === "frat_boys") return "Diesel";
+  if (npcId === "sorority_girls") return "Apple";
+  return formatNpcName(npcId);
+}
+
 function inferDialogueProgressBand(state: GameStateData): "intake" | "hunt_early" | "route_committed" | "endgame" {
   if (!state.player.inventory.includes("Student ID")) return "intake";
   if (state.timer.remainingSec < 180 || (state.sonic.following && isEscortReady(state.sonic.drunkLevel))) return "endgame";
@@ -1841,11 +1847,12 @@ export function useGameController(): {
               || (action.npcId === "dean_cain" && (state.dialogue.deanStage === "intro_pending" || state.dialogue.deanStage === "name_pending"));
             if (shouldUseScriptedGreeting) {
               const greet = dialogue.greeting(action.npcId, encounterCount, `${state.meta.seed}:${state.timer.remainingSec}:tap-open`);
-              state.dialogue.turns.push(createDialogueTurn(action.npcId, greet.text, state, {
+              const openingTurns = parseDisplayTurns(action.npcId, greet.text, defaultDialogueSpeaker(action.npcId));
+              openingTurns.forEach((turn) => state.dialogue.turns.push(createDialogueTurn(action.npcId, turn.text, state, {
                 npcId: action.npcId,
-                displaySpeaker: formatNpcName(action.npcId),
-                poseKey: inferNpcPoseKey(action.npcId, greet.text, state, "OPENING_LINE")
-              }));
+                displaySpeaker: turn.displaySpeaker ?? defaultDialogueSpeaker(action.npcId),
+                poseKey: inferNpcPoseKey(action.npcId, turn.text, state, "OPENING_LINE")
+              })));
               updateNpcMemory(state, action.npcId, greet.text);
               state.dialogue.source = greet.source;
               state.quality.sourceCounts[greet.source] = (state.quality.sourceCounts[greet.source] ?? 0) + 1;
@@ -2135,10 +2142,10 @@ export function useGameController(): {
           if (reaction.npcId === "sorority_girls" && clampedText.length < reply.text.length) {
             state.world.events.push("telemetry:sorority-trimmed");
           }
-          const parsedTurns = parseDisplayTurns(reaction.npcId, clampedText, reply.displaySpeaker);
+          const parsedTurns = parseDisplayTurns(reaction.npcId, clampedText, reply.displaySpeaker ?? defaultDialogueSpeaker(reaction.npcId));
           parsedTurns.forEach((turn) => state.dialogue.turns.push(createDialogueTurn(turn.speaker, turn.text, state, {
             npcId: reaction.npcId,
-            displaySpeaker: turn.displaySpeaker,
+            displaySpeaker: turn.displaySpeaker ?? defaultDialogueSpeaker(reaction.npcId),
             poseKey: inferNpcPoseKey(reaction.npcId, turn.text, state, reply.intent)
           })));
           state.dialogue.source = reply.source;
@@ -2186,10 +2193,10 @@ export function useGameController(): {
         if (dialogueAction.npcId === "sorority_girls" && clampedText.length < routed.text.length) {
           state.world.events.push("telemetry:sorority-trimmed");
         }
-        const parsedTurns = parseDisplayTurns(dialogueAction.npcId, clampedText, routed.displaySpeaker);
+        const parsedTurns = parseDisplayTurns(dialogueAction.npcId, clampedText, routed.displaySpeaker ?? defaultDialogueSpeaker(dialogueAction.npcId));
         parsedTurns.forEach((turn) => state.dialogue.turns.push(createDialogueTurn(turn.speaker, turn.text, state, {
           npcId: dialogueAction.npcId,
-          displaySpeaker: turn.displaySpeaker,
+          displaySpeaker: turn.displaySpeaker ?? defaultDialogueSpeaker(dialogueAction.npcId),
           poseKey: inferNpcPoseKey(dialogueAction.npcId, turn.text, state, routed.intent)
         })));
         state.quality.sourceCounts[routed.source] = (state.quality.sourceCounts[routed.source] ?? 0) + 1;

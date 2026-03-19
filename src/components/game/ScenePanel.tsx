@@ -39,7 +39,13 @@ export function ScenePanel(props: Props) {
   const [activeBackground, setActiveBackground] = useState(sceneBackgroundImage);
   const [previousBackground, setPreviousBackground] = useState("");
   const [isBackgroundTransitioning, setIsBackgroundTransitioning] = useState(false);
-  const [selectedTone, setSelectedTone] = useState<DialogueTone | null>(null);
+  const [toneSelection, setToneSelection] = useState<{ npcId: NpcId | null; tone: DialogueTone | null }>({
+    npcId: null,
+    tone: null
+  });
+  const selectedTone = engagedNpc && toneSelection.npcId === engagedNpc
+    ? toneSelection.tone
+    : null;
 
   useEffect(() => {
     if (!sceneBackgroundImage) return;
@@ -61,10 +67,6 @@ export function ScenePanel(props: Props) {
     }, 220);
     return () => window.clearTimeout(id);
   }, [isBackgroundTransitioning]);
-
-  useEffect(() => {
-    setSelectedTone(null);
-  }, [engagedNpc]);
 
   return (
     <section className={`scene scene-${locationId}`}>
@@ -111,19 +113,24 @@ export function ScenePanel(props: Props) {
       <div className="scene-footer">
         {engagedNpc && (
           <div className="dialogue-choice-panel">
-            <p className="dialogue-choice-label">Choose your tone:</p>
-            <p className="dialogue-tone-current">
-              Current tone: <strong>{selectedTone ? dialogueQuickReplies.find((reply) => reply.id === selectedTone)?.tone ?? "None" : "None"}</strong>
-            </p>
+            <div className="dialogue-choice-header">
+              <p className="dialogue-choice-label">Tone</p>
+              <p className={`dialogue-tone-current ${selectedTone ? "is-selected" : "is-empty"}`}>
+                {selectedTone
+                  ? `Current: ${dialogueQuickReplies.find((reply) => reply.id === selectedTone)?.tone ?? "Neutral"}`
+                  : "Current: Unselected"}
+              </p>
+            </div>
             <div className="quick-reply-row" aria-label="Dialogue tone choices">
               {dialogueQuickReplies.map((reply) => (
                 <button
                   key={reply.id}
                   className={`quick-reply-btn quick-reply-btn-${reply.id} ${selectedTone === reply.id ? "quick-reply-btn-active" : ""}`}
                   title={reply.text}
+                  aria-pressed={selectedTone === reply.id}
                   disabled={isAwaitingNpcReply || isResolved}
                   onClick={async () => {
-                    setSelectedTone(reply.id);
+                    setToneSelection({ npcId: engagedNpc, tone: reply.id });
                     await onSubmitQuickReply(reply.text, reply.id);
                   }}
                 >

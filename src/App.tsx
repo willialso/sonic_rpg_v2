@@ -100,6 +100,12 @@ function titleCase(input: string): string {
   return input.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
+function defaultDialogueSpeaker(npcId: NpcId): string {
+  if (npcId === "frat_boys") return "Diesel";
+  if (npcId === "sorority_girls") return "Apple";
+  return titleCase(npcId);
+}
+
 function buildDialogueObjectivePrompt(
   npcId: NpcId,
   state: GameStateData,
@@ -2409,7 +2415,7 @@ function App() {
   const popupNpcId: NpcId | null = engagedNpc;
   const popupTyping = Boolean(engagedNpc && isAwaitingNpcReply);
   const popupDialogueText = popupTyping ? "" : (latestNpcTurn?.text ?? "");
-  const popupDisplaySpeaker = latestNpcTurn?.displaySpeaker ?? (popupNpcId ? titleCase(popupNpcId) : "");
+  const popupDisplaySpeaker = latestNpcTurn?.displaySpeaker ?? (popupNpcId ? defaultDialogueSpeaker(popupNpcId) : "");
   const popupPoseState = latestNpcTurn?.poseKey ?? "neutral";
   const popupCharacterImage = popupNpcId && content
     ? resolveCharacterImage(content.assetManifest, popupNpcId, popupPoseState, popupDisplaySpeaker)
@@ -2436,8 +2442,8 @@ function App() {
     && !locationSplash
     && !isSoggySequenceActive
   );
-  const scenePopupPlacement: "upper" = "upper";
-  const scenePopupTextPosition: "above" = "above";
+  const scenePopupPlacement = "upper" as const;
+  const scenePopupTextPosition = "above" as const;
   const stripPokerLosses = state.world.minigames.stripPokerLosses ?? 0;
   const stripPokerNextStake = STRIP_POKER_CLOTHING_STAKES[Math.min(stripPokerLosses, STRIP_POKER_CLOTHING_STAKES.length - 1)];
   const stripPokerStakesRemaining = Math.max(0, STRIP_POKER_CLOTHING_STAKES.length - stripPokerLosses);
