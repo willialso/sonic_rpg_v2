@@ -4,7 +4,7 @@ import { ScriptedDialogueService } from "./ScriptedDialogueService";
 import { DynamicDialogueService } from "./DynamicDialogueService";
 import { IntentResolver } from "./IntentResolver";
 import { InteractionRouter } from "./InteractionRouter";
-import type { DialogueRequest, DialogueResponse, TurnIntent } from "./types";
+import type { DialogueRequest, DialogueResponse, DialogueTone, TurnIntent } from "./types";
 
 export interface DialogueRouterOptions {
   maxSentencesPerReply?: number;
@@ -45,6 +45,34 @@ function finalizeNpcText(npcId: NpcId, text: string, seed = ""): string {
   return compacted;
 }
 
+function toneHash(input: string): number {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = ((hash * 33) ^ input.charCodeAt(i)) >>> 0;
+  }
+  return hash >>> 0;
+}
+
+function applyToneFrame(text: string, tone?: DialogueTone): string {
+  if (!tone || tone === "neutral") return text;
+  const cleaned = compactDialogue(text);
+  if (!cleaned) return cleaned;
+  const sarcasticTags = [
+    "Totally normal campus behavior.",
+    "Absolutely no red flags there.",
+    "What could possibly go wrong."
+  ];
+  const informativeTags = [
+    "Use that as your next move.",
+    "Keep the route efficient.",
+    "Apply that immediately."
+  ];
+  const tags = tone === "sarcastic" ? sarcasticTags : informativeTags;
+  const tag = tags[toneHash(`${cleaned}:${tone}`) % tags.length];
+  if (cleaned.endsWith(tag)) return cleaned;
+  return `${cleaned} ${tag}`;
+}
+
 export class DialogueRouter {
   private readonly scripted = new ScriptedDialogueService();
   private readonly safetyGuard: SafetyGuard;
@@ -67,7 +95,7 @@ export class DialogueRouter {
     };
   }
 
-  async reply(npcId: NpcId, input: string, state: GameStateData): Promise<DialogueResponse> {
+  async reply(npcId: NpcId, input: string, state: GameStateData, tone?: DialogueTone): Promise<DialogueResponse> {
     if (this.safetyGuard.shouldAbort(input)) {
       return {
         text: "Game halted. Report to campus infirmary or a trusted real-world support resource now.",
@@ -76,8 +104,8 @@ export class DialogueRouter {
       };
     }
 
-    const request: DialogueRequest = { npcId, input, state };
-    const intent: TurnIntent = this.intentResolver.resolve(npcId, input, state);
+    const request: DialogueRequest = { npcId, input, tone, state };
+    const intent: TurnIntent = this.intentResolver.resolve(npcId, input, state, tone);
     const routeDecision = this.interactionRouter.decide(request);
 
     if (intent.mode === "SYSTEM_SAFETY") {
@@ -91,7 +119,11 @@ export class DialogueRouter {
     if (routeDecision.interactionClass === "CRITICAL_SCRIPTED" || routeDecision.interactionClass === "HINT_PRIORITY") {
       const scripted = this.scripted.respond(npcId, input, state, intent.id);
       return {
-        text: finalizeNpcText(npcId, scripted, `${state.meta.seed}:${state.timer.remainingSec}:${intent.id}`),
+        text: finalizeNpcText(
+          npcId,
+          applyToneFrame(scripted, tone),
+          `${state.meta.seed}:${state.timer.remainingSec}:${intent.id}`
+        ),
         source: "scripted",
         safetyAbort: false,
         intent: intent.id
@@ -101,7 +133,11 @@ export class DialogueRouter {
     const generated = await this.dynamicService.generate(request, intent);
     return {
       ...generated,
-      text: finalizeNpcText(npcId, generated.text, `${state.meta.seed}:${state.timer.remainingSec}:${intent.id}:dyn`)
+      text: finalizeNpcText(
+        npcId,
+        applyToneFrame(generated.text, tone),
+        `${state.meta.seed}:${state.timer.remainingSec}:${intent.id}:dyn`
+      )
     };
   }
 }

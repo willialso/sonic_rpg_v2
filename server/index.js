@@ -1,9 +1,29 @@
-import "dotenv/config";
-import { config } from "./llm/config.js";
-import { DialogueOrchestrator } from "./llm/orchestrator.js";
-import { createApp } from "./createApp.js";
+async function bootstrapEnv() {
+  try {
+    await import("dotenv/config");
+  } catch (error) {
+    const missingDotenv = (
+      typeof error === "object"
+      && error !== null
+      && "code" in error
+      && error.code === "ERR_MODULE_NOT_FOUND"
+      && String(error?.url || error?.message || "").includes("dotenv")
+    );
+    if (missingDotenv) {
+      console.warn("dotenv not found. Starting API without .env preload.");
+      return;
+    }
+    throw error;
+  }
+}
 
 async function main() {
+  await bootstrapEnv();
+  const [{ config }, { DialogueOrchestrator }, { createApp }] = await Promise.all([
+    import("./llm/config.js"),
+    import("./llm/orchestrator.js"),
+    import("./createApp.js")
+  ]);
   console.log("Initializing dialogue orchestrator...");
   const orchestrator = new DialogueOrchestrator();
   await orchestrator.init();

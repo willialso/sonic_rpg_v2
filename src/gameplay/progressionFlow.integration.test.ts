@@ -25,7 +25,7 @@ describe("progression flow integration checks", () => {
     expect(state.phase).toBe("onboarding");
   });
 
-  it("requires escort-readiness and full mission gates to win", () => {
+  it("requires escort-readiness or an alternate escort mode plus full mission gates to win", () => {
     const state = createInitialState("win-gate-seed");
     const routeManager = new RouteManager();
 
@@ -35,6 +35,14 @@ describe("progression flow integration checks", () => {
     state.sonic.drunkLevel = ESCORT_READY_DRUNK_LEVEL - 1;
     expect(routeManager.canWin(state)).toBe(false);
 
+    state.world.events.push("ESCORT_MODE::trick");
+    expect(routeManager.canWin(state)).toBe(true);
+
+    state.player.inventory = [];
+    expect(routeManager.canWin(state)).toBe(false);
+
+    state.player.inventory.push("Student ID");
+    state.world.events = [];
     state.sonic.drunkLevel = ESCORT_READY_DRUNK_LEVEL;
     expect(routeManager.canWin(state)).toBe(true);
   });

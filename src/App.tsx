@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useGameController } from "./app/useGameController";
 import { seededRoll } from "./app/actions/minigameActions";
-import type { LocationId, NpcId } from "./types/game";
+import type { GameStateData, LocationId, NpcId } from "./types/game";
 import { ESCORT_READY_DRUNK_LEVEL, WARNING_LIMITS, warningMeter } from "./gameplay/progressionRules";
 import { resolveBackgroundImage, resolveCharacterImage } from "./assets/AssetManifest";
 import asswineIcon from "./assets/items/items_assswine.png";
@@ -25,6 +25,8 @@ import "./App.css";
 
 type UiAction =
   | { type: "RESET_GAME" }
+  | { type: "SET_TIMER_PAUSED"; paused: boolean }
+  | { type: "COMPLETE_ORIENTATION_INTRO"; preferredName?: string }
   | { type: "MOVE"; target: LocationId }
   | { type: "FORCE_MOVE"; target: LocationId }
   | { type: "START_DIALOGUE"; npcId: NpcId; auto?: boolean }
@@ -80,7 +82,7 @@ type UiAction =
   | { type: "ESCORT_SONIC" }
   | { type: "STADIUM_ENTRY" }
   | { type: "GET_HINT" }
-  | { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string };
+  | { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string; tone?: DialogueTone };
 
 type ActionButtonDef = {
   key: string;
@@ -91,9 +93,70 @@ type ActionButtonDef = {
   disabled?: boolean;
   badge?: string;
 };
+type DialogueTone = "sarcastic" | "informative" | "neutral";
+type DialogueQuickReply = { id: DialogueTone; tone: string; text: string };
 
 function titleCase(input: string): string {
   return input.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function buildDialogueObjectivePrompt(
+  npcId: NpcId,
+  state: GameStateData,
+  rumoredLocationLabel: string
+): string {
+  if (npcId === "dean_cain") {
+    return state.player.inventory.includes("Student ID")
+      ? "Give me one concrete next move to finish the Sonic-to-Stadium mission cleanly."
+      : "Issue my Student ID and give me the fastest opening route to find Sonic.";
+  }
+  if (npcId === "sonic") {
+    if (state.sonic.following) return "You are following now. What is the cleanest move to reach Stadium safely?";
+    if (state.sonic.drunkLevel >= ESCORT_READY_DRUNK_LEVEL) {
+      return "You look ready. What gets you to follow me to Stadium right now?";
+    }
+    return "What setup, item, or vibe shift do you need first before we move?";
+  }
+  if (npcId === "frat_boys") {
+    return "Should I challenge here now or rotate for a better Sonic setup?";
+  }
+  if (npcId === "sorority_girls") {
+    return "What should I grab or trade from here that directly helps the mission?";
+  }
+  if (npcId === "thunderhead") {
+    return "What trade gets me the fastest route progress right now?";
+  }
+  if (npcId === "tails" || npcId === "knuckles" || npcId === "eggman" || npcId === "luigi" || npcId === "earthworm_jim") {
+    return "Give me one concrete clue and one next move toward Sonic and Stadium.";
+  }
+  return rumoredLocationLabel
+    ? `Confirm the best move from here toward ${rumoredLocationLabel} and Stadium.`
+    : "Give me one concrete next move for this mission.";
+}
+
+function buildDialogueToneReplies(
+  npcId: NpcId,
+  state: GameStateData,
+  rumoredLocationLabel: string
+): DialogueQuickReply[] {
+  const base = buildDialogueObjectivePrompt(npcId, state, rumoredLocationLabel);
+  return [
+    {
+      id: "sarcastic",
+      tone: "Sarcastic",
+      text: `Love the chaos, truly. ${base}`
+    },
+    {
+      id: "informative",
+      tone: "Informative",
+      text: `Quick briefing. ${base}`
+    },
+    {
+      id: "neutral",
+      tone: "Neutral",
+      text: base
+    }
+  ];
 }
 
 type NoticeState = { title: string; body: string } | null;
@@ -102,8 +165,8 @@ type TopToastKind = "rumor" | "status";
 type TopToastState = { id: string; text: string; kind: TopToastKind } | null;
 const ITEM_HELP: Record<string, { desc: string; useHint: string; targetHint?: string; riskHint?: string }> = {
   "Student ID": { desc: "Campus clearance pass.", useHint: "Needed for key checks and entry." },
-  "Dean Whiskey": { desc: "Heavy liquor stash.", useHint: "Use in Dorm Room to push Sonic up.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Carrying contraband can trigger warnings." },
-  Asswine: { desc: "Thunderhead trade reward.", useHint: "Fast drunk boost in Dorm Room.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Trade setup costs time." },
+  "Dean Whiskey": { desc: "Heavy liquor stash.", useHint: "Use where Sonic is present (Dorm Room gives stronger setup).", targetHint: "Target: Sonic at current location.", riskHint: "Carrying contraband can trigger warnings." },
+  Asswine: { desc: "Thunderhead trade reward.", useHint: "Fast drunk boost anywhere Sonic is present.", targetHint: "Target: Sonic at current location.", riskHint: "Trade setup costs time." },
   "Furry Handcuffs": { desc: "High-risk control item.", useHint: "Use on Sonic at drunk level 3+.", targetHint: "Target: Sonic when escort-ready.", riskHint: "Wrong target can hard-fail." },
   "Frat Bong": { desc: "High-risk contraband.", useHint: "Do not carry near enforcement.", riskHint: "Can cause confiscation or expulsion." },
   "Spare Socks": { desc: "Strip poker buffer.", useHint: "Burn to avoid one forfeit.", targetHint: "Target: Strip Poker side pot.", riskHint: "Single-use item." },
@@ -112,25 +175,16 @@ const ITEM_HELP: Record<string, { desc: string; useHint: string; targetHint?: st
   "Sorority Mascara": { desc: "Sorority contraband.", useHint: "Valid Thunderhead trade item.", targetHint: "Target: Thunderhead in Tunnel.", riskHint: "Theft can trigger ejection + ban." },
   "Sorority Composite": { desc: "Sorority contraband.", useHint: "Valid Thunderhead trade item.", targetHint: "Target: Thunderhead in Tunnel.", riskHint: "High social penalty if caught." },
   "Hairbrush": { desc: "Low-value filler.", useHint: "Not valid for Thunderhead trade.", riskHint: "Bad trade wastes time." },
-  "Warm Beer": { desc: "Mix base item.", useHint: "Use or mix in Dorm Room.", targetHint: "Target: Sonic or mix recipes.", riskHint: "Weak alone; best when mixed." },
-  "Super Dean Beans": { desc: "Volatile ingredient.", useHint: "Mix for high-impact sludge.", targetHint: "Target: mix path in Dorm Room.", riskHint: "Can backfire hard." },
-  "Expired Energy Shot": { desc: "High-variance stim.", useHint: "Use only when gambling.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Can lower progress and raise pressure." },
+  "Warm Beer": { desc: "Mix base item.", useHint: "Use where Sonic is present, or consume it in a mix recipe.", targetHint: "Target: Sonic at current location or mix recipes.", riskHint: "Mixing consumes Warm Beer." },
+  "Super Dean Beans": { desc: "Volatile ingredient.", useHint: "Mix with Warm Beer for Turbo Sludge.", targetHint: "Target: mix path in Dorm Room.", riskHint: "Mixing consumes ingredients and can backfire later." },
+  "Expired Energy Shot": { desc: "High-variance stim.", useHint: "Use only when gambling.", targetHint: "Target: Sonic at current location.", riskHint: "Can lower progress and raise pressure." },
   "Glitter Flask": { desc: "Mix container.", useHint: "Needed for Glitter Bomb Brew.", targetHint: "Target: mix path.", riskHint: "No direct value alone." },
-  "Glitter Bomb Brew": { desc: "Chaotic mixed drink.", useHint: "Use in Dorm Room for swingy gain.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Can spike Dean warning." },
-  "Turbo Sludge": { desc: "Heavy mixed brew.", useHint: "Big spike attempt in Dorm Room.", targetHint: "Target: Sonic in Dorm Room.", riskHint: "Big backfire risk." },
+  "Glitter Bomb Brew": { desc: "Chaotic mixed drink.", useHint: "Use where Sonic is present for swingy gain.", targetHint: "Target: Sonic at current location.", riskHint: "Can spike Dean warning." },
+  "Turbo Sludge": { desc: "Heavy mixed brew.", useHint: "Big spike attempt where Sonic is present.", targetHint: "Target: Sonic at current location.", riskHint: "Big backfire risk." },
   "Campus Map": { desc: "Route intel.", useHint: "Use to reveal search lanes.", targetHint: "Target: route planning.", riskHint: "Costs time to use." },
-  "Lost Lanyard": { desc: "Early clue item.", useHint: "Minor hunt support.", targetHint: "Target: early progression.", riskHint: "Low late-game value." },
-  "Lecture Notes": { desc: "Flavor intel scrap.", useHint: "Low impact utility.", riskHint: "Can clutter inventory." },
-  "Remote Battery": { desc: "Minor utility part.", useHint: "Side item only.", riskHint: "No core route impact." },
-  "Pocket Flashlight": { desc: "Tunnel helper.", useHint: "Minor tunnel support.", riskHint: "Low mission impact." },
-  "Rusty Token": { desc: "Tunnel relic.", useHint: "Flavor-only pickup.", riskHint: "Low route value." },
   "Gate Stamp": { desc: "Gate credential.", useHint: "Use at Stadium; better with Student ID.", riskHint: "Without ID, can add Dean warning." },
-  "Security Schedule": { desc: "Guard timing intel.", useHint: "Best used at Stadium.", targetHint: "Target: stadium timing and entry.", riskHint: "Using elsewhere burns time." },
-  "Ping Pong Paddle": { desc: "Frat flavor item.", useHint: "Not required for progression.", riskHint: "Stealing can raise hostility." },
-  "Party Wristband": { desc: "Frat trinket.", useHint: "Low impact utility.", riskHint: "Mostly inventory noise." },
-  "Extra Sock": { desc: "Spare clothing scrap.", useHint: "Low impact backup item.", riskHint: "Minimal route value." },
-  "Laundry Detergent": { desc: "Dorm supply.", useHint: "Low priority item.", riskHint: "Mostly inventory noise." },
-  "Mystery Meat": { desc: "Cafeteria wildcard.", useHint: "Use on Sonic in Dorm Room.", riskHint: "Can help or backfire." }
+  "Security Schedule": { desc: "Guard timing intel.", useHint: "Use at Stadium for gate timing or in Dorm Room to sell Sonic a VIP window.", targetHint: "Target: Sonic in Dorm Room or gate timing at Stadium.", riskHint: "Without Student ID, the VIP bluff backfires." },
+  "Mystery Meat": { desc: "Cafeteria wildcard.", useHint: "Use on Sonic where present.", riskHint: "Can help or backfire." }
 };
 const ITEM_ICONS: Partial<Record<string, string>> = {
   "Student ID": studentIdIcon,
@@ -227,6 +281,40 @@ type EggmanStir = "pulse" | "steady" | "whip";
 type EggmanLabProtocol = { catalyst: EggmanCatalyst; heat: EggmanHeat; stir: EggmanStir };
 type EggmanHintText = Partial<Record<keyof EggmanLabProtocol, string>>;
 type EggmanLabFx = "perfect" | "good" | "fail" | "meltdown" | null;
+type PlaytestResult = "win" | "fail" | "in_progress";
+type PlaytestRunSummary = {
+  capturedAt: string;
+  seed: string;
+  result: PlaytestResult;
+  phase: string;
+  routeMode: string;
+  completedRoutes: string[];
+  timeRemainingSec: number;
+  warnings: { dean: number; luigi: number; frat: number };
+  sonic: { drunkLevel: number; following: boolean; location: string };
+  mission: { objective: string; subObjective: string };
+  location: string;
+  inventory: string[];
+  failReason: string | null;
+  dialogueSources: {
+    scripted: number;
+    llm: number;
+    fallback: number;
+    cache: number;
+    cooldown: number;
+  };
+  eventsTail: string[];
+};
+type PlaytestTuningSnapshot = {
+  sampleSize: number;
+  wins: number;
+  fails: number;
+  inProgress: number;
+  winRatePct: number;
+  unresolvedSetupCount: number;
+  avgTimeRemainingSec: number;
+  mostCommonRouteMode: string;
+};
 
 const CARD_SUITS = ["♠", "♥", "♦", "♣"] as const;
 const CARD_RANKS: Array<{ rank: string; value: number }> = [
@@ -239,6 +327,128 @@ const STRIP_POKER_CLOTHING_STAKES = ["Shirt", "Pants", "Shoes", "Socks", "Underw
 const EGGMAN_CATALYSTS: EggmanCatalyst[] = ["red", "green", "blue"];
 const EGGMAN_HEATS: EggmanHeat[] = ["low", "mid", "high"];
 const EGGMAN_STIRS: EggmanStir[] = ["pulse", "steady", "whip"];
+const PLAYTEST_LOG_KEY = "sonic_rpg_playtest_runs_v1";
+const MAX_PLAYTEST_LOGS = 40;
+
+function inferRouteMode(state: GameStateData): string {
+  const events = state.world.events ?? [];
+  if (events.some((entry) => entry.startsWith("ESCORT_MODE::trick"))) return "trick_vip_schedule";
+  if (events.some((entry) => entry.startsWith("ESCORT_MODE::handcuffs"))) return "handcuffs";
+  if (events.some((entry) => entry.startsWith("ESCORT_MODE::drunk"))) {
+    if (state.routes.routeC.complete) return "drunk_routeC_asswine";
+    if (state.routes.routeB.complete) return "drunk_routeB_whiskey";
+    if (state.routes.routeA.complete) return "drunk_routeA_beerpong";
+    return "drunk_mixed";
+  }
+  if (state.routes.routeC.complete) return "routeC_asswine_setup";
+  if (state.routes.routeB.complete) return "routeB_whiskey_setup";
+  if (state.routes.routeA.complete) return "routeA_beerpong_setup";
+  return "unresolved_setup";
+}
+
+function toPlaytestRunSummary(state: GameStateData): PlaytestRunSummary {
+  const completedRoutes = Object.entries(state.routes)
+    .filter(([, route]) => route.complete)
+    .map(([id]) => id);
+  const result: PlaytestResult = state.fail.hardFailed
+    ? "fail"
+    : state.phase === "resolved"
+      ? "win"
+      : "in_progress";
+  return {
+    capturedAt: new Date().toISOString(),
+    seed: state.meta.seed,
+    result,
+    phase: state.phase,
+    routeMode: inferRouteMode(state),
+    completedRoutes,
+    timeRemainingSec: state.timer.remainingSec,
+    warnings: {
+      dean: state.fail.warnings.dean,
+      luigi: state.fail.warnings.luigi,
+      frat: state.fail.warnings.frat
+    },
+    sonic: {
+      drunkLevel: state.sonic.drunkLevel,
+      following: state.sonic.following,
+      location: state.sonic.location
+    },
+    mission: {
+      objective: state.mission.objective,
+      subObjective: state.mission.subObjective
+    },
+    location: state.player.location,
+    inventory: [...state.player.inventory],
+    failReason: state.fail.reason ? state.fail.reason : null,
+    dialogueSources: {
+      scripted: state.quality.sourceCounts.scripted ?? 0,
+      llm: state.quality.sourceCounts.llm ?? 0,
+      fallback: state.quality.sourceCounts.fallback ?? 0,
+      cache: state.quality.sourceCounts.cache ?? 0,
+      cooldown: state.quality.sourceCounts.cooldown ?? 0
+    },
+    eventsTail: state.world.events.slice(-12)
+  };
+}
+
+function buildPlaytestTuningSnapshot(runs: PlaytestRunSummary[], sampleSize = 5): PlaytestTuningSnapshot | null {
+  if (runs.length === 0) return null;
+  const sample = runs.slice(0, sampleSize);
+  const wins = sample.filter((run) => run.result === "win").length;
+  const fails = sample.filter((run) => run.result === "fail").length;
+  const inProgress = sample.filter((run) => run.result === "in_progress").length;
+  const unresolvedSetupCount = sample.filter((run) => run.routeMode === "unresolved_setup").length;
+  const avgTimeRemainingSec = Math.round(
+    sample.reduce((acc, run) => acc + run.timeRemainingSec, 0) / Math.max(1, sample.length)
+  );
+  const routeModeCounts = sample.reduce<Record<string, number>>((acc, run) => {
+    acc[run.routeMode] = (acc[run.routeMode] ?? 0) + 1;
+    return acc;
+  }, {});
+  const mostCommonRouteMode = Object.entries(routeModeCounts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] ?? "n/a";
+  return {
+    sampleSize: sample.length,
+    wins,
+    fails,
+    inProgress,
+    winRatePct: Math.round((wins / Math.max(1, sample.length)) * 100),
+    unresolvedSetupCount,
+    avgTimeRemainingSec,
+    mostCommonRouteMode
+  };
+}
+
+function loadPlaytestLogStore(): PlaytestRunSummary[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(PLAYTEST_LOG_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as PlaytestRunSummary[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed;
+  } catch {
+    return [];
+  }
+}
+
+function savePlaytestLogStore(runs: PlaytestRunSummary[]): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(PLAYTEST_LOG_KEY, JSON.stringify(runs));
+}
+
+function downloadJsonFile(filename: string, payload: unknown): void {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.URL.revokeObjectURL(url);
+}
 
 function resolveEggmanProtocol(seed: string, round: number): EggmanLabProtocol {
   const catalyst = EGGMAN_CATALYSTS[Math.floor(seededRoll(`${seed}:eggman:${round}:catalyst`) * EGGMAN_CATALYSTS.length)];
@@ -387,6 +597,17 @@ function App() {
   const [beerControlStep, setBeerControlStep] = useState<"position" | "aim">("position");
   const [orientationAgendaOpen, setOrientationAgendaOpen] = useState(false);
   const [orientationAgendaName, setOrientationAgendaName] = useState("Student");
+  const [orientationIntroOpen, setOrientationIntroOpen] = useState(false);
+  const [orientationIntroSubmitting, setOrientationIntroSubmitting] = useState(false);
+  const [starterRoutePanelOpen, setStarterRoutePanelOpen] = useState(false);
+  const [missionTrackerCollapsed, setMissionTrackerCollapsed] = useState(false);
+  const [latestHintText, setLatestHintText] = useState("");
+  const [latestHintAtMs, setLatestHintAtMs] = useState(0);
+  const [playtestLogCount, setPlaytestLogCount] = useState(0);
+  const latestPlaytestTuning = useMemo(
+    () => buildPlaytestTuningSnapshot(loadPlaytestLogStore(), 5),
+    [playtestLogCount]
+  );
   const [campusMapOpen, setCampusMapOpen] = useState(false);
   const [showLandingPage, setShowLandingPage] = useState(true);
   const [landingClosing, setLandingClosing] = useState(false);
@@ -413,9 +634,11 @@ function App() {
   const lastBounceAtRef = useRef(0);
   const cupNearPulseRef = useRef<number[]>([0, 0, 0, 0, 0, 0]);
   const prevLocationRef = useRef<LocationId | null>(null);
+  const lastLocationSplashAtRef = useRef(0);
   const prevUnlockSnapshotRef = useRef<Record<string, boolean> | null>(null);
   const lastMissionIntakeEventRef = useRef<string>("");
   const lastRumorEventRef = useRef<string>("");
+  const lastStatusEventRef = useRef<string>("");
   const lastRumorToastAtRef = useRef(0);
   const toastQueueRef = useRef<Array<{ id: string; text: string; kind: TopToastKind }>>([]);
   const nextToastReadyAtRef = useRef(0);
@@ -432,6 +655,8 @@ function App() {
   const previousHudMetricsRef = useRef<{ cupsCleared: number; throwsUsed: number } | null>(null);
   const stripDealTimerRef = useRef<number | null>(null);
   const soggyTimersRef = useRef<number[]>([]);
+  const timerPauseSyncRef = useRef<boolean | null>(null);
+  const lastCapturedResolvedSeedRef = useRef("");
   const beerRoundMemoryRef = useRef<Record<BeerMatchup, BeerRoundMemory | null>>({
     frat: null,
     sonic: null
@@ -473,16 +698,39 @@ function App() {
     }
     setCampusMapOpen(false);
     const result = await performAction(action);
+    if (action.type === "GET_HINT" && result.message) {
+      setLatestHintText(result.message);
+      setLatestHintAtMs(Date.now());
+    }
     if (!silent && action.type !== "SUBMIT_DIALOGUE" && action.type !== "START_DIALOGUE" && action.type !== "MOVE") {
-      setNotice({
-        title: result.ok ? "Done" : "Blocked",
-        body: result.message
-      });
+      const itemOutcomeAction = action.type.startsWith("USE_")
+        || action.type.startsWith("GIVE_")
+        || action.type.startsWith("MIX_")
+        || action.type === "TRADE_THUNDERHEAD"
+        || action.type === "ANSWER_THUNDERHEAD"
+        || action.type === "GET_MYSTERY_MEAT"
+        || action.type === "GET_SUPER_DEAN_BEANS";
+      const shouldShowNotice = !result.ok
+        || action.type === "GET_HINT"
+        || action.type === "COMPLETE_ORIENTATION_INTRO"
+        || action.type === "STADIUM_ENTRY"
+        || itemOutcomeAction;
+      if (shouldShowNotice) {
+        setNotice({
+          title: result.ok
+            ? (action.type === "GET_HINT" ? "Hint" : itemOutcomeAction ? "Item Outcome" : "Update")
+            : "Blocked",
+          body: result.message || "No additional details."
+        });
+      }
     }
     return result;
   }, [performAction]);
   const openLandingPage = useCallback(() => {
     setLandingClosing(false);
+    setOrientationIntroOpen(false);
+    setOrientationIntroSubmitting(false);
+    setStarterRoutePanelOpen(false);
     setShowLandingPage(true);
   }, []);
   const closeLandingPage = useCallback(async (mode: "continue" | "enroll") => {
@@ -492,10 +740,32 @@ function App() {
       if (mode === "enroll") {
         await runAction({ type: "RESET_GAME" }, true);
       }
+      setOrientationIntroOpen(false);
+      setOrientationIntroSubmitting(false);
+      setStarterRoutePanelOpen(false);
       setShowLandingPage(false);
       setLandingClosing(false);
     }, 230);
   }, [landingClosing, runAction]);
+  const completeOrientationIntro = useCallback(async () => {
+    if (orientationIntroSubmitting) return;
+    setOrientationIntroSubmitting(true);
+    const result = await runAction({ type: "COMPLETE_ORIENTATION_INTRO" }, true);
+    setOrientationIntroSubmitting(false);
+    if (result.ok) {
+      setOrientationIntroOpen(false);
+      setStarterRoutePanelOpen(false);
+      setNotice({
+        title: "Mission Live",
+        body: "Orientation complete. Open Menu for route checklist, then move fast toward the latest Sonic sighting."
+      });
+      return;
+    }
+    setNotice({
+      title: "Orientation",
+      body: result.message
+    });
+  }, [orientationIntroSubmitting, runAction]);
   const clearSoggyTimers = useCallback(() => {
     if (soggyTimersRef.current.length === 0) return;
     soggyTimersRef.current.forEach((id) => window.clearTimeout(id));
@@ -595,10 +865,7 @@ function App() {
   const beerThrowsTotal = activeMode.throws;
   const beerThrowsUsed = Math.max(0, beerThrowsTotal - beerThrowsLeft);
   const engagedNpc = activeNpc;
-  const presentNpcs = useMemo(() => {
-    if (!engagedNpc) return presentNpcsRaw;
-    return presentNpcsRaw.includes(engagedNpc) ? presentNpcsRaw : [...presentNpcsRaw, engagedNpc];
-  }, [engagedNpc, presentNpcsRaw]);
+  const presentNpcs = useMemo(() => presentNpcsRaw, [presentNpcsRaw]);
   const clockText = `${Math.floor((state?.timer.remainingSec ?? 0) / 60).toString().padStart(2, "0")}:${((state?.timer.remainingSec ?? 0) % 60).toString().padStart(2, "0")}`;
   const resolveNpcImage = useCallback((npc: NpcId) => {
     if (!content) return "";
@@ -615,6 +882,13 @@ function App() {
       return speakerA === target || speakerB === npc;
     });
   }, [state]);
+  const submitQuickDialogueTone = useCallback(async (text: string, tone: DialogueTone) => {
+    if (!engagedNpc || isResolved || isAwaitingNpcReply) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    await submitDialogueLocked({ type: "SUBMIT_DIALOGUE", npcId: engagedNpc, input: trimmed, tone });
+    setPlayerInput("");
+  }, [engagedNpc, isAwaitingNpcReply, isResolved, submitDialogueLocked]);
   const focusNpcConversation = useCallback(async (npc: NpcId) => {
     if (isAwaitingNpcReply) return;
     setSearchLoot(null);
@@ -639,14 +913,79 @@ function App() {
     return false;
   }, [state]);
   const hintCooldownSec = Math.max(0, Math.ceil((hintCooldownUntilMs - Date.now()) / 1000));
-  const canUseHint = !isResolved && hintCooldownSec === 0 && hintSignalStrong;
+  const canUseHint = !isResolved && hintCooldownSec === 0;
   const hintButtonNote = isResolved
     ? "Run ended."
     : hintCooldownSec > 0
       ? `Hint ready in ${hintCooldownSec}s`
       : hintSignalStrong
         ? "Hint available."
-        : "No urgent hint.";
+        : "Hint available (low urgency).";
+  const exportCurrentRunTelemetry = useCallback(() => {
+    if (!state) return;
+    const summary = toPlaytestRunSummary(state);
+    const shortSeed = state.meta.seed.replace(/[^a-z0-9]/gi, "").slice(-10) || "run";
+    downloadJsonFile(`playtest-run-${shortSeed}.json`, summary);
+    setNotice({
+      title: "Playtest Export",
+      body: "Current run telemetry exported as JSON."
+    });
+  }, [state]);
+  const exportPlaytestLogs = useCallback(() => {
+    const runs = loadPlaytestLogStore();
+    const tuningSnapshot = buildPlaytestTuningSnapshot(runs, 5);
+    if (runs.length === 0) {
+      setNotice({
+        title: "Playtest Export",
+        body: "No stored playtest logs yet."
+      });
+      return;
+    }
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    downloadJsonFile(`playtest-runs-${stamp}.json`, {
+      exportedAt: new Date().toISOString(),
+      count: runs.length,
+      tuningSnapshot,
+      runs
+    });
+    setNotice({
+      title: "Playtest Export",
+      body: tuningSnapshot
+        ? `Exported ${runs.length} logs. Latest ${tuningSnapshot.sampleSize}-run win rate: ${tuningSnapshot.winRatePct}%.`
+        : `Exported ${runs.length} stored run logs.`
+    });
+  }, []);
+  const clearPlaytestLogs = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (!window.confirm("Clear all stored playtest logs?")) return;
+    window.localStorage.removeItem(PLAYTEST_LOG_KEY);
+    setPlaytestLogCount(0);
+    setNotice({
+      title: "Playtest Logs",
+      body: "Stored playtest logs cleared."
+    });
+  }, []);
+
+  useEffect(() => {
+    setPlaytestLogCount(loadPlaytestLogStore().length);
+  }, []);
+
+  useEffect(() => {
+    if (!state || !isResolved) return;
+    if (lastCapturedResolvedSeedRef.current === state.meta.seed) return;
+    const summary = toPlaytestRunSummary(state);
+    const existing = loadPlaytestLogStore().filter((entry) => entry.seed !== summary.seed);
+    const next = [summary, ...existing].slice(0, MAX_PLAYTEST_LOGS);
+    savePlaytestLogStore(next);
+    lastCapturedResolvedSeedRef.current = state.meta.seed;
+    setPlaytestLogCount(next.length);
+  }, [isResolved, state]);
+
+  useEffect(() => {
+    if (!state || state.phase === "resolved") return;
+    if (lastCapturedResolvedSeedRef.current !== state.meta.seed) return;
+    lastCapturedResolvedSeedRef.current = "";
+  }, [state]);
 
   useEffect(() => {
     if (!beerGameOpen) {
@@ -689,19 +1028,49 @@ function App() {
   }, [activeNpc, state]);
 
   useEffect(() => {
-    const handler = (event: Event) => {
-      const detail = (event as CustomEvent<{ message?: string }>).detail;
-      const message = detail?.message || "Dialogue request validation failed.";
-      setNotice({
-        title: "Dialogue",
-        body: message
-      });
-    };
-    window.addEventListener("dialogue-validation-issue", handler as EventListener);
-    return () => {
-      window.removeEventListener("dialogue-validation-issue", handler as EventListener);
-    };
-  }, []);
+    if (!state) return;
+    if (showLandingPage || landingClosing) return;
+    const needsOrientationIntro = state.phase === "onboarding" && !state.player.inventory.includes("Student ID");
+    if (needsOrientationIntro && !orientationIntroOpen) {
+      setOrientationIntroOpen(true);
+      setActionMenuOpen(false);
+      setHudMenuOpen(false);
+      setCampusMapOpen(false);
+      setOrientationAgendaOpen(false);
+    }
+    if (!needsOrientationIntro && orientationIntroOpen && !orientationIntroSubmitting) {
+      setOrientationIntroOpen(false);
+    }
+  }, [
+    landingClosing,
+    orientationIntroOpen,
+    orientationIntroSubmitting,
+    showLandingPage,
+    state
+  ]);
+
+  useEffect(() => {
+    const statusModalOpen = Boolean((notice || isResolved) && !showLandingPage && !landingClosing && !isSoggySequenceActive);
+    const shouldPauseTimer = showLandingPage
+      || landingClosing
+      || orientationIntroOpen
+      || orientationAgendaOpen
+      || starterRoutePanelOpen
+      || statusModalOpen;
+    if (timerPauseSyncRef.current === shouldPauseTimer) return;
+    timerPauseSyncRef.current = shouldPauseTimer;
+    void runAction({ type: "SET_TIMER_PAUSED", paused: shouldPauseTimer }, true);
+  }, [
+    isResolved,
+    isSoggySequenceActive,
+    landingClosing,
+    notice,
+    orientationAgendaOpen,
+    orientationIntroOpen,
+    runAction,
+    showLandingPage,
+    starterRoutePanelOpen
+  ]);
 
   useEffect(() => {
     if (!state || !content) return;
@@ -718,6 +1087,10 @@ function App() {
         prevLocationRef.current = current;
         return;
       }
+      if (Date.now() - lastLocationSplashAtRef.current < 1200) {
+        prevLocationRef.current = current;
+        return;
+      }
       const locationTitle = content.locations.find((l) => l.id === current)?.name ?? titleCase(current);
       const occupants = state.world.presentNpcs[current];
       setLocationSplash({
@@ -726,13 +1099,23 @@ function App() {
         subtitle: "Now here",
         occupants: occupants.length > 0 ? occupants.map((npc) => titleCase(npc)).join(" • ") : "Quiet"
       });
+      lastLocationSplashAtRef.current = Date.now();
       prevLocationRef.current = current;
     }
   }, [content, state]);
 
   useEffect(() => {
+    if (!state || !activeNpc) return;
+    const presentHere = state.world.presentNpcs[state.player.location] ?? [];
+    if (presentHere.includes(activeNpc)) return;
+    setActiveNpc(null);
+    setActiveNpcFocusAtMs(0);
+    setPlayerInput("");
+  }, [activeNpc, state]);
+
+  useEffect(() => {
     if (!locationSplash) return;
-    const id = window.setTimeout(() => setLocationSplash(null), 1800);
+    const id = window.setTimeout(() => setLocationSplash(null), 900);
     return () => window.clearTimeout(id);
   }, [locationSplash]);
 
@@ -764,7 +1147,7 @@ function App() {
     const relocateId = window.setTimeout(() => {
       void runAction({ type: "FORCE_MOVE", target }, true);
       pendingForcedRelocationTargetRef.current = null;
-      window.setTimeout(() => setNotice(null), 500);
+      window.setTimeout(() => setNotice(null), 1200);
     }, 1800);
     return () => window.clearTimeout(relocateId);
   }, [latestForcedRelocationEvent, runAction]);
@@ -804,6 +1187,15 @@ function App() {
 
   useEffect(() => {
     if (!state) return;
+    const latestEvent = state.world.events[state.world.events.length - 1] ?? "";
+    if (!latestEvent.startsWith("Sonic status:") && !latestEvent.startsWith("Search update:")) return;
+    if (latestEvent === lastStatusEventRef.current) return;
+    lastStatusEventRef.current = latestEvent;
+    queueTopToast(latestEvent, "status");
+  }, [queueTopToast, state]);
+
+  useEffect(() => {
+    if (!state) return;
     const unlocks = state.world.actionUnlocks;
     const prev = prevUnlockSnapshotRef.current;
     if (!prev) {
@@ -840,6 +1232,8 @@ function App() {
   useEffect(() => {
     const suppressTopToast = Boolean(
       notice
+      || orientationIntroOpen
+      || starterRoutePanelOpen
       || orientationAgendaOpen
       || campusMapOpen
       || beerGameOpen
@@ -866,7 +1260,7 @@ function App() {
       nextToastReadyAtRef.current = Date.now() + 500;
     }, topToast.kind === "rumor" ? 4600 : 3200);
     return () => window.clearTimeout(id);
-  }, [beerGameOpen, campusMapOpen, eggmanLabOpen, isSoggySequenceActive, landingClosing, locationSplash, notice, orientationAgendaOpen, searchLoot, showLandingPage, stripPokerOpen, topToast]);
+  }, [beerGameOpen, campusMapOpen, eggmanLabOpen, isSoggySequenceActive, landingClosing, locationSplash, notice, orientationAgendaOpen, orientationIntroOpen, searchLoot, showLandingPage, starterRoutePanelOpen, stripPokerOpen, topToast]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -905,6 +1299,11 @@ function App() {
     }
     return undefined;
   }, []);
+
+  useEffect(() => {
+    if (!isCompactViewport) return;
+    setMissionTrackerCollapsed(true);
+  }, [isCompactViewport]);
 
   const resetBeerPhysicsGame = useCallback((matchup?: BeerMatchup) => {
     const mode = modeConfig[matchup ?? beerMatchup];
@@ -1479,10 +1878,10 @@ function App() {
       : memory?.won
         ? [
             { speaker: "Diesel", text: `You just posted ${memory.cupsHit} cups. Run it back.` },
-            { speaker: "Provolone Toney", text: `Previous round was ${memory.accuracy}% accuracy. Pressure's on now.` }
+            { speaker: "Provelony Toney", text: `Previous round was ${memory.accuracy}% accuracy. Pressure's on now.` }
           ]
         : [
-            { speaker: "Provolone Toney", text: "Last round you blinked. Don't blink this one." },
+            { speaker: "Provelony Toney", text: "Last round you blinked. Don't blink this one." },
             { speaker: "Diesel", text: `Reset. Last game was ${memory?.cupsHit ?? 0} cups. Earn your bounce-back.` }
           ];
 
@@ -1516,25 +1915,25 @@ function App() {
       opening: [
         ...(priorRoundPool || []),
         { speaker: "Diesel", text: "Cups are set. Bring execution." },
-        { speaker: "Frat Boys", text: "Rack up. Talk down." }
+        { speaker: "Diesel", text: "Rack up. Talk down." }
       ],
       sink: [
         { speaker: "Diesel", text: "That's one. Keep stacking." },
-        { speaker: "Provolone Toney", text: "Okay, that release wasn't tragic." },
-        { speaker: "Provolone Toney", text: "There it is. Real shot shape." }
+        { speaker: "Provelony Toney", text: "Okay, that release wasn't tragic." },
+        { speaker: "Provelony Toney", text: "There it is. Real shot shape." }
       ],
       miss: [
-        { speaker: "Provolone Toney", text: "You threw that like a resignation letter." },
+        { speaker: "Provelony Toney", text: "You threw that like a resignation letter." },
         { speaker: "Diesel", text: "Miss noted. Next rep cleaner." },
-        { speaker: "Provolone Toney", text: "That arc looked nervous." }
+        { speaker: "Provelony Toney", text: "That arc looked nervous." }
       ],
       clutch: [
         { speaker: "Diesel", text: "Last throws. Stay composed." },
-        { speaker: "Provolone Toney", text: "Clutch reps now. No tourist energy." },
-        { speaker: "Provolone Toney", text: "Hit this and I stop doubting your form." }
+        { speaker: "Provelony Toney", text: "Clutch reps now. No tourist energy." },
+        { speaker: "Provelony Toney", text: "Hit this and I stop doubting your form." }
       ],
       idle: [
-        { speaker: "Frat Boys", text: "Crowd's waiting. Send it." },
+        { speaker: "Diesel", text: "Crowd's waiting. Send it." },
         { speaker: "Diesel", text: "Take your read and launch." }
       ]
     };
@@ -1642,11 +2041,20 @@ function App() {
     const deck = shuffledDeck(seedRoot);
     const playerCards = deck.slice(0, 5);
     const deckRemainder = deck.slice(5);
+    const opponentNames = trimmedOpponents.map((npcId, idx) => {
+      if (npcId === "sorority_girls") {
+        return seededFloat(`${seedRoot}:speaker:sorority:${idx}`) > 0.5 ? "Apple" : "Fedora";
+      }
+      if (npcId === "frat_boys") {
+        return seededFloat(`${seedRoot}:speaker:frat:${idx}`) > 0.5 ? "Diesel" : "Provelony Toney";
+      }
+      return titleCase(npcId);
+    });
     setStripPokerDeal({
       round,
       guestId,
       opponentNpcIds: trimmedOpponents,
-      opponentNames: trimmedOpponents.map((npcId) => titleCase(npcId)),
+      opponentNames,
       playerCards,
       opponents: [],
       deckRemainder,
@@ -2017,6 +2425,8 @@ function App() {
     engagedNpc
     && popupNpcId
     && (popupDialogueText || popupTyping)
+    && !orientationIntroOpen
+    && !starterRoutePanelOpen
     && !hudMenuOpen
     && !actionMenuOpen
     && !beerGameOpen
@@ -2034,6 +2444,8 @@ function App() {
   const currentSearchCache = searchLoot ? (state.world.searchCaches[searchLoot.location] ?? []) : [];
   const suppressTopToast = Boolean(
     notice
+    || orientationIntroOpen
+    || starterRoutePanelOpen
     || orientationAgendaOpen
     || beerGameOpen
     || eggmanLabOpen
@@ -2049,6 +2461,11 @@ function App() {
   const sororityBanned = state.world.restrictions.sororityBanned;
   const sororityPokerEligible = sororityOccupants.includes("sorority_girls");
   const showMissionTracker = false;
+  const showCompactMissionBar = !showLandingPage
+    && !landingClosing
+    && !orientationIntroOpen
+    && !starterRoutePanelOpen
+    && !isResolved;
   const routeSnapshots = [
     {
       id: "A",
@@ -2073,13 +2490,99 @@ function App() {
       label: "Handcuffs Route",
       complete: state.sonic.following && !state.player.inventory.includes("Furry Handcuffs"),
       note: state.player.inventory.includes("Furry Handcuffs")
-        ? "Use in Dorm Room when Sonic is ready."
+        ? "Use in Dorm Room. Best after prep, but high-risk attempts can still work."
         : "Search Sorority (when clear) for Handcuffs."
+    },
+    {
+      id: "E",
+      label: "VIP Trick Route",
+      complete: state.world.events.some((entry) => entry.startsWith("ESCORT_MODE::trick")),
+      note: state.player.inventory.includes("Security Schedule")
+        ? "Use Schedule in Dorm Room with Sonic to sell the VIP timing window."
+        : "Search Stadium/Gate area for Security Schedule and use it as leverage."
     }
   ];
+  const latestSonicRumorEvent = [...state.world.events]
+    .reverse()
+    .find((entry) => entry.startsWith("Rumor update: Sonic was spotted around "));
+  const rumoredPlaceRaw = latestSonicRumorEvent
+    ? latestSonicRumorEvent.replace(/^Rumor update: Sonic was spotted around /, "").replace(/\.$/, "").trim()
+    : "";
+  const rumoredLocation: LocationId | null = (() => {
+    if (!rumoredPlaceRaw) return null;
+    const idMatch = content.locations.find((loc) => loc.id === rumoredPlaceRaw.toLowerCase().replace(/\s+/g, "_"));
+    if (idMatch) return idMatch.id;
+    const nameMatch = content.locations.find((loc) => loc.name.toLowerCase() === rumoredPlaceRaw.toLowerCase());
+    return nameMatch?.id ?? null;
+  })();
+  const rumoredLocationLabel = rumoredLocation
+    ? (content.locations.find((loc) => loc.id === rumoredLocation)?.name ?? titleCase(rumoredLocation))
+    : "";
+  const sonicIntelAtCurrent = Boolean(rumoredLocation && rumoredLocation === state.player.location);
+  const sonicIntelReachableNow = Boolean(rumoredLocation && exits.includes(rumoredLocation));
+  const latestSonicRumorIndex = latestSonicRumorEvent ? state.world.events.lastIndexOf(latestSonicRumorEvent) : -1;
+  const eventsSinceSonicRumor = latestSonicRumorIndex >= 0
+    ? Math.max(0, (state.world.events.length - 1) - latestSonicRumorIndex)
+    : null;
+  const sonicIntelFreshness = !rumoredLocation
+    ? { label: "None", tone: "none" as const }
+    : sonicIntelAtCurrent
+      ? { label: "Live", tone: "live" as const }
+      : (eventsSinceSonicRumor ?? 0) <= 2
+        ? { label: "Fresh", tone: "fresh" as const }
+        : (eventsSinceSonicRumor ?? 0) <= 6
+          ? { label: "Recent", tone: "recent" as const }
+          : { label: "Stale", tone: "stale" as const };
+  const sonicIntelGuidance = !rumoredLocation
+    ? "No recent sighting surfaced. Talk to clue NPCs and keep moving through social lanes."
+    : sonicIntelAtCurrent
+      ? "Sighting matches your current location. Talk to nearby NPCs or run escort setup now."
+      : sonicIntelReachableNow
+        ? "Sighting is one move away. Jump there now before the rotation changes."
+        : `Push toward ${rumoredLocationLabel}. Use route exits and avoid over-looting side areas.`;
+  const compactSightingLabel = rumoredLocation ? rumoredLocationLabel : "No sighting";
+  const dialogueQuickReplies = engagedNpc
+    ? buildDialogueToneReplies(engagedNpc, state, rumoredLocationLabel || compactSightingLabel)
+    : [];
+  const studentIdReady = state.player.inventory.includes("Student ID");
+  const runStatusLabel = state.fail.hardFailed
+    ? "Failed"
+    : state.phase === "resolved"
+      ? "Won"
+      : "Active";
+  const resolvedRouteMode = inferRouteMode(state);
+  const routeModeLabels: Record<string, string> = {
+    trick_vip_schedule: "VIP schedule trick",
+    handcuffs: "Handcuffs escort",
+    drunk_routeC_asswine: "Asswine route",
+    drunk_routeB_whiskey: "Dean Whiskey route",
+    drunk_routeA_beerpong: "Beer Pong route",
+    drunk_mixed: "Mixed booze route",
+    routeC_asswine_setup: "Asswine setup",
+    routeB_whiskey_setup: "Whiskey setup",
+    routeA_beerpong_setup: "Beer Pong setup",
+    unresolved_setup: "Unresolved setup"
+  };
+  const resolvedRouteLabel = routeModeLabels[resolvedRouteMode] ?? titleCase(resolvedRouteMode);
+  const resolvedWarningTotal = state.fail.warnings.dean + state.fail.warnings.luigi + state.fail.warnings.frat;
+  const resolvedGrade = state.fail.hardFailed
+    ? "F"
+    : resolvedWarningTotal <= 1 && state.timer.remainingSec >= 300
+      ? "A"
+      : resolvedWarningTotal <= 2 && state.timer.remainingSec >= 180
+        ? "B"
+        : "C";
+  const latestHintAgeSec = latestHintAtMs > 0 ? Math.max(0, Math.floor((Date.now() - latestHintAtMs) / 1000)) : null;
+  const latestHintAgeLabel = latestHintAgeSec === null
+    ? ""
+    : latestHintAgeSec < 60
+      ? `${latestHintAgeSec}s ago`
+      : `${Math.floor(latestHintAgeSec / 60)}m ago`;
 
   const routeActionButtons: ActionButtonDef[] = [];
   const unlocks = state.world.actionUnlocks;
+  const sonicPongMatchesUsed = state.world.events.filter((entry) => entry.startsWith("SONIC_PONG_MATCH::")).length;
+  const sonicPongMatchesLeft = Math.max(0, 2 - sonicPongMatchesUsed);
   if (state.player.location === "frat" && unlocks.beerPongFrat) {
     routeActionButtons.push({
       key: "PLAY_BEER_PONG_MINIGAME_FRAT",
@@ -2094,12 +2597,14 @@ function App() {
     && sonicPresentAtCurrentLocation
     && !state.sonic.following
     && !state.world.restrictions.fratBanned
+    && sonicPongMatchesLeft > 0
   ) {
     routeActionButtons.push({
       key: "PLAY_BEER_PONG_MINIGAME_SONIC",
       label: "Challenge Sonic",
       action: { type: "PLAY_BEER_PONG_SHOT", shot: "hero" },
-      priority: state.sonic.drunkLevel < 4 ? 89 : 52
+      priority: state.sonic.drunkLevel < 4 ? 89 : 52,
+      badge: `${sonicPongMatchesLeft} left`
     });
   }
   if (state.player.location === "dean_office" && !deanInOffice && unlocks.searchDeanDesk) {
@@ -2175,7 +2680,7 @@ function App() {
   if (state.player.location === "sorority" && !sororityBanned && sororityPokerEligible) {
     routeActionButtons.push({
       key: "STRIP_POKER_MINIGAME",
-      label: "Play Poker",
+      label: "Play Poker (Quick)",
       action: { type: "PLAY_STRIP_POKER_ROUND" },
       priority: 83
     });
@@ -2223,7 +2728,7 @@ function App() {
         disabled: !sonicPresentAtCurrentLocation
       });
     }
-    if (unlocks.escortSonic) {
+    if (unlocks.escortSonic && !state.sonic.following) {
       routeActionButtons.push({
         key: "ESCORT_SONIC",
         label: "Escort Sonic",
@@ -2303,6 +2808,80 @@ function App() {
       });
     }
   }
+  if (state.player.location !== "dorm_room" && sonicPresentAtCurrentLocation) {
+    if (state.player.inventory.includes("Asswine")) {
+      routeActionButtons.push({
+        key: "GIVE_ASSWINE_ANYWHERE",
+        label: "Give Asswine",
+        action: { type: "GIVE_ASSWINE" },
+        priority: 92
+      });
+    }
+    if (state.player.inventory.includes("Dean Whiskey")) {
+      routeActionButtons.push({
+        key: "GIVE_WHISKEY_ANYWHERE",
+        label: "Give Whiskey",
+        action: { type: "GIVE_WHISKEY" },
+        priority: 88
+      });
+    }
+    if (state.player.inventory.includes("Warm Beer")) {
+      routeActionButtons.push({
+        key: "USE_WARM_BEER_ANYWHERE",
+        label: "Use Warm Beer",
+        action: { type: "USE_WARM_BEER" },
+        priority: 74
+      });
+    }
+    if (state.player.inventory.includes("Super Dean Beans")) {
+      routeActionButtons.push({
+        key: "USE_SUPER_DEAN_BEANS_ANYWHERE",
+        label: "Use Beans",
+        action: { type: "USE_SUPER_DEAN_BEANS" },
+        priority: 70
+      });
+    }
+    if (state.player.inventory.includes("Glitter Bomb Brew")) {
+      routeActionButtons.push({
+        key: "USE_GLITTER_BOMB_BREW_ANYWHERE",
+        label: "Use Glitter Brew",
+        action: { type: "USE_GLITTER_BOMB_BREW" },
+        priority: 69
+      });
+    }
+    if (state.player.inventory.includes("Turbo Sludge")) {
+      routeActionButtons.push({
+        key: "USE_TURBO_SLUDGE_ANYWHERE",
+        label: "Use Turbo Sludge",
+        action: { type: "USE_TURBO_SLUDGE" },
+        priority: 68
+      });
+    }
+    if (state.player.inventory.includes("Mystery Meat")) {
+      routeActionButtons.push({
+        key: "USE_MYSTERY_MEAT_ANYWHERE",
+        label: "Use Mystery Meat",
+        action: { type: "USE_MYSTERY_MEAT" },
+        priority: 44
+      });
+    }
+    if (state.player.inventory.includes("Expired Energy Shot")) {
+      routeActionButtons.push({
+        key: "USE_EXPIRED_ENERGY_SHOT_ANYWHERE",
+        label: "Use Energy Shot",
+        action: { type: "USE_EXPIRED_ENERGY_SHOT" },
+        priority: 40
+      });
+    }
+    if (unlocks.escortSonic && !state.sonic.following) {
+      routeActionButtons.push({
+        key: "ESCORT_SONIC_ANYWHERE",
+        label: "Escort Sonic",
+        action: { type: "ESCORT_SONIC" },
+        priority: state.sonic.drunkLevel >= 3 && !state.sonic.following ? 98 : 34
+      });
+    }
+  }
   if (state.player.location === "dorms" && unlocks.searchDorms) {
     routeActionButtons.push({
       key: "SEARCH_DORMS",
@@ -2330,7 +2909,7 @@ function App() {
       key: "STADIUM_ENTRY",
       label: "Enter Stadium",
       action: { type: "STADIUM_ENTRY" },
-      priority: state.sonic.following && state.sonic.drunkLevel >= ESCORT_READY_DRUNK_LEVEL ? 100 : 60
+      priority: state.sonic.following ? 100 : 60
     });
   }
   if (state.player.location === "stadium" && state.player.inventory.includes("Gate Stamp")) {
@@ -2359,7 +2938,7 @@ function App() {
       key: "USE_SECURITY_SCHEDULE",
       label: "Use Schedule",
       action: { type: "USE_SECURITY_SCHEDULE" },
-      priority: state.player.location === "stadium" ? 79 : 35
+      priority: state.player.location === "stadium" ? 79 : (state.player.location === "dorm_room" && sonicPresentAtCurrentLocation ? 93 : 35)
     });
   }
   if (state.player.inventory.includes("RA Whistle")) {
@@ -2393,6 +2972,19 @@ function App() {
       badge: isFratBannedMove ? "BANNED" : undefined
     };
   });
+  const recommendedActions: ActionButtonDef[] = [];
+  routeActionButtons.slice(0, 2).forEach((item) => {
+    recommendedActions.push(item);
+  });
+  if (recommendedActions.length < 2) {
+    moveActions
+      .filter((item) => !item.disabled)
+      .slice(0, 2 - recommendedActions.length)
+      .forEach((item) => {
+        recommendedActions.push(item);
+      });
+  }
+  const showRecommendationStrip = false;
   const riskyKeys = new Set([
     "USE_FURRY_HANDCUFFS",
     "USE_SUPER_DEAN_BEANS",
@@ -2448,6 +3040,7 @@ function App() {
     if (!matcher) return [];
     return routeActionButtons.filter((a) => matcher.match(a));
   };
+  const actionableInventoryItems = inventoryItems.filter((item) => resolveItemActions(item).length > 0 || item === "Campus Map");
   const selectedItemActions = selectedActionItem ? resolveItemActions(selectedActionItem) : [];
   const getOpponentSeatStyle = (index: number, total: number): CSSProperties => {
     const normalizedTotal = Math.max(1, total);
@@ -2483,12 +3076,10 @@ function App() {
         popupDialogueText={popupDialogueText}
         popupTyping={popupTyping}
         engagedNpc={engagedNpc}
-        playerInput={playerInput}
         isAwaitingNpcReply={isAwaitingNpcReply}
         isResolved={isResolved || isSoggySequenceActive}
-        titleCase={titleCase}
-        onPlayerInputChange={setPlayerInput}
-        onSubmitDialogue={submitDialogueLocked}
+        dialogueQuickReplies={dialogueQuickReplies}
+        onSubmitQuickReply={submitQuickDialogueTone}
       />
 
       <PresenceBar
@@ -2500,23 +3091,127 @@ function App() {
         onFocusNpc={(npc) => { void focusNpcConversation(npc); }}
       />
 
+      {showCompactMissionBar && (
+        <section className="mission-compact-bar" aria-label="Mission status">
+          <p className="mission-compact-title">Mission: Get Sonic to Stadium</p>
+          <p className="mission-compact-line">
+            <strong>Sonic:</strong> {state.sonic.drunkLevel}/4 drunk • <strong>Following:</strong> {state.sonic.following ? "Yes" : "No"} • <strong>ID:</strong> {studentIdReady ? "Ready" : "Missing"}
+          </p>
+          <p className="mission-compact-line">
+            <strong>Last sighting:</strong> {compactSightingLabel} • <strong>Intel:</strong> {sonicIntelFreshness.label}
+          </p>
+          <div className="mission-compact-actions">
+            {state.sonic.following && (
+              <span className="mission-following-chip">Sonic Following ✓</span>
+            )}
+            {rumoredLocation && sonicIntelReachableNow && !isResolved && (
+              <button
+                className="next-best-action mission-compact-btn"
+                onClick={async () => {
+                  await runAction({ type: "MOVE", target: rumoredLocation });
+                }}
+              >
+                Go to {rumoredLocationLabel}
+              </button>
+            )}
+            <button
+              className="mission-compact-btn"
+              disabled={!canUseHint}
+              onClick={async () => {
+                if (!canUseHint) return;
+                await runAction({ type: "GET_HINT" });
+                setHintCooldownUntilMs(Date.now() + 30000);
+              }}
+            >
+              Get Hint
+            </button>
+          </div>
+        </section>
+      )}
+
       {showMissionTracker && (
         <section className="mission-tracker" aria-label="Mission tracker">
-          <p className="mission-kicker">Objective</p>
+          <div className="mission-tracker-head">
+            <p className="mission-kicker">Objective</p>
+            <button
+              className="ghost mission-collapse-btn"
+              onClick={() => setMissionTrackerCollapsed((prev) => !prev)}
+            >
+              {missionTrackerCollapsed ? "Expand" : "Collapse"}
+            </button>
+          </div>
           <p className="mission-title">{state.mission.objective}</p>
-          <p className="mission-subtitle">{state.mission.subObjective}</p>
+          {!missionTrackerCollapsed && <p className="mission-subtitle">{state.mission.subObjective}</p>}
           <div className="mission-stats">
             <span>Sonic drunk: {state.sonic.drunkLevel}/4</span>
             <span>Following: {state.sonic.following ? "yes" : "no"}</span>
             <span>ID: {state.player.inventory.includes("Student ID") ? "ready" : "missing"}</span>
-            <span>Warnings — Dean {warningMeter(state.fail.warnings.dean, WARNING_LIMITS.dean)}, Luigi {warningMeter(state.fail.warnings.luigi, WARNING_LIMITS.luigi)}, Frat {warningMeter(state.fail.warnings.frat, WARNING_LIMITS.frat)}</span>
+            {!missionTrackerCollapsed && (
+              <span>Warnings — Dean {warningMeter(state.fail.warnings.dean, WARNING_LIMITS.dean)}, Luigi {warningMeter(state.fail.warnings.luigi, WARNING_LIMITS.luigi)}, Frat {warningMeter(state.fail.warnings.frat, WARNING_LIMITS.frat)}</span>
+            )}
           </div>
-          <div className="route-matrix">
-            {routeSnapshots.map((route) => (
-              <div key={`route-${route.id}`} className={`route-chip ${route.complete ? "complete" : ""}`}>
-                <strong>Route {route.id}</strong> {route.label} - {route.note}
-              </div>
-            ))}
+          <div className={`sonic-intel-card ${sonicIntelAtCurrent ? "on-target" : sonicIntelReachableNow ? "nearby" : "searching"}`}>
+            <div className="sonic-intel-head">
+              <p className="mission-kicker">Sonic Intel</p>
+              <span className={`sonic-intel-freshness ${sonicIntelFreshness.tone}`}>
+                {sonicIntelFreshness.label}
+              </span>
+            </div>
+            <p className="sonic-intel-line">
+              <strong>Last sighting:</strong>{" "}
+              {rumoredLocation ? rumoredLocationLabel : "No confirmed sighting yet"}
+            </p>
+            <p className="sonic-intel-line">{sonicIntelGuidance}</p>
+            {rumoredLocation && sonicIntelReachableNow && !isResolved && (
+              <button
+                className="next-best-action"
+                onClick={async () => {
+                  await runAction({ type: "MOVE", target: rumoredLocation });
+                }}
+              >
+                Go to {rumoredLocationLabel}
+              </button>
+            )}
+          </div>
+          {latestHintText && (
+            <div className="hint-memory-card">
+              <p className="mission-kicker">Last Hint {latestHintAgeLabel ? `(${latestHintAgeLabel})` : ""}</p>
+              <p className="sonic-intel-line">{latestHintText}</p>
+            </div>
+          )}
+          {!missionTrackerCollapsed && (
+            <div className="route-matrix">
+              {routeSnapshots.map((route) => (
+                <div key={`route-${route.id}`} className={`route-chip ${route.complete ? "complete" : ""}`}>
+                  <strong>Route {route.id}</strong> {route.label} - {route.note}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {showRecommendationStrip && !isResolved && !orientationIntroOpen && !showLandingPage && recommendedActions.length > 0 && (
+        <section className="mission-recommendations" aria-label="Recommended next steps">
+          <p className="mission-kicker">Recommended next steps</p>
+          <div className="button-grid mission-recommendation-grid">
+            {recommendedActions.map((item) => {
+              const isMoveAction = item.action.type === "MOVE";
+              const moveLabelBase = item.label.replace(/^Go\s+/, "");
+              const actionLabel = isMoveAction ? `Go: ${moveLabelBase}` : `Do: ${item.label}`;
+              return (
+              <button
+                key={`recommend-${item.key}`}
+                disabled={Boolean(item.disabled)}
+                className={item.key === nextBestActionKey ? "next-best-action" : ""}
+                onClick={async () => {
+                  await runAction(item.action);
+                }}
+              >
+                {actionLabel} {item.badge ? `(${item.badge})` : ""}
+              </button>
+              );
+            })}
           </div>
         </section>
       )}
@@ -2542,12 +3237,64 @@ function App() {
             </header>
             <div className="action-groups">
               <section className="action-group">
-                <h4>Status</h4>
-                <p className="menu-inline-copy muted">Sonic: {state.sonic.drunkLevel}/4 • Following: {state.sonic.following ? "yes" : "no"} • ID: {state.player.inventory.includes("Student ID") ? "ready" : "missing"}</p>
-                <p className="menu-inline-copy muted">Warn: Dean {warningMeter(state.fail.warnings.dean, WARNING_LIMITS.dean)} • Luigi {warningMeter(state.fail.warnings.luigi, WARNING_LIMITS.luigi)} • Frat {warningMeter(state.fail.warnings.frat, WARNING_LIMITS.frat)}</p>
+                <h4>Run Status</h4>
+                <div className="menu-status-grid">
+                  <span className="menu-status-chip"><strong>Run</strong> {runStatusLabel}</span>
+                  <span className="menu-status-chip"><strong>Sonic drunk</strong> {state.sonic.drunkLevel}/4</span>
+                  <span className="menu-status-chip"><strong>Following</strong> {state.sonic.following ? "Yes" : "No"}</span>
+                  <span className="menu-status-chip"><strong>Student ID</strong> {studentIdReady ? "Ready" : "Missing"}</span>
+                  <span className="menu-status-chip menu-status-chip-warnings">
+                    <strong>Warnings</strong> Dean {warningMeter(state.fail.warnings.dean, WARNING_LIMITS.dean)} • Luigi {warningMeter(state.fail.warnings.luigi, WARNING_LIMITS.luigi)} • Frat {warningMeter(state.fail.warnings.frat, WARNING_LIMITS.frat)}
+                  </span>
+                </div>
               </section>
               <section className="action-group">
-                <h4>Utilities</h4>
+                <h4>Mission Intel</h4>
+                <p className="menu-inline-copy"><strong>{state.mission.objective}</strong></p>
+                <p className="menu-inline-copy muted">{state.mission.subObjective}</p>
+                <div className={`sonic-intel-card ${sonicIntelAtCurrent ? "on-target" : sonicIntelReachableNow ? "nearby" : "searching"}`}>
+                  <div className="sonic-intel-head">
+                    <p className="mission-kicker">Sonic Intel</p>
+                    <span className={`sonic-intel-freshness ${sonicIntelFreshness.tone}`}>
+                      {sonicIntelFreshness.label}
+                    </span>
+                  </div>
+                  <p className="sonic-intel-line">
+                    <strong>Last sighting:</strong>{" "}
+                    {rumoredLocation ? rumoredLocationLabel : "No confirmed sighting yet"}
+                  </p>
+                  <p className="sonic-intel-line">{sonicIntelGuidance}</p>
+                  {rumoredLocation && sonicIntelReachableNow && !isResolved && (
+                    <button
+                      className="next-best-action"
+                      onClick={async () => {
+                        setHudMenuOpen(false);
+                        await runAction({ type: "MOVE", target: rumoredLocation });
+                      }}
+                    >
+                      Go to {rumoredLocationLabel}
+                    </button>
+                  )}
+                </div>
+                {latestHintText && (
+                  <div className="hint-memory-card">
+                    <p className="mission-kicker">Last Hint {latestHintAgeLabel ? `(${latestHintAgeLabel})` : ""}</p>
+                    <p className="sonic-intel-line">{latestHintText}</p>
+                  </div>
+                )}
+                <details className="menu-collapsible">
+                  <summary>Route checklist</summary>
+                  <div className="route-matrix">
+                    {routeSnapshots.map((route) => (
+                      <div key={`menu-route-${route.id}`} className={`route-chip ${route.complete ? "complete" : ""}`}>
+                        <strong>Route {route.id}</strong> {route.label} - {route.note}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              </section>
+              <section className="action-group">
+                <h4>Run Controls</h4>
                 <div className="button-grid action-grid">
                   <button
                     disabled={!canUseHint}
@@ -2571,6 +3318,57 @@ function App() {
                 </div>
                 <p className="menu-inline-copy muted">{hintButtonNote}</p>
               </section>
+              <section className="action-group">
+                <details className="menu-collapsible">
+                  <summary>Telemetry & Logs ({playtestLogCount})</summary>
+                  <div className="button-grid action-grid menu-detail-grid">
+                    <button
+                      disabled={!state}
+                      onClick={() => {
+                        setHudMenuOpen(false);
+                        exportCurrentRunTelemetry();
+                      }}
+                    >
+                      Export Run Log
+                    </button>
+                    <button
+                      disabled={playtestLogCount <= 0}
+                      onClick={() => {
+                        setHudMenuOpen(false);
+                        exportPlaytestLogs();
+                      }}
+                    >
+                      Export All Logs
+                    </button>
+                    <button
+                      className="ghost"
+                      disabled={playtestLogCount <= 0}
+                      onClick={() => {
+                        clearPlaytestLogs();
+                      }}
+                    >
+                      Clear Logs
+                    </button>
+                  </div>
+                  <p className="menu-inline-copy muted">Use logs to compare route consistency and blockers across runs.</p>
+                  {latestPlaytestTuning && (
+                    <div className="status-note-card">
+                      <h3>Latest {latestPlaytestTuning.sampleSize}-run tuning snapshot</h3>
+                      <div className="status-note-body">
+                        <p>
+                          Wins {latestPlaytestTuning.wins} • Fails {latestPlaytestTuning.fails} • In progress {latestPlaytestTuning.inProgress}
+                        </p>
+                        <p>
+                          Win rate {latestPlaytestTuning.winRatePct}% • Avg time left {latestPlaytestTuning.avgTimeRemainingSec}s
+                        </p>
+                        <p>
+                          Most common route: {latestPlaytestTuning.mostCommonRouteMode} • unresolved_setup: {latestPlaytestTuning.unresolvedSetupCount}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </details>
+              </section>
             </div>
           </article>
         </section>
@@ -2587,8 +3385,8 @@ function App() {
               <section className="action-group">
                 <h4>Items</h4>
                 <div className="menu-chip-wrap">
-                  {inventoryItems.length > 0 ? (
-                    inventoryItems.map((item) => (
+                  {actionableInventoryItems.length > 0 ? (
+                    actionableInventoryItems.map((item) => (
                       <button
                         key={`action-item-${item}`}
                         className={`menu-chip item-chip-button ${selectedActionItem === item ? "active-talk-btn" : ""}`}
@@ -2687,7 +3485,11 @@ function App() {
                           if (item.key === "STRIP_POKER_MINIGAME") {
                             setActionMenuOpen(false);
                             const opponentNpcIds = [...new Set(sororityOccupants)].slice(0, 4);
-                            await runAction({ type: "START_STRIP_POKER_SESSION" }, true);
+                            const setup = await runAction({ type: "START_STRIP_POKER_SESSION" }, true);
+                            if (!setup.ok) {
+                              setNotice({ title: "Blocked", body: setup.message });
+                              return;
+                            }
                             const round = (state.world.minigames.globalRound ?? 0) + 1;
                             startStripPokerRound(opponentNpcIds, round);
                             setStripPokerOpen(true);
@@ -3274,12 +4076,36 @@ function App() {
         </aside>
       )}
 
-      {(notice || isResolved) && !showLandingPage && !landingClosing && !isSoggySequenceActive && (
+      {orientationIntroOpen && (
         <section className="modal-overlay">
-          <article className={`modal-card ${isResolved ? "official-notice-card" : "status-note-card"}`}>
+          <article className="modal-card orientation-video-card">
+            <div className="agenda-letterhead">
+              <p className="agenda-school">Console University</p>
+              <p className="agenda-dept">Mission Briefing Theater</p>
+              <h3>Orientation Briefing</h3>
+            </div>
+            <div className="orientation-video-placeholder" role="img" aria-label="Orientation video placeholder">
+              <p><strong>Placeholder:</strong> Intro cinematic will render here.</p>
+              <p className="muted">Drop in the finalized video asset and wire this panel to the real source.</p>
+            </div>
+            <div className="agenda-grid">
+              <p><span className="agenda-check">✓</span><span className="agenda-item-text"><strong>Objective:</strong> Get Sonic to Stadium before time expires.</span></p>
+              <p><span className="agenda-check">✓</span><span className="agenda-item-text"><strong>Routes:</strong> Booze route, handcuffs route, or social trick route.</span></p>
+              <p><span className="agenda-check">✓</span><span className="agenda-item-text"><strong>Rules:</strong> Keep Student ID valid and avoid warning spikes.</span></p>
+            </div>
+            <button disabled={orientationIntroSubmitting} onClick={async () => completeOrientationIntro()}>
+              {orientationIntroSubmitting ? "Issuing ID..." : "Issue ID and Start Mission"}
+            </button>
+          </article>
+        </section>
+      )}
+
+      {(notice || isResolved) && !orientationIntroOpen && !starterRoutePanelOpen && !showLandingPage && !landingClosing && !isSoggySequenceActive && (
+        <section className="modal-overlay">
+          <article className={`modal-card ${isResolved ? (state.fail.hardFailed ? "official-notice-card" : "status-note-card mission-complete-card") : "status-note-card"}`}>
             {isResolved ? (
               <>
-                <div className="official-letterhead">
+                <div className={state.fail.hardFailed ? "official-letterhead" : "mission-complete-head"}>
                   <p className="official-school">Console University</p>
                   <p className="official-dept">Office of Dean Cain</p>
                   <h2>{state.fail.hardFailed ? "Expulsion Notice" : "Mission Completion Record"}</h2>
@@ -3291,7 +4117,25 @@ function App() {
                     alt="Expulsion notice"
                   />
                 )}
-                <p className="official-body">{state.fail.hardFailed ? state.fail.reason : "Sonic reached Stadium under mission conditions."}</p>
+                <p className={state.fail.hardFailed ? "official-body" : "status-note-body"}>
+                  {state.fail.hardFailed ? state.fail.reason : "Sonic reached Stadium under mission conditions."}
+                </p>
+                {!state.fail.hardFailed && (
+                  <>
+                    <div className="mission-complete-summary">
+                      <p><strong>Route:</strong> {resolvedRouteLabel}</p>
+                      <p><strong>Time left:</strong> {state.timer.remainingSec}s</p>
+                      <p><strong>Warnings:</strong> Dean {state.fail.warnings.dean} • Luigi {state.fail.warnings.luigi} • Frat {state.fail.warnings.frat}</p>
+                      <p><strong>Run grade:</strong> {resolvedGrade}</p>
+                    </div>
+                    <div className="mission-complete-reel">
+                      <h3>Victory Replay</h3>
+                      <p className="muted">
+                        Placeholder for final outro clip (route-specific stinger). Current run closed with the {resolvedRouteLabel} finish.
+                      </p>
+                    </div>
+                  </>
+                )}
                 <button onClick={async () => {
                   setActiveNpc(null);
                   setActiveNpcFocusAtMs(0);
@@ -3303,7 +4147,7 @@ function App() {
             ) : (
               <>
                 <h3>{notice?.title}</h3>
-                <p className="official-body">{notice?.body}</p>
+                <p className="status-note-body">{notice?.body}</p>
                 <button
                   onClick={async () => {
                     const forcedTarget = pendingForcedRelocationTargetRef.current;
@@ -3327,13 +4171,13 @@ function App() {
           <article className="modal-card">
             <>
               <img className="kickout-modal-image" src={soggyFratImage} alt="Frat bro laughing" />
-              <p><strong>Frat Boys:</strong> HAHAHAHAH Freak!</p>
+              <p><strong>Diesel:</strong> HAHAHAHAH Freak!</p>
             </>
           </article>
         </section>
       )}
 
-      {locationSplash && (
+      {locationSplash && !notice && !orientationIntroOpen && !starterRoutePanelOpen && (
         <section className="location-splash-overlay" onClick={() => setLocationSplash(null)}>
           <article className="location-splash-card">
             <p className="location-splash-kicker">{locationSplash.subtitle}</p>

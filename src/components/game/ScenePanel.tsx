@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { ActionResult, LocationId, NpcId } from "../../types/game";
+import type { LocationId, NpcId } from "../../types/game";
+import type { DialogueTone } from "../../dialogue/types";
 
 type Props = {
   locationId: LocationId;
@@ -12,12 +13,10 @@ type Props = {
   popupDialogueText: string;
   popupTyping: boolean;
   engagedNpc: NpcId | null;
-  playerInput: string;
   isAwaitingNpcReply: boolean;
   isResolved: boolean;
-  titleCase: (input: string) => string;
-  onPlayerInputChange: (value: string) => void;
-  onSubmitDialogue: (action: { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string }) => Promise<ActionResult>;
+  dialogueQuickReplies: Array<{ id: DialogueTone; tone: string; text: string }>;
+  onSubmitQuickReply: (text: string, tone: DialogueTone) => Promise<void>;
 };
 
 export function ScenePanel(props: Props) {
@@ -32,24 +31,61 @@ export function ScenePanel(props: Props) {
     popupDialogueText,
     popupTyping,
     engagedNpc,
-    playerInput,
     isAwaitingNpcReply,
     isResolved,
-    titleCase,
-    onPlayerInputChange,
-    onSubmitDialogue
+    dialogueQuickReplies,
+    onSubmitQuickReply
   } = props;
-  const [loadedBackground, setLoadedBackground] = useState(sceneBackgroundImage);
+  const [activeBackground, setActiveBackground] = useState(sceneBackgroundImage);
+  const [previousBackground, setPreviousBackground] = useState("");
+  const [isBackgroundTransitioning, setIsBackgroundTransitioning] = useState(false);
+  const [selectedTone, setSelectedTone] = useState<DialogueTone | null>(null);
+
   useEffect(() => {
     if (!sceneBackgroundImage) return;
-    if (sceneBackgroundImage === loadedBackground) return;
+    if (sceneBackgroundImage === activeBackground) return;
     const img = new Image();
-    img.onload = () => setLoadedBackground(sceneBackgroundImage);
+    img.onload = () => {
+      setPreviousBackground(activeBackground);
+      setActiveBackground(sceneBackgroundImage);
+      setIsBackgroundTransitioning(true);
+    };
     img.src = sceneBackgroundImage;
-  }, [loadedBackground, sceneBackgroundImage]);
+  }, [activeBackground, sceneBackgroundImage]);
+
+  useEffect(() => {
+    if (!isBackgroundTransitioning) return;
+    const id = window.setTimeout(() => {
+      setIsBackgroundTransitioning(false);
+      setPreviousBackground("");
+    }, 220);
+    return () => window.clearTimeout(id);
+  }, [isBackgroundTransitioning]);
+
+  useEffect(() => {
+    setSelectedTone(null);
+  }, [engagedNpc]);
+
+  const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const normalizedSpeaker = popupDisplaySpeaker?.trim() || "Character";
+  const speakerPrefixedRx = new RegExp(`^${escapeRegExp(normalizedSpeaker)}\\s*:\\s*`, "i");
+  const normalizedDialogue = String(popupDialogueText || "")
+    .replace(/^(frat boys|sorority girls)\s*:\s*/i, "")
+    .replace(speakerPrefixedRx, "")
+    .trim();
+
   return (
     <section className={`scene scene-${locationId}`}>
-      <div className="scene-bg-image-layer" style={{ backgroundImage: `url("${loadedBackground || sceneBackgroundImage}")` }} />
+      {previousBackground && (
+        <div
+          className={`scene-bg-image-layer scene-bg-image-prev ${isBackgroundTransitioning ? "is-transitioning" : ""}`}
+          style={{ backgroundImage: `url("${previousBackground}")` }}
+        />
+      )}
+      <div
+        className={`scene-bg-image-layer scene-bg-image-active ${isBackgroundTransitioning ? "is-transitioning" : ""}`}
+        style={{ backgroundImage: `url("${activeBackground || sceneBackgroundImage}")` }}
+      />
       {shouldShowDialoguePopup && (
         <div className={`scene-character-stage scene-character-stage-${scenePopupPlacement}`} aria-live="polite">
           <div className="scene-character-stage-dim" />
@@ -70,10 +106,10 @@ export function ScenePanel(props: Props) {
             <div className="scene-character-stage-text-wrap">
               <p className="bubble bubble-npc scene-character-stage-text">
                 <strong>
-                  {popupDisplaySpeaker}
+                  {normalizedSpeaker}:
                   {popupTyping && <span className="typing-wave" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>}
                 </strong>{" "}
-                {popupDialogueText}
+                {normalizedDialogue}
               </p>
             </div>
           </article>
@@ -82,38 +118,28 @@ export function ScenePanel(props: Props) {
 
       <div className="scene-footer">
         {engagedNpc && (
-          <>
-            <div className="dialogue-box">
-              <input
-                value={playerInput}
-                onChange={(e) => onPlayerInputChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key !== "Enter") return;
-                  if (!playerInput.trim() || isResolved || isAwaitingNpcReply) return;
-                  e.preventDefault();
-                  void onSubmitDialogue({ type: "SUBMIT_DIALOGUE", npcId: engagedNpc, input: playerInput }).then(() => {
-                    onPlayerInputChange("");
-                  });
-                }}
-                placeholder={`Talk to ${titleCase(engagedNpc)}...`}
-                inputMode="text"
-                enterKeyHint="send"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="sentences"
-                disabled={isAwaitingNpcReply || isResolved}
-              />
-              <button
-                disabled={!playerInput.trim() || isResolved || isAwaitingNpcReply}
-                onClick={async () => {
-                  await onSubmitDialogue({ type: "SUBMIT_DIALOGUE", npcId: engagedNpc, input: playerInput });
-                  onPlayerInputChange("");
-                }}
-              >
-                {isAwaitingNpcReply ? "Typing..." : "Send"}
-              </button>
+          <div className="dialogue-choice-panel">
+            <p className="dialogue-choice-label">Choose your tone:</p>
+            <p className="dialogue-tone-current">
+              Current tone: <strong>{selectedTone ? dialogueQuickReplies.find((reply) => reply.id === selectedTone)?.tone ?? "None" : "None"}</strong>
+            </p>
+            <div className="quick-reply-row" aria-label="Dialogue tone choices">
+              {dialogueQuickReplies.map((reply) => (
+                <button
+                  key={reply.id}
+                  className={`quick-reply-btn quick-reply-btn-${reply.id} ${selectedTone === reply.id ? "quick-reply-btn-active" : ""}`}
+                  title={reply.text}
+                  disabled={isAwaitingNpcReply || isResolved}
+                  onClick={async () => {
+                    setSelectedTone(reply.id);
+                    await onSubmitQuickReply(reply.text, reply.id);
+                  }}
+                >
+                  {reply.tone}
+                </button>
+              ))}
             </div>
-          </>
+          </div>
         )}
       </div>
     </section>
