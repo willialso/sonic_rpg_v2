@@ -1,4 +1,4 @@
-import type { GameStateData, NpcId } from "../types/game";
+import type { GameStateData, NpcId, ReplyTone } from "../types/game";
 import { ESCORT_READY_DRUNK_LEVEL, isEscortReady } from "../gameplay/progressionRules";
 
 function pickLine(lines: string[], seed: string): string {
@@ -135,7 +135,7 @@ export class ScriptedDialogueService {
     return pickLine(rows, key);
   }
 
-  respond(npcId: NpcId, input: string, state: GameStateData, intentId = "generic"): string {
+  respond(npcId: NpcId, input: string, state: GameStateData, intentId = "generic", _tonePreference: ReplyTone | null = null): string {
     const text = input.toLowerCase();
     const voiceSeed = `${state.timer.remainingSec}:${state.player.location}:${state.routes.routeA.progress}:${state.routes.routeB.progress}:${state.routes.routeC.progress}:${text.length}`;
     const progressBand = inferProgressBand(state);

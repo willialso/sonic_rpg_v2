@@ -1,4 +1,4 @@
-import type { DialogueSource, GameStateData, NpcId } from "../types/game";
+import type { DialogueSource, GameStateData, NpcId, ReplyTone } from "../types/game";
 
 export type InteractionClass = "CRITICAL_SCRIPTED" | "DYNAMIC_FLAVOR" | "HINT_PRIORITY" | "SYSTEM_SAFETY";
 export type DialogueMode = "SCRIPTED_GATE" | "DYNAMIC_FOCUSED" | "HINT_PRIORITY" | "SYSTEM_SAFETY";
@@ -29,6 +29,7 @@ export interface DialogueRequest {
   npcId: NpcId;
   input: string;
   state: GameStateData;
+  tonePreference?: ReplyTone | null;
 }
 
 export interface DialogueResponse {

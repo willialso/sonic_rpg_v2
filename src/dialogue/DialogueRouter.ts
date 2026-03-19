@@ -1,4 +1,4 @@
-import type { DialogueSource, GameStateData, NpcId } from "../types/game";
+import type { DialogueSource, GameStateData, NpcId, ReplyTone } from "../types/game";
 import { SafetyGuard } from "./SafetyGuard";
 import { ScriptedDialogueService } from "./ScriptedDialogueService";
 import { DynamicDialogueService } from "./DynamicDialogueService";
@@ -45,6 +45,55 @@ function finalizeNpcText(npcId: NpcId, text: string, seed = ""): string {
   return compacted;
 }
 
+function ensureSentence(text = ""): string {
+  const trimmed = compactDialogue(text);
+  if (!trimmed) return "";
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+function deterministicPick(seed: string, rows: string[]): string {
+  if (rows.length === 0) return "";
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) hash = ((hash * 31) ^ seed.charCodeAt(i)) >>> 0;
+  return rows[hash % rows.length];
+}
+
+function inferNextMove(npcId: NpcId, state: GameStateData): string {
+  if (!state.player.inventory.includes("Student ID")) return "Get Student ID from Dean first.";
+  if (npcId === "sonic" && state.sonic.drunkLevel < 3) return "Raise Sonic's drunk level to 3+, then request Stadium escort.";
+  if (npcId === "sonic" && !state.sonic.following) return "Prompt Sonic to follow, then move together toward Stadium.";
+  if (npcId === "tails") return "Pick one route and execute immediately.";
+  if (npcId === "frat_boys") return "Challenge at the table to unlock momentum.";
+  if (npcId === "thunderhead") return "Trade approved contraband for Asswine, then return to Sonic.";
+  return "Take the next mission-aligned move without detours.";
+}
+
+function applyToneVariant(
+  npcId: NpcId,
+  text: string,
+  tonePreference: ReplyTone | null,
+  state: GameStateData,
+  seedKey: string
+): string {
+  if (!tonePreference) return text;
+  const cleaned = compactDialogue(String(text || "").replace(/^[A-Za-z][A-Za-z\s'.-]{1,32}:\s*/i, ""));
+  if (!cleaned) return text;
+  const firstSentence = ensureSentence(cleaned.match(/[^.!?]+[.!?]?/)?.[0] ?? cleaned);
+  const moveSentence = ensureSentence(inferNextMove(npcId, state));
+  if (tonePreference === "informative") {
+    return `${firstSentence} ${moveSentence}`;
+  }
+  if (tonePreference === "neutral") {
+    return firstSentence;
+  }
+  const jab = deterministicPick(`${seedKey}:${npcId}:tone:sarcastic`, [
+    "Bold question for someone speedrunning mistakes.",
+    "Glad we're pretending this wasn't obvious.",
+    "Sure, let's do this the hard way but faster."
+  ]);
+  return `${ensureSentence(jab)} ${firstSentence}`;
+}
+
 export class DialogueRouter {
   private readonly scripted = new ScriptedDialogueService();
   private readonly safetyGuard: SafetyGuard;
@@ -67,7 +116,7 @@ export class DialogueRouter {
     };
   }
 
-  async reply(npcId: NpcId, input: string, state: GameStateData): Promise<DialogueResponse> {
+  async reply(npcId: NpcId, input: string, state: GameStateData, tonePreference: ReplyTone | null = null): Promise<DialogueResponse> {
     if (this.safetyGuard.shouldAbort(input)) {
       return {
         text: "Game halted. Report to campus infirmary or a trusted real-world support resource now.",
@@ -76,7 +125,7 @@ export class DialogueRouter {
       };
     }
 
-    const request: DialogueRequest = { npcId, input, state };
+    const request: DialogueRequest = { npcId, input, state, tonePreference };
     const intent: TurnIntent = this.intentResolver.resolve(npcId, input, state);
     const routeDecision = this.interactionRouter.decide(request);
 
@@ -89,9 +138,10 @@ export class DialogueRouter {
     }
 
     if (routeDecision.interactionClass === "CRITICAL_SCRIPTED" || routeDecision.interactionClass === "HINT_PRIORITY") {
-      const scripted = this.scripted.respond(npcId, input, state, intent.id);
+      const scripted = this.scripted.respond(npcId, input, state, intent.id, tonePreference);
+      const toned = applyToneVariant(npcId, scripted, tonePreference, state, `${state.meta.seed}:${state.timer.remainingSec}:${intent.id}:scripted`);
       return {
-        text: finalizeNpcText(npcId, scripted, `${state.meta.seed}:${state.timer.remainingSec}:${intent.id}`),
+        text: finalizeNpcText(npcId, toned, `${state.meta.seed}:${state.timer.remainingSec}:${intent.id}`),
         source: "scripted",
         safetyAbort: false,
         intent: intent.id
@@ -99,9 +149,16 @@ export class DialogueRouter {
     }
 
     const generated = await this.dynamicService.generate(request, intent);
+    const toned = applyToneVariant(
+      npcId,
+      generated.text,
+      tonePreference,
+      state,
+      `${state.meta.seed}:${state.timer.remainingSec}:${generated.intent || intent.id}:dynamic`
+    );
     return {
       ...generated,
-      text: finalizeNpcText(npcId, generated.text, `${state.meta.seed}:${state.timer.remainingSec}:${intent.id}:dyn`)
+      text: finalizeNpcText(npcId, toned, `${state.meta.seed}:${state.timer.remainingSec}:${intent.id}:dyn`)
     };
   }
 }

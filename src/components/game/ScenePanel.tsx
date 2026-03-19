@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { ActionResult, LocationId, NpcId } from "../../types/game";
+import type { ActionResult, LocationId, NpcId, ReplyTone } from "../../types/game";
+import { canonicalizeDisplaySpeaker, stripLeadingSpeakerPrefix } from "../../app/actions/dialogueActions";
 
 type Props = {
   locationId: LocationId;
@@ -12,12 +13,14 @@ type Props = {
   popupDialogueText: string;
   popupTyping: boolean;
   engagedNpc: NpcId | null;
+  selectedReplyTone: ReplyTone | null;
   playerInput: string;
   isAwaitingNpcReply: boolean;
   isResolved: boolean;
   titleCase: (input: string) => string;
+  onReplyToneChange: (tone: ReplyTone | null) => void;
   onPlayerInputChange: (value: string) => void;
-  onSubmitDialogue: (action: { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string }) => Promise<ActionResult>;
+  onSubmitDialogue: (action: { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string; tone?: ReplyTone | null }) => Promise<ActionResult>;
 };
 
 export function ScenePanel(props: Props) {
@@ -32,13 +35,26 @@ export function ScenePanel(props: Props) {
     popupDialogueText,
     popupTyping,
     engagedNpc,
+    selectedReplyTone,
     playerInput,
     isAwaitingNpcReply,
     isResolved,
     titleCase,
+    onReplyToneChange,
     onPlayerInputChange,
     onSubmitDialogue
   } = props;
+  const renderedSpeaker = engagedNpc
+    ? (canonicalizeDisplaySpeaker(engagedNpc, popupDisplaySpeaker) ?? popupDisplaySpeaker)
+    : popupDisplaySpeaker;
+  const renderedDialogueText = popupTyping
+    ? ""
+    : (engagedNpc ? stripLeadingSpeakerPrefix(engagedNpc, popupDialogueText, renderedSpeaker) : popupDialogueText);
+  const toneOptions: Array<{ key: ReplyTone; label: string }> = [
+    { key: "informative", label: "Informative" },
+    { key: "sarcastic", label: "Sarcastic" },
+    { key: "neutral", label: "Neutral" }
+  ];
   const [loadedBackground, setLoadedBackground] = useState(sceneBackgroundImage);
   useEffect(() => {
     if (!sceneBackgroundImage) return;
@@ -70,10 +86,10 @@ export function ScenePanel(props: Props) {
             <div className="scene-character-stage-text-wrap">
               <p className="bubble bubble-npc scene-character-stage-text">
                 <strong>
-                  {popupDisplaySpeaker}
-                  {popupTyping && <span className="typing-wave" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>}
+                  {(renderedSpeaker || (engagedNpc ? titleCase(engagedNpc) : "NPC"))}:
                 </strong>{" "}
-                {popupDialogueText}
+                {renderedDialogueText}
+                {popupTyping && <span className="typing-wave" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>}
               </p>
             </div>
           </article>
@@ -83,6 +99,20 @@ export function ScenePanel(props: Props) {
       <div className="scene-footer">
         {engagedNpc && (
           <>
+            <div className="quick-reply-row" role="group" aria-label="Reply tone">
+              {toneOptions.map((tone) => (
+                <button
+                  key={`tone-${tone.key}`}
+                  type="button"
+                  className={`quick-reply-btn quick-reply-btn-tone-${tone.key} ${selectedReplyTone === tone.key ? "quick-reply-btn-active" : ""}`}
+                  aria-pressed={selectedReplyTone === tone.key}
+                  onClick={() => onReplyToneChange(selectedReplyTone === tone.key ? null : tone.key)}
+                  disabled={isAwaitingNpcReply || isResolved}
+                >
+                  {tone.label}
+                </button>
+              ))}
+            </div>
             <div className="dialogue-box">
               <input
                 value={playerInput}
@@ -91,7 +121,7 @@ export function ScenePanel(props: Props) {
                   if (e.key !== "Enter") return;
                   if (!playerInput.trim() || isResolved || isAwaitingNpcReply) return;
                   e.preventDefault();
-                  void onSubmitDialogue({ type: "SUBMIT_DIALOGUE", npcId: engagedNpc, input: playerInput }).then(() => {
+                  void onSubmitDialogue({ type: "SUBMIT_DIALOGUE", npcId: engagedNpc, input: playerInput, tone: selectedReplyTone }).then(() => {
                     onPlayerInputChange("");
                   });
                 }}
@@ -106,7 +136,7 @@ export function ScenePanel(props: Props) {
               <button
                 disabled={!playerInput.trim() || isResolved || isAwaitingNpcReply}
                 onClick={async () => {
-                  await onSubmitDialogue({ type: "SUBMIT_DIALOGUE", npcId: engagedNpc, input: playerInput });
+                  await onSubmitDialogue({ type: "SUBMIT_DIALOGUE", npcId: engagedNpc, input: playerInput, tone: selectedReplyTone });
                   onPlayerInputChange("");
                 }}
               >

@@ -68,6 +68,7 @@ export function validateGameStateCandidate(candidate: unknown): candidate is Gam
 
   if (!isRecord(state.dialogue) || !Array.isArray(state.dialogue.turns) || !isStringArray(state.dialogue.greetedNpcIds)) return false;
   if (!isRecord(state.quality) || !isRecord(state.quality.sourceCounts)) return false;
+  if (state.quality.toneSourceCounts !== undefined && !isRecord(state.quality.toneSourceCounts)) return false;
 
   const presentNpcs = state.world.presentNpcs;
   for (const location of LOCATION_IDS) {
@@ -87,5 +88,8 @@ export function normalizeGameState(candidate: unknown): GameStateData | null {
   state.fail.warnings.luigi = Math.max(0, Math.floor(state.fail.warnings.luigi));
   state.fail.warnings.frat = Math.max(0, Math.floor(state.fail.warnings.frat));
   state.world.events = state.world.events.slice(-100);
+  if (!isRecord(state.quality.toneSourceCounts)) {
+    state.quality.toneSourceCounts = {};
+  }
   return state;
 }

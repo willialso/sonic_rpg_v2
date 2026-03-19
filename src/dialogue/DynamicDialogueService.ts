@@ -102,6 +102,7 @@ export class DynamicDialogueService {
         body: JSON.stringify({
           character_id: request.npcId,
           player_input: request.input,
+          tone_preference: request.tonePreference ?? null,
           fallback_text: fallbackText,
           intent: intent.id,
           function_id: intent.functionId,

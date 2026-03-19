@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useGameController } from "./app/useGameController";
 import { seededRoll } from "./app/actions/minigameActions";
-import type { LocationId, NpcId } from "./types/game";
+import type { LocationId, NpcId, ReplyTone } from "./types/game";
+import { canonicalizeDisplaySpeaker } from "./app/actions/dialogueActions";
 import { ESCORT_READY_DRUNK_LEVEL, WARNING_LIMITS, warningMeter } from "./gameplay/progressionRules";
 import { resolveBackgroundImage, resolveCharacterImage } from "./assets/AssetManifest";
 import asswineIcon from "./assets/items/items_assswine.png";
@@ -80,7 +81,7 @@ type UiAction =
   | { type: "ESCORT_SONIC" }
   | { type: "STADIUM_ENTRY" }
   | { type: "GET_HINT" }
-  | { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string };
+  | { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string; tone?: ReplyTone | null };
 
 type ActionButtonDef = {
   key: string;
@@ -344,6 +345,7 @@ function App() {
   const [activeNpc, setActiveNpc] = useState<NpcId | null>(null);
   const [activeNpcFocusAtMs, setActiveNpcFocusAtMs] = useState(0);
   const [playerInput, setPlayerInput] = useState("");
+  const [selectedReplyTone, setSelectedReplyTone] = useState<ReplyTone | null>(null);
   const [isAwaitingNpcReply, setIsAwaitingNpcReply] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [hudMenuOpen, setHudMenuOpen] = useState(false);
@@ -629,6 +631,9 @@ function App() {
       setIsAwaitingNpcReply(false);
     }
   }, [engagedNpc, isAwaitingNpcReply, npcHasFreshLine, runAction]);
+  useEffect(() => {
+    setSelectedReplyTone(null);
+  }, [engagedNpc]);
   const hintSignalStrong = useMemo(() => {
     if (!state) return false;
     if (state.timer.remainingSec < 180) return true;
@@ -2001,7 +2006,13 @@ function App() {
   const popupNpcId: NpcId | null = engagedNpc;
   const popupTyping = Boolean(engagedNpc && isAwaitingNpcReply);
   const popupDialogueText = popupTyping ? "" : (latestNpcTurn?.text ?? "");
-  const popupDisplaySpeaker = latestNpcTurn?.displaySpeaker ?? (popupNpcId ? titleCase(popupNpcId) : "");
+  const popupDisplaySpeaker = popupNpcId
+    ? (
+      canonicalizeDisplaySpeaker(popupNpcId, latestNpcTurn?.displaySpeaker)
+      ?? canonicalizeDisplaySpeaker(popupNpcId, titleCase(popupNpcId))
+      ?? titleCase(popupNpcId)
+    )
+    : "";
   const popupPoseState = latestNpcTurn?.poseKey ?? "neutral";
   const popupCharacterImage = popupNpcId && content
     ? resolveCharacterImage(content.assetManifest, popupNpcId, popupPoseState, popupDisplaySpeaker)
@@ -2026,8 +2037,8 @@ function App() {
     && !locationSplash
     && !isSoggySequenceActive
   );
-  const scenePopupPlacement: "upper" = "upper";
-  const scenePopupTextPosition: "above" = "above";
+  const scenePopupPlacement = "upper" as const;
+  const scenePopupTextPosition = "above" as const;
   const stripPokerLosses = state.world.minigames.stripPokerLosses ?? 0;
   const stripPokerNextStake = STRIP_POKER_CLOTHING_STAKES[Math.min(stripPokerLosses, STRIP_POKER_CLOTHING_STAKES.length - 1)];
   const stripPokerStakesRemaining = Math.max(0, STRIP_POKER_CLOTHING_STAKES.length - stripPokerLosses);
@@ -2483,10 +2494,12 @@ function App() {
         popupDialogueText={popupDialogueText}
         popupTyping={popupTyping}
         engagedNpc={engagedNpc}
+        selectedReplyTone={selectedReplyTone}
         playerInput={playerInput}
         isAwaitingNpcReply={isAwaitingNpcReply}
         isResolved={isResolved || isSoggySequenceActive}
         titleCase={titleCase}
+        onReplyToneChange={setSelectedReplyTone}
         onPlayerInputChange={setPlayerInput}
         onSubmitDialogue={submitDialogueLocked}
       />
@@ -3303,7 +3316,7 @@ function App() {
             ) : (
               <>
                 <h3>{notice?.title}</h3>
-                <p className="official-body">{notice?.body}</p>
+                <p className="status-body">{notice?.body}</p>
                 <button
                   onClick={async () => {
                     const forcedTarget = pendingForcedRelocationTargetRef.current;

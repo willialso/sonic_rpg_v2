@@ -124,7 +124,8 @@ export function createInitialState(seed = "sonic-rpg-v2-seed"): GameStateData {
         fallback: 0,
         cache: 0,
         cooldown: 0
-      }
+      },
+      toneSourceCounts: {}
     }
   };
 }

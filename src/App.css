@@ -12,6 +12,8 @@
   --text-strong: #fff6cf;
   --text-muted: rgba(230, 235, 255, 0.88);
   --text-dim: rgba(210, 218, 244, 0.78);
+  --popup-text-on-dark: #eef4ff;
+  --popup-text-on-light: #2f2413;
   --surface-overlay: rgba(5, 7, 20, 0.76);
   --surface-card: rgba(17, 13, 48, 0.98);
   --surface-panel: rgba(12, 14, 20, 0.94);
@@ -253,8 +255,54 @@ p, li, span, input, button {
 }
 
 .quick-reply-btn {
-  padding: 6px 8px;
+  position: relative;
+  min-height: 34px;
+  padding: 6px 11px 6px 13px;
   font-size: 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(171, 196, 255, 0.46);
+  background: linear-gradient(180deg, rgba(43, 56, 132, 0.86), rgba(30, 38, 104, 0.86));
+  color: #eff3ff;
+  box-shadow: none;
+  transform: translateY(0) scale(1);
+  transition: transform var(--motion-micro) var(--ease-standard), border-color var(--motion-micro) var(--ease-standard), box-shadow var(--motion-micro) var(--ease-standard), background var(--motion-micro) var(--ease-standard);
+}
+
+.quick-reply-btn::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 999px;
+  opacity: 0.72;
+}
+
+.quick-reply-btn-tone-informative::before {
+  background: rgba(119, 220, 154, 0.92);
+}
+
+.quick-reply-btn-tone-sarcastic::before {
+  background: rgba(255, 166, 96, 0.92);
+}
+
+.quick-reply-btn-tone-neutral::before {
+  background: rgba(171, 196, 255, 0.92);
+}
+
+.quick-reply-btn-active {
+  border-color: rgba(255, 210, 74, 0.96);
+  box-shadow: 0 0 0 2px rgba(255, 210, 74, 0.26), 0 8px 16px rgba(0, 0, 0, 0.28);
+  transform: translateY(-1px) scale(1.02);
+}
+
+.quick-reply-btn-active::after {
+  content: "✓";
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffe98d;
 }
 
 .dialogue-box {
@@ -958,6 +1006,7 @@ button:disabled {
 
 .status-note-card {
   text-align: center;
+  color: var(--popup-text-on-dark);
 }
 
 .official-letterhead {
@@ -987,7 +1036,16 @@ button:disabled {
 }
 
 .official-body {
-  color: #2f2413;
+  color: var(--popup-text-on-light);
+}
+
+.status-body {
+  color: var(--popup-text-on-dark);
+}
+
+.status-note-card .muted {
+  color: rgba(230, 238, 255, 0.96);
+  opacity: 1;
 }
 
 .top-toast {
@@ -1049,7 +1107,8 @@ button:disabled {
 }
 
 .muted {
-  opacity: 0.82;
+  color: var(--text-muted);
+  opacity: 0.92;
 }
 
 .modal-overlay {

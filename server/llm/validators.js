@@ -20,6 +20,7 @@ export function validateDialogueRequest(body) {
   if (!isRecord(body)) return { ok: false, issues: ["Request body must be a JSON object"], value: {} };
 
   optionalString(body.character_id, "character_id", issues, 80);
+  optionalString(body.tone_preference, "tone_preference", issues, 24);
   optionalString(body.intent, "intent", issues, 80);
   optionalString(body.function_id, "function_id", issues, 120);
   optionalString(body.player_input, "player_input", issues, 1200);
@@ -45,6 +46,13 @@ export function validateDialogueRequest(body) {
   }
   if (body.blocked_terms !== undefined && !isStringArray(body.blocked_terms)) {
     issues.push("blocked_terms must be a string array");
+  }
+  if (
+    body.tone_preference !== undefined
+    && body.tone_preference !== null
+    && !["informative", "sarcastic", "neutral"].includes(String(body.tone_preference).toLowerCase())
+  ) {
+    issues.push("tone_preference must be one of informative|sarcastic|neutral");
   }
 
   if (issues.length > 0) return { ok: false, issues, value: body };

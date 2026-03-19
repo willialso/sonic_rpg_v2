@@ -41,7 +41,7 @@ import {
   inferNpcPoseKey,
   createDialogueTurn
 } from "./actions/dialogueActions";
-import type { ActionResult, GameStateData, LocationId, NpcId } from "../types/game";
+import type { ActionResult, GameStateData, LocationId, NpcId, ReplyTone } from "../types/game";
 
 type MoveAction = { type: "MOVE"; target: LocationId };
 type ForceMoveAction = { type: "FORCE_MOVE"; target: LocationId };
@@ -102,7 +102,7 @@ type GameAction =
   | { type: "ESCORT_SONIC" }
   | { type: "STADIUM_ENTRY" }
   | { type: "GET_HINT" }
-  | { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string };
+  | { type: "SUBMIT_DIALOGUE"; npcId: NpcId; input: string; tone?: ReplyTone | null };
 
 const STRIP_POKER_CLOTHING_STAKES = ["Shirt", "Pants", "Shoes", "Socks", "Underwear"] as const;
 const LUIGI_CONTRABAND_ITEMS = ["Fake ID Wristband", "Exam Keycard", "Frat Bong"];
@@ -185,6 +185,11 @@ function clampDialogueForDisplay(npcId: NpcId, rawText: string): string {
   if (sentenceCapped.length <= maxChars) return sentenceCapped;
   const hard = sentenceCapped.slice(0, Math.max(16, maxChars - 1)).trimEnd();
   return /[.!?]$/.test(hard) ? hard : `${hard}.`;
+}
+
+function toneSourceKey(tonePreference: ReplyTone | null | undefined, source: string): string {
+  const tone = tonePreference ?? "none";
+  return `${tone}:${source}`;
 }
 
 export function useGameController(): {
@@ -309,6 +314,15 @@ export function useGameController(): {
       initial.world.analytics = {
         soggyBiscuitTriggered: Boolean(existingAnalytics.soggyBiscuitTriggered)
       };
+      if (!initial.quality || typeof initial.quality !== "object") {
+        initial.quality = { sourceCounts: {}, toneSourceCounts: {} };
+      }
+      if (!initial.quality.sourceCounts || typeof initial.quality.sourceCounts !== "object") {
+        initial.quality.sourceCounts = {};
+      }
+      if (!initial.quality.toneSourceCounts || typeof initial.quality.toneSourceCounts !== "object") {
+        initial.quality.toneSourceCounts = {};
+      }
       if (!initial.world.searchCaches || typeof initial.world.searchCaches !== "object") {
         initial.world.searchCaches = {};
       }
@@ -1682,6 +1696,7 @@ export function useGameController(): {
         }
         case "SUBMIT_DIALOGUE": {
           const dialogueInput = isSystemDialogue ? action.input.replace(/^__SYSTEM__:\s*/i, "").trim() : action.input;
+          const selectedTone = isSystemDialogue ? null : (action.tone ?? null);
           if (!state.dialogue.greetedNpcIds.includes(action.npcId)) {
             state.dialogue.greetedNpcIds.push(action.npcId);
             state.dialogue.encounterCountByNpc[action.npcId] = (state.dialogue.encounterCountByNpc[action.npcId] ?? 0) + 1;
@@ -1725,6 +1740,8 @@ export function useGameController(): {
               updateNpcMemory(state, "dean_cain", handoffLine);
               state.dialogue.source = "scripted";
               state.quality.sourceCounts.scripted = (state.quality.sourceCounts.scripted ?? 0) + 1;
+              const key = toneSourceKey(selectedTone, "scripted");
+              state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
               state.world.events.push(`MISSION_INTAKE::${parsedName}::orientation_agenda`);
               result = { ok: true, message: "Dean logs your name, issues your ID, and assigns the mission." };
               handledScriptedReply = true;
@@ -1744,6 +1761,8 @@ export function useGameController(): {
             updateNpcMemory(state, "dean_cain", "No name, no ID, no campus clearance. Come back when you can answer one basic question.");
               state.dialogue.source = "scripted";
               state.quality.sourceCounts.scripted = (state.quality.sourceCounts.scripted ?? 0) + 1;
+              const key = toneSourceKey(selectedTone, "scripted");
+              state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
               result = { ok: true, message: "Dean refuses to proceed without your name." };
               handledScriptedReply = true;
               return;
@@ -1765,6 +1784,8 @@ export function useGameController(): {
             result = { ok: true, message: "Dean asks for your name before issuing Student ID." };
             state.dialogue.source = "scripted";
             state.quality.sourceCounts.scripted = (state.quality.sourceCounts.scripted ?? 0) + 1;
+            const key = toneSourceKey(selectedTone, "scripted");
+            state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
             handledScriptedReply = true;
             return;
           }
@@ -1847,11 +1868,24 @@ export function useGameController(): {
             state.world.actionUnlocks.beerPongFrat = true;
             if (evaluateFratWarning(state.fail.warnings.frat).hardFail && !state.world.restrictions.fratChallengeForced) {
               state.world.restrictions.fratChallengeForced = true;
-              const challengeLine = pickDialogueVariant([
-                "Diesel: Mouth got loud. Table decides this now. Lose and you're banned.",
-                "Provolone Toney: You disrespected the house, now you play for access. Lose and you're done here.",
-                "Provolone Toney: Congrats, you unlocked consequences. Cups up, loser leaves."
-              ], `${state.meta.seed}:${state.timer.remainingSec}:frat-forced-challenge`);
+              const challengeVariants = selectedTone === "informative"
+                ? [
+                    "Diesel: House penalty active. Play now. Lose and Frat access is revoked.",
+                    "Provelony Toney: Rule is simple: win this game or lose Frat access.",
+                    "Provelony Toney: Consequence unlocked. Table decides entry right now."
+                  ]
+                : selectedTone === "neutral"
+                  ? [
+                      "Diesel: You disrespected the house. Play now or lose access.",
+                      "Provelony Toney: Cups up. Lose and you're out of Frat.",
+                      "Provelony Toney: Challenge is live. Win to stay, lose to leave."
+                    ]
+                  : [
+                      "Diesel: Mouth got loud. Table decides this now. Lose and you're banned.",
+                      "Provelony Toney: You disrespected the house, now you play for access. Lose and you're done here.",
+                      "Provelony Toney: Congrats, you unlocked consequences. Cups up, loser leaves."
+                    ];
+              const challengeLine = pickDialogueVariant(challengeVariants, `${state.meta.seed}:${state.timer.remainingSec}:frat-forced-challenge:${selectedTone || "none"}`);
               const [challengeSpeakerRaw, ...challengeBodyParts] = challengeLine.split(":");
               const challengeSpeaker = challengeBodyParts.length > 0 ? challengeSpeakerRaw.trim() : "Diesel";
               const challengeBody = challengeBodyParts.length > 0 ? challengeBodyParts.join(":").trim() : challengeLine;
@@ -1863,6 +1897,8 @@ export function useGameController(): {
               updateNpcMemory(state, "frat_boys", challengeBody);
               state.dialogue.source = "scripted";
               state.quality.sourceCounts.scripted = (state.quality.sourceCounts.scripted ?? 0) + 1;
+              const key = toneSourceKey(selectedTone, "scripted");
+              state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
               result = { ok: true, message: "Frat challenges you to beer pong. Lose and you're banned." };
               handledScriptedReply = true;
               return;
@@ -1881,11 +1917,24 @@ export function useGameController(): {
                 state.sonic.location = "quad";
                 state.sonic.cooldownMoves = 2;
                 state.sonic.patience = 2;
-                const sonicExitLine = pickDialogueVariant([
-                  "This is lame and your vibe is busted. I'm out. Catch me when you have a real play.",
-                  "Nah, this pitch is dead. I'm ghosting this room before my reputation catches feelings.",
-                  "You're forcing it. I'm gone - bring chaos or don't bring me anything."
-                ], `${state.meta.seed}:${state.timer.remainingSec}:sonic-exit`);
+                const sonicExitVariants = selectedTone === "informative"
+                  ? [
+                      "Conversation failed the vibe check. I'm leaving now. Bring leverage if you want me back.",
+                      "No movement on your side, so I'm exiting. Return with one clear play.",
+                      "You're pushing without setup. I'm gone until you bring a real route step."
+                    ]
+                  : selectedTone === "neutral"
+                    ? [
+                        "This exchange is dead. I'm leaving. Come back with a better play.",
+                        "You're forcing it, so I'm out. Bring leverage next time.",
+                        "No momentum here. I'm gone for now."
+                      ]
+                    : [
+                        "This is lame and your vibe is busted. I'm out. Catch me when you have a real play.",
+                        "Nah, this pitch is dead. I'm ghosting this room before my reputation catches feelings.",
+                        "You're forcing it. I'm gone - bring chaos or don't bring me anything."
+                      ];
+                const sonicExitLine = pickDialogueVariant(sonicExitVariants, `${state.meta.seed}:${state.timer.remainingSec}:sonic-exit:${selectedTone || "none"}`);
                 state.dialogue.turns.push(createDialogueTurn("sonic", sonicExitLine, state, {
                   npcId: "sonic",
                   displaySpeaker: "Sonic",
@@ -1894,17 +1943,32 @@ export function useGameController(): {
                 updateNpcMemory(state, "sonic", sonicExitLine);
                 state.dialogue.source = "scripted";
                 state.quality.sourceCounts.scripted = (state.quality.sourceCounts.scripted ?? 0) + 1;
+                const key = toneSourceKey(selectedTone, "scripted");
+                state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
                 state.world.events.push("Rumor update: Sonic dipped after a bad exchange. Last seen heading toward Quad.");
                 state.world.events.push("telemetry:sonic-leave-triggered");
                 result = { ok: true, message: "Sonic bails after the exchange. Try rebuilding rapport before asking for Stadium again." };
                 handledScriptedReply = true;
                 return;
               }
-              const sonicWarnLine = pickDialogueVariant([
-                "Easy. Keep barking orders and I'll bounce.",
-                "Tone check. You want movement, bring leverage not whining.",
-                "One more lame push and I'm gone."
-              ], `${state.meta.seed}:${state.timer.remainingSec}:sonic-warn:${state.sonic.patience}`);
+              const sonicWarnVariants = selectedTone === "informative"
+                ? [
+                    "Current approach is not working. Bring one concrete leverage move.",
+                    "Direct note: pressure without setup makes me leave.",
+                    "One more low-value push and this lane closes."
+                  ]
+                : selectedTone === "neutral"
+                  ? [
+                      "Easy. Push like that again and I leave.",
+                      "Tone check. Bring leverage, not pressure.",
+                      "One more bad push and I'm gone."
+                    ]
+                  : [
+                      "Easy. Keep barking orders and I'll bounce.",
+                      "Tone check. You want movement, bring leverage not whining.",
+                      "One more lame push and I'm gone."
+                    ];
+              const sonicWarnLine = pickDialogueVariant(sonicWarnVariants, `${state.meta.seed}:${state.timer.remainingSec}:sonic-warn:${state.sonic.patience}:${selectedTone || "none"}`);
               state.dialogue.turns.push(createDialogueTurn("sonic", sonicWarnLine, state, {
                 npcId: "sonic",
                 displaySpeaker: "Sonic",
@@ -1913,6 +1977,8 @@ export function useGameController(): {
               updateNpcMemory(state, "sonic", sonicWarnLine);
               state.dialogue.source = "scripted";
               state.quality.sourceCounts.scripted = (state.quality.sourceCounts.scripted ?? 0) + 1;
+              const key = toneSourceKey(selectedTone, "scripted");
+              state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
               result = { ok: true, message: "Sonic pushes back. Adjust your approach and try again." };
               handledScriptedReply = true;
               return;
@@ -1937,7 +2003,7 @@ export function useGameController(): {
       for (const reaction of pendingSystemReactions) {
         const latest = store.get();
         if (latest.phase === "resolved" || latest.fail.hardFailed) break;
-        const reply = await dialogue.reply(reaction.npcId, reaction.input, latest);
+        const reply = await dialogue.reply(reaction.npcId, reaction.input, latest, null);
         store.patch((state) => {
           if (reaction.resetTurns) state.dialogue.turns = [];
           const clampedText = clampDialogueForDisplay(reaction.npcId, reply.text);
@@ -1952,6 +2018,8 @@ export function useGameController(): {
           })));
           state.dialogue.source = reply.source;
           state.quality.sourceCounts[reply.source] = (state.quality.sourceCounts[reply.source] ?? 0) + 1;
+          const key = toneSourceKey(null, reply.source);
+          state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
           updateNpcMemory(state, reaction.npcId, reply.text);
           ensureMissionIntakeConsistency(state);
           const world = director.updateWorld(state);
@@ -1967,6 +2035,7 @@ export function useGameController(): {
       const dialogueInput = isSystemDialogue
         ? dialogueAction.input.replace(/^__SYSTEM__:\s*/i, "").trim()
         : dialogueAction.input;
+      const tonePreference = isSystemDialogue ? null : (dialogueAction.tone ?? null);
       let provisionalCreatedAt: string | undefined;
       if (!isSystemDialogue) {
         store.patch((state) => {
@@ -1979,7 +2048,7 @@ export function useGameController(): {
           state.dialogue.turns.push(provisional);
         });
       }
-      const reply = await dialogue.reply(dialogueAction.npcId, dialogueInput, snapshot);
+      const reply = await dialogue.reply(dialogueAction.npcId, dialogueInput, snapshot, tonePreference);
       store.patch((state) => {
         if (provisionalCreatedAt) {
           state.dialogue.turns = state.dialogue.turns.filter((turn) => !(turn.createdAt === provisionalCreatedAt && turn.text === "..."));
@@ -1996,6 +2065,8 @@ export function useGameController(): {
           poseKey: inferNpcPoseKey(dialogueAction.npcId, turn.text, state, reply.intent)
         })));
         state.quality.sourceCounts[reply.source] = (state.quality.sourceCounts[reply.source] ?? 0) + 1;
+        const key = toneSourceKey(tonePreference, reply.source);
+        state.quality.toneSourceCounts[key] = (state.quality.toneSourceCounts[key] ?? 0) + 1;
         updateNpcMemory(state, dialogueAction.npcId, reply.text);
         ensureMissionIntakeConsistency(state);
         const world = director.updateWorld(state);

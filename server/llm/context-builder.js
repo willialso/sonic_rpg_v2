@@ -11,6 +11,9 @@ function sameNpcRecentTurns(turns = [], characterId = "") {
 export class ContextBuilder {
   build(body = {}) {
     const characterId = normalizeCharacterId(body.character_id || "unknown");
+    const tonePreference = typeof body.tone_preference === "string"
+      ? body.tone_preference.trim().toLowerCase()
+      : "";
     const intentContext = body.intent_context || {};
     const contract = intentContext.character_contract || null;
     const currentContext = body.current_context || body.game_context || {};
@@ -34,6 +37,7 @@ export class ContextBuilder {
     return {
       requestIdSeed: `${characterId}:${body.intent || "flavor"}:${body.player_input || ""}`,
       characterId,
+      tonePreference: ["informative", "sarcastic", "neutral"].includes(tonePreference) ? tonePreference : null,
       intent: body.intent || "flavor",
       functionId: body.function_id || "",
       playerInput: body.player_input || "",
