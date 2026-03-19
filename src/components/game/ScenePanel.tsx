@@ -74,12 +74,12 @@ export function ScenePanel(props: Props) {
               {popupCharacterImage ? (
                 <img
                   src={popupCharacterImage}
-                  alt={`${popupDisplaySpeaker} portrait`}
+                  alt={`${renderedSpeaker || (engagedNpc ? titleCase(engagedNpc) : "NPC")} portrait`}
                   className={`scene-character-stage-portrait ${engagedNpc === "thunderhead" ? "scene-character-stage-portrait-thunderhead" : ""}`}
                 />
               ) : (
                 <div className="scene-character-stage-portrait scene-character-stage-portrait-fallback" aria-hidden="true">
-                  <span>{popupDisplaySpeaker ? popupDisplaySpeaker.charAt(0).toUpperCase() : "?"}</span>
+                  <span>{renderedSpeaker ? renderedSpeaker.charAt(0).toUpperCase() : "?"}</span>
                 </div>
               )}
             </div>
