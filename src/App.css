@@ -2879,6 +2879,17 @@ button:disabled {
   to { filter: brightness(1.08); transform: translateY(-2px); }
 }
 
+@media (max-width: 768px) {
+  .action-strip,
+  .beer-scoreboard {
+    backdrop-filter: none;
+  }
+
+  .quick-reply-btn-active {
+    box-shadow: 0 0 0 1px rgba(255, 236, 168, 0.82), 0 4px 10px rgba(0, 0, 0, 0.2);
+  }
+}
+
 .result-win {
   color: #8df5b5;
   margin: 0;

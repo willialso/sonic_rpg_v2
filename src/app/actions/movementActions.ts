@@ -13,9 +13,14 @@ export function syncSonicLocation(state: GameStateData): void {
   if (sonicAt) {
     state.sonic.location = sonicAt;
     if (previous !== sonicAt) {
-      const recentSonicTurn = [...state.dialogue.turns]
-        .reverse()
-        .find((turn) => turn.npcId === "sonic" || String(turn.speaker || "").toLowerCase() === "sonic");
+      let recentSonicTurn = undefined;
+      for (let idx = state.dialogue.turns.length - 1; idx >= 0; idx -= 1) {
+        const turn = state.dialogue.turns[idx];
+        if (turn.npcId === "sonic" || String(turn.speaker || "").toLowerCase() === "sonic") {
+          recentSonicTurn = turn;
+          break;
+        }
+      }
       const playerLocationHasSonic = sonicAt === state.player.location;
       const recentTurnAtMs = recentSonicTurn?.createdAt ? Date.parse(recentSonicTurn.createdAt) : 0;
       const activeSonicExchange = Boolean(

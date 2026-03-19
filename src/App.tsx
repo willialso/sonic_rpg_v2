@@ -602,6 +602,40 @@ function pickWinningHandFromPool(pool: StripCard[], playerCards: StripCard[], se
   return null;
 }
 
+function findLatestEvent(events: string[], prefix: string): string {
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const value = events[i];
+    if (value.startsWith(prefix)) return value;
+  }
+  return "";
+}
+
+function countEventsWithPrefix(events: string[], prefix: string): number {
+  let count = 0;
+  for (const value of events) {
+    if (value.startsWith(prefix)) count += 1;
+  }
+  return count;
+}
+
+function findLatestNpcTurnForPopup(
+  turns: GameStateData["dialogue"]["turns"],
+  locationId: LocationId,
+  engagedNpc: NpcId | null,
+  focusedAfterMs: number
+) {
+  if (!engagedNpc) return undefined;
+  for (let i = turns.length - 1; i >= 0; i -= 1) {
+    const turn = turns[i];
+    if (turn.speaker === "You" || turn.npcId !== engagedNpc || turn.text.trim() === "...") continue;
+    if (turn.locationId && turn.locationId !== locationId) continue;
+    if (!focusedAfterMs) return turn;
+    const createdAtMs = turn.createdAt ? Date.parse(turn.createdAt) : 0;
+    if (createdAtMs >= focusedAfterMs) return turn;
+  }
+  return undefined;
+}
+
 function App() {
   const PONG = {
     canvas: { w: 900, h: 560 },
@@ -709,7 +743,7 @@ function App() {
   const lastForcedRelocationEventRef = useRef<string>("");
   const pendingForcedRelocationTargetRef = useRef<LocationId | null>(null);
   const latestForcedRelocationEvent = useMemo(
-    () => [...(state?.world.events ?? [])].reverse().find((entry) => entry.startsWith("FORCED_RELOCATE::")) ?? "",
+    () => findLatestEvent(state?.world.events ?? [], "FORCED_RELOCATE::"),
     [state?.world.events]
   );
   const beerTipSeenRef = useRef(false);
@@ -720,6 +754,7 @@ function App() {
   const soggyTimersRef = useRef<number[]>([]);
   const timerPauseSyncRef = useRef<boolean | null>(null);
   const lastCapturedResolvedSeedRef = useRef("");
+  const preloadedAssetUrlsRef = useRef<Set<string>>(new Set());
   const beerRoundMemoryRef = useRef<Record<BeerMatchup, BeerRoundMemory | null>>({
     frat: null,
     sonic: null
@@ -753,7 +788,42 @@ function App() {
     () => (content ? resolveBackgroundImage(content.assetManifest, currentLocation ?? "quad") : ""),
     [content, currentLocation]
   );
+  const currentPresentNpcs = state?.world.presentNpcs;
+  const currentPlayerLocation = state?.player.location;
+  const nearbyNpcIds = useMemo(
+    () => (currentPlayerLocation && currentPresentNpcs ? (currentPresentNpcs[currentPlayerLocation] ?? []) : []),
+    [currentPlayerLocation, currentPresentNpcs]
+  );
   const isSoggySequenceActive = soggySequenceStage !== null;
+
+  useEffect(() => {
+    if (!content || !currentLocation) return;
+    const queue = new Set<string>();
+    const add = (url: string) => {
+      const value = String(url || "").trim();
+      if (!value) return;
+      if (preloadedAssetUrlsRef.current.has(value)) return;
+      queue.add(value);
+    };
+
+    add(sceneBackgroundImage);
+    for (const nextLocation of locationRecord?.exits ?? []) {
+      add(resolveBackgroundImage(content.assetManifest, nextLocation));
+    }
+    for (const npc of nearbyNpcIds) {
+      add(resolveCharacterImage(content.assetManifest, npc, "neutral"));
+    }
+    if (activeNpc) {
+      add(resolveCharacterImage(content.assetManifest, activeNpc, "neutral"));
+    }
+
+    queue.forEach((url) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.src = url;
+      preloadedAssetUrlsRef.current.add(url);
+    });
+  }, [activeNpc, content, currentLocation, locationRecord?.exits, nearbyNpcIds, sceneBackgroundImage]);
 
   const runAction = useCallback(async (action: UiAction, silent = false) => {
     if (action.type !== "TAKE_FOUND_ITEM") {
@@ -2434,19 +2504,12 @@ function App() {
   }
 
   const exits = locationRecord?.exits ?? [];
-  const locationTurns = state.dialogue.turns.filter(
-    (turn) => !turn.locationId || turn.locationId === state.player.location
+  const latestNpcTurn = findLatestNpcTurnForPopup(
+    state.dialogue.turns,
+    state.player.location,
+    engagedNpc,
+    activeNpcFocusAtMs
   );
-  const latestNpcTurn = engagedNpc
-    ? [...locationTurns]
-      .reverse()
-      .find((turn) => {
-        if (turn.speaker === "You" || turn.npcId !== engagedNpc || turn.text.trim() === "...") return false;
-        if (!activeNpcFocusAtMs) return true;
-        const createdAtMs = turn.createdAt ? Date.parse(turn.createdAt) : 0;
-        return createdAtMs >= activeNpcFocusAtMs;
-      })
-    : undefined;
   const popupNpcId: NpcId | null = engagedNpc;
   const popupTyping = Boolean(engagedNpc && isAwaitingNpcReply);
   const popupDisplaySpeaker = sanitizePopupSpeaker(
@@ -2548,9 +2611,7 @@ function App() {
         : "Search Stadium/Gate area for Security Schedule and use it as leverage."
     }
   ];
-  const latestSonicRumorEvent = [...state.world.events]
-    .reverse()
-    .find((entry) => entry.startsWith("Rumor update: Sonic was spotted around "));
+  const latestSonicRumorEvent = findLatestEvent(state.world.events, "Rumor update: Sonic was spotted around ");
   const rumoredPlaceRaw = latestSonicRumorEvent
     ? latestSonicRumorEvent.replace(/^Rumor update: Sonic was spotted around /, "").replace(/\.$/, "").trim()
     : "";
@@ -2627,7 +2688,7 @@ function App() {
 
   const routeActionButtons: ActionButtonDef[] = [];
   const unlocks = state.world.actionUnlocks;
-  const sonicPongMatchesUsed = state.world.events.filter((entry) => entry.startsWith("SONIC_PONG_MATCH::")).length;
+  const sonicPongMatchesUsed = countEventsWithPrefix(state.world.events, "SONIC_PONG_MATCH::");
   const sonicPongMatchesLeft = Math.max(0, 2 - sonicPongMatchesUsed);
   if (state.player.location === "frat" && unlocks.beerPongFrat) {
     routeActionButtons.push({

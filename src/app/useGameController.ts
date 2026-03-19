@@ -126,6 +126,8 @@ const HANDCUFFS_UNREADY_TIME_PENALTY_SEC = 18;
 const HANDCUFFS_UNREADY_FAIL_THRESHOLD = 0.48;
 const SONIC_PONG_MAX_MATCHES = 2;
 const CAMPUS_MAP_TIME_COST_SEC = 6;
+const MAX_DIALOGUE_TURNS = 140;
+const MAX_WORLD_EVENTS = 80;
 const MOVE_TIME_COST_SEC = {
   withMap: 8,
   base: 12
@@ -172,6 +174,36 @@ function formatSearchResult(found: string[]): string {
 function hasCampusMapInRun(state: GameStateData): boolean {
   if (state.player.inventory.includes("Campus Map")) return true;
   return Object.values(state.world.searchCaches).some((cache) => Array.isArray(cache) && cache.includes("Campus Map"));
+}
+
+function buildWorldTickSignature(remainingSec: number): string {
+  const elapsed = 900 - remainingSec;
+  const urgencyBand = remainingSec < 240 ? 2 : remainingSec < 480 ? 1 : 0;
+  const luigiPulseBand = Math.abs((remainingSec % 210) - 105) <= 8 ? 1 : 0;
+  return [
+    Math.floor(elapsed / 40),
+    Math.floor(elapsed / 45),
+    Math.floor(elapsed / 50),
+    Math.floor(elapsed / 60),
+    urgencyBand,
+    luigiPulseBand
+  ].join(":");
+}
+
+function enforceRuntimeCaps(state: GameStateData): void {
+  if (state.dialogue.turns.length > MAX_DIALOGUE_TURNS) {
+    state.dialogue.turns = state.dialogue.turns.slice(-MAX_DIALOGUE_TURNS);
+  }
+  if (state.world.events.length > MAX_WORLD_EVENTS) {
+    state.world.events = state.world.events.slice(-MAX_WORLD_EVENTS);
+  }
+}
+
+function pushDialogueTurn(state: GameStateData, turn: ReturnType<typeof createDialogueTurn>): void {
+  state.dialogue.turns.push(turn);
+  if (state.dialogue.turns.length > MAX_DIALOGUE_TURNS) {
+    state.dialogue.turns = state.dialogue.turns.slice(-MAX_DIALOGUE_TURNS);
+  }
 }
 
 function findShortestLocationPath(
@@ -285,6 +317,7 @@ export function useGameController(): {
   const dialogueRef = useRef<DialogueRouter | null>(null);
   const autosaveDirtyRef = useRef(false);
   const lastAutosaveAtRef = useRef(0);
+  const worldTickSignatureRef = useRef("");
 
   useEffect(() => {
     let mounted = true;
@@ -397,7 +430,7 @@ export function useGameController(): {
       if (initial.player.location === "dean_office" && initial.dialogue.turns.length === 0) {
         const encounterCount = initial.dialogue.encounterCountByNpc.dean_cain ?? 0;
         const greet = dialogue.greeting("dean_cain", encounterCount, `${initial.meta.seed}:dean-intro`);
-        initial.dialogue.turns.push(createDialogueTurn("dean_cain", greet.text, initial, {
+        pushDialogueTurn(initial, createDialogueTurn("dean_cain", greet.text, initial, {
           npcId: "dean_cain",
           displaySpeaker: "Dean Cain",
           poseKey: inferNpcPoseKey("dean_cain", greet.text, initial, "WELCOME_NAME_CHECK")
@@ -413,6 +446,7 @@ export function useGameController(): {
       initial.world.intents = bootWorld.intents;
       initial.world.presentNpcs = bootWorld.presentNpcs;
       syncSonicLocation(initial);
+      worldTickSignatureRef.current = buildWorldTickSignature(initial.timer.remainingSec);
 
       stateRef.current = store;
       machineRef.current = machine;
@@ -438,19 +472,24 @@ export function useGameController(): {
       const store = stateRef.current;
       const machine = machineRef.current;
       if (!store) return;
+      const snapshot = store.get();
+      if (snapshot.phase === "resolved" || snapshot.fail.hardFailed || snapshot.timer.paused) return;
+      const nextRemainingSec = Math.max(0, snapshot.timer.remainingSec - 1);
+      const nextWorldSignature = buildWorldTickSignature(nextRemainingSec);
+      const shouldRefreshWorld = worldTickSignatureRef.current !== nextWorldSignature;
       let dirty = false;
       store.patch((state) => {
-        if (state.phase === "resolved" || state.fail.hardFailed) return;
-        if (state.timer.paused) return;
         dirty = true;
-        state.timer.remainingSec = Math.max(0, state.timer.remainingSec - 1);
+        state.timer.remainingSec = nextRemainingSec;
         setPressure(state);
+        if (shouldRefreshWorld) {
+          const world = director.updateWorld(state);
+          state.world.intents = world.intents;
+          state.world.presentNpcs = world.presentNpcs;
+          syncSonicLocation(state);
+        }
         ensureMissionIntakeConsistency(state);
-        const world = director.updateWorld(state);
-        state.world.intents = world.intents;
-        state.world.presentNpcs = world.presentNpcs;
-        syncSonicLocation(state);
-        ensureMissionIntakeConsistency(state);
+        enforceRuntimeCaps(state);
         if (state.timer.remainingSec === 0) {
           state.fail.hardFailed = true;
           state.fail.reason = "Time expired before Stadium success.";
@@ -461,7 +500,10 @@ export function useGameController(): {
           }
         }
       });
-      if (dirty) autosaveDirtyRef.current = true;
+      if (dirty) {
+        autosaveDirtyRef.current = true;
+        worldTickSignatureRef.current = nextWorldSignature;
+      }
       if (autosaveDirtyRef.current && Date.now() - lastAutosaveAtRef.current >= AUTOSAVE_DIRTY_FLUSH_MS) {
         const latest = store.get();
         saveManager.save(latest);
@@ -485,7 +527,7 @@ export function useGameController(): {
       const fresh = createInitialState(`${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
       if (fresh.player.location === "dean_office" && fresh.dialogue.turns.length === 0) {
         const greet = dialogue.greeting("dean_cain", 0, `${fresh.meta.seed}:dean-reset`);
-        fresh.dialogue.turns.push(createDialogueTurn("dean_cain", greet.text, fresh, {
+        pushDialogueTurn(fresh, createDialogueTurn("dean_cain", greet.text, fresh, {
           npcId: "dean_cain",
           displaySpeaker: "Dean Cain",
           poseKey: inferNpcPoseKey("dean_cain", greet.text, fresh, "WELCOME_NAME_CHECK")
@@ -499,6 +541,7 @@ export function useGameController(): {
       fresh.world.intents = world.intents;
       fresh.world.presentNpcs = world.presentNpcs;
       syncSonicLocation(fresh);
+      worldTickSignatureRef.current = buildWorldTickSignature(fresh.timer.remainingSec);
       machineRef.current = new StateMachine(fresh.phase);
       store.set(fresh);
       saveManager.clear();
@@ -526,7 +569,8 @@ export function useGameController(): {
       state.world.presentNpcs = world.presentNpcs;
       syncSonicLocation(state);
 
-      switch (action.type) {
+      try {
+        switch (action.type) {
         case "SET_TIMER_PAUSED": {
           state.timer.paused = action.paused;
           result = { ok: true, message: action.paused ? "Timer paused." : "Timer resumed." };
@@ -1853,7 +1897,7 @@ export function useGameController(): {
             if (shouldUseScriptedGreeting) {
               const greet = dialogue.greeting(action.npcId, encounterCount, `${state.meta.seed}:${state.timer.remainingSec}:tap-open`);
               const openingTurns = parseDisplayTurns(action.npcId, greet.text, defaultDialogueSpeaker(action.npcId));
-              openingTurns.forEach((turn) => state.dialogue.turns.push(createDialogueTurn(action.npcId, turn.text, state, {
+              openingTurns.forEach((turn) => pushDialogueTurn(state, createDialogueTurn(action.npcId, turn.text, state, {
                 npcId: action.npcId,
                 displaySpeaker: turn.displaySpeaker ?? defaultDialogueSpeaker(action.npcId),
                 poseKey: inferNpcPoseKey(action.npcId, turn.text, state, "OPENING_LINE")
@@ -1890,7 +1934,7 @@ export function useGameController(): {
             state.dialogue.encounterCountByNpc[action.npcId] = (state.dialogue.encounterCountByNpc[action.npcId] ?? 0) + 1;
           }
           if (!isSystemDialogue) {
-            state.dialogue.turns.push(createDialogueTurn("You", dialogueInput, state, { npcId: "player" }));
+            pushDialogueTurn(state, createDialogueTurn("You", dialogueInput, state, { npcId: "player" }));
           }
           const input = dialogueInput.toLowerCase();
           if (action.npcId === "dean_cain" && /(idiot|stupid|trash|screw you|bite me|hate|fuck you)/i.test(input)) {
@@ -1915,7 +1959,7 @@ export function useGameController(): {
                 `${parsedName}, confirmed. Mission: move Sonic to Stadium and keep this campus out of scandal.`,
                 `${parsedName}, you're on record. Student ID is live. Deliver Sonic to Stadium and keep it professional enough to deny later.`
               ], `${state.meta.seed}:${parsedName}:${state.timer.remainingSec}:dean-handoff`);
-              state.dialogue.turns.push(createDialogueTurn(
+              pushDialogueTurn(state, createDialogueTurn(
                 "dean_cain",
                 handoffLine,
                 state,
@@ -1934,7 +1978,7 @@ export function useGameController(): {
               return;
             }
             if (/(later|bye|leave|not telling|none of your business|no chance)/i.test(input)) {
-              state.dialogue.turns.push(createDialogueTurn(
+              pushDialogueTurn(state, createDialogueTurn(
                 "dean_cain",
                 "No name, no ID, no campus clearance. Come back when you can answer one basic question.",
                 state,
@@ -1959,7 +2003,7 @@ export function useGameController(): {
               "I can not issue mission access without your name. Keep it simple."
             ];
             const pick = Math.abs((state.timer.remainingSec + input.length) % deanRetryPool.length);
-            state.dialogue.turns.push(createDialogueTurn("dean_cain", deanRetryPool[pick], state, {
+            pushDialogueTurn(state, createDialogueTurn("dean_cain", deanRetryPool[pick], state, {
               npcId: "dean_cain",
               displaySpeaker: "Dean Cain",
               poseKey: inferNpcPoseKey("dean_cain", deanRetryPool[pick], state, "WELCOME_NAME_CHECK")
@@ -2058,7 +2102,7 @@ export function useGameController(): {
               const [challengeSpeakerRaw, ...challengeBodyParts] = challengeLine.split(":");
               const challengeSpeaker = challengeBodyParts.length > 0 ? challengeSpeakerRaw.trim() : "Diesel";
               const challengeBody = challengeBodyParts.length > 0 ? challengeBodyParts.join(":").trim() : challengeLine;
-              state.dialogue.turns.push(createDialogueTurn("frat_boys", challengeBody, state, {
+              pushDialogueTurn(state, createDialogueTurn("frat_boys", challengeBody, state, {
                 npcId: "frat_boys",
                 displaySpeaker: challengeSpeaker,
                 poseKey: inferNpcPoseKey("frat_boys", challengeBody, state, "THREAT_ESCALATION")
@@ -2089,7 +2133,7 @@ export function useGameController(): {
                   "Nah, this pitch is dead. I'm ghosting this room before my reputation catches feelings.",
                   "You're forcing it. I'm gone - bring chaos or don't bring me anything."
                 ], `${state.meta.seed}:${state.timer.remainingSec}:sonic-exit`);
-                state.dialogue.turns.push(createDialogueTurn("sonic", sonicExitLine, state, {
+                pushDialogueTurn(state, createDialogueTurn("sonic", sonicExitLine, state, {
                   npcId: "sonic",
                   displaySpeaker: "Sonic",
                   poseKey: inferNpcPoseKey("sonic", sonicExitLine, state, "DISMISSAL")
@@ -2108,7 +2152,7 @@ export function useGameController(): {
                 "Tone check. You want movement, bring leverage not whining.",
                 "One more lame push and I'm gone."
               ], `${state.meta.seed}:${state.timer.remainingSec}:sonic-warn:${state.sonic.patience}`);
-              state.dialogue.turns.push(createDialogueTurn("sonic", sonicWarnLine, state, {
+              pushDialogueTurn(state, createDialogueTurn("sonic", sonicWarnLine, state, {
                 npcId: "sonic",
                 displaySpeaker: "Sonic",
                 poseKey: inferNpcPoseKey("sonic", sonicWarnLine, state, "THREAT_ESCALATION")
@@ -2126,6 +2170,9 @@ export function useGameController(): {
           }
           result = { ok: true, message: "..." };
         }
+        }
+      } finally {
+        enforceRuntimeCaps(state);
       }
     });
     store.patch((state) => {
@@ -2134,6 +2181,7 @@ export function useGameController(): {
       state.world.intents = world.intents;
       state.world.presentNpcs = world.presentNpcs;
       syncSonicLocation(state);
+      enforceRuntimeCaps(state);
     });
 
     if (pendingSystemReactions.length > 0) {
@@ -2148,7 +2196,7 @@ export function useGameController(): {
             state.world.events.push("telemetry:sorority-trimmed");
           }
           const parsedTurns = parseDisplayTurns(reaction.npcId, clampedText, reply.displaySpeaker ?? defaultDialogueSpeaker(reaction.npcId));
-          parsedTurns.forEach((turn) => state.dialogue.turns.push(createDialogueTurn(turn.speaker, turn.text, state, {
+          parsedTurns.forEach((turn) => pushDialogueTurn(state, createDialogueTurn(turn.speaker, turn.text, state, {
             npcId: reaction.npcId,
             displaySpeaker: turn.displaySpeaker ?? defaultDialogueSpeaker(reaction.npcId),
             poseKey: inferNpcPoseKey(reaction.npcId, turn.text, state, reply.intent)
@@ -2161,6 +2209,7 @@ export function useGameController(): {
           state.world.intents = world.intents;
           state.world.presentNpcs = world.presentNpcs;
           syncSonicLocation(state);
+          enforceRuntimeCaps(state);
         });
       }
     }
@@ -2184,7 +2233,8 @@ export function useGameController(): {
             poseKey: "neutral"
           });
           provisionalCreatedAt = provisional.createdAt;
-          state.dialogue.turns.push(provisional);
+          pushDialogueTurn(state, provisional);
+          enforceRuntimeCaps(state);
         });
       }
       const toneForReply = isSystemDialogue ? undefined : (dialogueAction.tone ?? "neutral");
@@ -2199,7 +2249,7 @@ export function useGameController(): {
           state.world.events.push("telemetry:sorority-trimmed");
         }
         const parsedTurns = parseDisplayTurns(dialogueAction.npcId, clampedText, routed.displaySpeaker ?? defaultDialogueSpeaker(dialogueAction.npcId));
-        parsedTurns.forEach((turn) => state.dialogue.turns.push(createDialogueTurn(turn.speaker, turn.text, state, {
+        parsedTurns.forEach((turn) => pushDialogueTurn(state, createDialogueTurn(turn.speaker, turn.text, state, {
           npcId: dialogueAction.npcId,
           displaySpeaker: turn.displaySpeaker ?? defaultDialogueSpeaker(dialogueAction.npcId),
           poseKey: inferNpcPoseKey(dialogueAction.npcId, turn.text, state, routed.intent)
@@ -2211,6 +2261,7 @@ export function useGameController(): {
         state.world.intents = world.intents;
         state.world.presentNpcs = world.presentNpcs;
         syncSonicLocation(state);
+        enforceRuntimeCaps(state);
         if (routed.safetyAbort) {
           state.safety.status = "abort";
           state.fail.hardFailed = true;
