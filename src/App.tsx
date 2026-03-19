@@ -392,6 +392,7 @@ const EGGMAN_HEATS: EggmanHeat[] = ["low", "mid", "high"];
 const EGGMAN_STIRS: EggmanStir[] = ["pulse", "steady", "whip"];
 const PLAYTEST_LOG_KEY = "sonic_rpg_playtest_runs_v1";
 const MAX_PLAYTEST_LOGS = 40;
+const LOCATION_SPLASH_ENABLED = false;
 
 function inferRouteMode(state: GameStateData): string {
   const events = state.world.events ?? [];
@@ -807,60 +808,30 @@ function App() {
     for (const nextLocation of locationRecord?.exits ?? []) {
       add(resolveBackgroundImage(content.assetManifest, nextLocation));
     }
+    const addNpcPortraits = (npcId: NpcId) => {
+      add(resolveCharacterImage(content.assetManifest, npcId, "neutral"));
+      add(resolveCharacterImage(content.assetManifest, npcId, "default"));
+      add(resolveCharacterImage(content.assetManifest, npcId, "neutral", defaultDialogueSpeaker(npcId)));
+      const speakerOverrides = content.assetManifest.characters[npcId]?.speakerOverrides;
+      if (!speakerOverrides) return;
+      Object.values(speakerOverrides).forEach(add);
+    };
     const nearbyNpcIds = nearbyNpcPreloadKey ? nearbyNpcPreloadKey.split("|") : [];
     for (const npc of nearbyNpcIds) {
-      add(resolveCharacterImage(content.assetManifest, npc, "neutral"));
+      addNpcPortraits(npc as NpcId);
     }
     if (activeNpc) {
-      add(resolveCharacterImage(content.assetManifest, activeNpc, "neutral"));
+      addNpcPortraits(activeNpc);
     }
 
     queue.forEach((url) => {
       const img = new Image();
       img.decoding = "async";
+      img.fetchPriority = "low";
       img.src = url;
       preloadedAssetUrlsRef.current.add(url);
     });
   }, [activeNpc, content, currentLocation, locationRecord?.exits, nearbyNpcPreloadKey, sceneBackgroundImage]);
-
-  useEffect(() => {
-    if (!content) return;
-    const scheduleWindow = window as Window & {
-      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
-      cancelIdleCallback?: (id: number) => void;
-    };
-    let cancelled = false;
-    let idleId: number | null = null;
-    let timeoutId: number | null = null;
-
-    const warmAllSceneBackgrounds = () => {
-      if (cancelled) return;
-      for (const location of content.locations) {
-        const url = resolveBackgroundImage(content.assetManifest, location.id);
-        if (!url || preloadedAssetUrlsRef.current.has(url)) continue;
-        const img = new Image();
-        img.decoding = "async";
-        img.src = url;
-        preloadedAssetUrlsRef.current.add(url);
-      }
-    };
-
-    if (scheduleWindow.requestIdleCallback) {
-      idleId = scheduleWindow.requestIdleCallback(warmAllSceneBackgrounds, { timeout: 1400 });
-    } else {
-      timeoutId = window.setTimeout(warmAllSceneBackgrounds, 500);
-    }
-
-    return () => {
-      cancelled = true;
-      if (idleId !== null && scheduleWindow.cancelIdleCallback) {
-        scheduleWindow.cancelIdleCallback(idleId);
-      }
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
-    };
-  }, [content]);
 
   const runAction = useCallback(async (action: UiAction, silent = false) => {
     if (action.type !== "TAKE_FOUND_ITEM") {
@@ -1266,6 +1237,10 @@ function App() {
         prevLocationRef.current = current;
         return;
       }
+      if (!LOCATION_SPLASH_ENABLED) {
+        prevLocationRef.current = current;
+        return;
+      }
       const locationTitle = content.locations.find((l) => l.id === current)?.name ?? titleCase(current);
       const occupants = state.world.presentNpcs[current];
       setLocationSplash({
@@ -1289,7 +1264,7 @@ function App() {
   }, [activeNpc, state]);
 
   useEffect(() => {
-    if (!locationSplash) return;
+    if (!LOCATION_SPLASH_ENABLED || !locationSplash) return;
     const id = window.setTimeout(() => setLocationSplash(null), 900);
     return () => window.clearTimeout(id);
   }, [locationSplash]);
@@ -4296,7 +4271,7 @@ function App() {
         </section>
       )}
 
-      {locationSplash && !notice && !orientationIntroOpen && !starterRoutePanelOpen && (
+      {LOCATION_SPLASH_ENABLED && locationSplash && !notice && !orientationIntroOpen && !starterRoutePanelOpen && (
         <section className="location-splash-overlay" onClick={() => setLocationSplash(null)}>
           <article className="location-splash-card">
             <p className="location-splash-kicker">{locationSplash.subtitle}</p>

@@ -51,6 +51,8 @@ export function ScenePanel(props: Props) {
     if (!sceneBackgroundImage) return;
     if (sceneBackgroundImage === activeBackground) return;
     const img = new Image();
+    img.decoding = "async";
+    img.fetchPriority = "high";
     img.onload = () => {
       setPreviousBackground(activeBackground);
       setActiveBackground(sceneBackgroundImage);
@@ -90,6 +92,9 @@ export function ScenePanel(props: Props) {
                   src={popupCharacterImage}
                   alt={`${popupDisplaySpeaker} portrait`}
                   className={`scene-character-stage-portrait ${engagedNpc === "thunderhead" ? "scene-character-stage-portrait-thunderhead" : ""}`}
+                  decoding="async"
+                  loading="eager"
+                  fetchPriority="high"
                 />
               ) : (
                 <div className="scene-character-stage-portrait scene-character-stage-portrait-fallback" aria-hidden="true">
