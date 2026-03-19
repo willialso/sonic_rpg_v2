@@ -795,7 +795,7 @@ function App() {
   const isSoggySequenceActive = soggySequenceStage !== null;
 
   useEffect(() => {
-    if (!content || !currentLocation) return;
+    if (!content || !currentLocation || showLandingPage || landingClosing) return;
     const queue = new Set<string>();
     const add = (url: string) => {
       const value = String(url || "").trim();
@@ -804,33 +804,52 @@ function App() {
       queue.add(value);
     };
 
-    for (const nextLocation of locationRecord?.exits ?? []) {
+    for (const nextLocation of (locationRecord?.exits ?? []).slice(0, 2)) {
       add(resolveBackgroundImage(content.assetManifest, nextLocation));
     }
-    const addNpcPortraits = (npcId: NpcId) => {
+    const addNpcPortrait = (npcId: NpcId) => {
       add(resolveCharacterImage(content.assetManifest, npcId, "neutral"));
-      add(resolveCharacterImage(content.assetManifest, npcId, "default"));
-      add(resolveCharacterImage(content.assetManifest, npcId, "neutral", defaultDialogueSpeaker(npcId)));
-      const speakerOverrides = content.assetManifest.characters[npcId]?.speakerOverrides;
-      if (!speakerOverrides) return;
-      Object.values(speakerOverrides).forEach(add);
     };
-    const nearbyNpcIds = nearbyNpcPreloadKey ? nearbyNpcPreloadKey.split("|") : [];
+    const nearbyNpcIds = nearbyNpcPreloadKey ? nearbyNpcPreloadKey.split("|").slice(0, 3) : [];
     for (const npc of nearbyNpcIds) {
-      addNpcPortraits(npc as NpcId);
+      addNpcPortrait(npc as NpcId);
     }
     if (activeNpc) {
-      addNpcPortraits(activeNpc);
+      addNpcPortrait(activeNpc);
     }
 
-    queue.forEach((url) => {
-      const img = new Image();
-      img.decoding = "async";
-      img.fetchPriority = "low";
-      img.src = url;
-      preloadedAssetUrlsRef.current.add(url);
-    });
-  }, [activeNpc, content, currentLocation, locationRecord?.exits, nearbyNpcPreloadKey]);
+    const scheduleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    let idleId: number | null = null;
+    let timeoutId: number | null = null;
+
+    const flushQueue = () => {
+      queue.forEach((url) => {
+        const img = new Image();
+        img.decoding = "async";
+        img.fetchPriority = "low";
+        img.src = url;
+        preloadedAssetUrlsRef.current.add(url);
+      });
+    };
+
+    if (scheduleWindow.requestIdleCallback) {
+      idleId = scheduleWindow.requestIdleCallback(flushQueue, { timeout: 1200 });
+    } else {
+      timeoutId = window.setTimeout(flushQueue, 250);
+    }
+
+    return () => {
+      if (idleId !== null && scheduleWindow.cancelIdleCallback) {
+        scheduleWindow.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [activeNpc, content, currentLocation, landingClosing, locationRecord?.exits, nearbyNpcPreloadKey, showLandingPage]);
 
   const runAction = useCallback(async (action: UiAction, silent = false) => {
     if (action.type !== "TAKE_FOUND_ITEM") {
