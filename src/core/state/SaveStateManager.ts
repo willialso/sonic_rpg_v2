@@ -4,6 +4,9 @@ import { normalizeGameState } from "../validation/gameStateValidation";
 const SAVE_KEY = "sonic_rpg_v2_autosave";
 
 export class SaveStateManager {
+  private deferredTimerId: number | null = null;
+  private deferredState: GameStateData | null = null;
+
   save(state: GameStateData): void {
     const payload = {
       ...state,
@@ -13,6 +16,31 @@ export class SaveStateManager {
       }
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+  }
+
+  saveDeferred(state: GameStateData, delayMs = 120): void {
+    this.deferredState = state;
+    if (this.deferredTimerId !== null) return;
+    this.deferredTimerId = window.setTimeout(() => {
+      this.deferredTimerId = null;
+      const latest = this.deferredState;
+      this.deferredState = null;
+      if (latest) {
+        this.save(latest);
+      }
+    }, Math.max(0, delayMs));
+  }
+
+  flushDeferred(): void {
+    if (this.deferredTimerId !== null) {
+      window.clearTimeout(this.deferredTimerId);
+      this.deferredTimerId = null;
+    }
+    const latest = this.deferredState;
+    this.deferredState = null;
+    if (latest) {
+      this.save(latest);
+    }
   }
 
   load(): GameStateData | null {
@@ -26,6 +54,11 @@ export class SaveStateManager {
   }
 
   clear(): void {
+    if (this.deferredTimerId !== null) {
+      window.clearTimeout(this.deferredTimerId);
+      this.deferredTimerId = null;
+    }
+    this.deferredState = null;
     localStorage.removeItem(SAVE_KEY);
   }
 }

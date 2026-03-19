@@ -268,21 +268,6 @@ function defaultDialogueSpeaker(npcId: NpcId): string {
   return formatNpcName(npcId);
 }
 
-function inferDialogueProgressBand(state: GameStateData): "intake" | "hunt_early" | "route_committed" | "endgame" {
-  if (!state.player.inventory.includes("Student ID")) return "intake";
-  if (state.timer.remainingSec < 180 || (state.sonic.following && isEscortReady(state.sonic.drunkLevel))) return "endgame";
-  if (state.routes.routeA.progress > 0 || state.routes.routeB.complete || state.routes.routeC.complete || state.sonic.drunkLevel >= 2) {
-    return "route_committed";
-  }
-  return "hunt_early";
-}
-
-function buildOpeningSystemPrompt(npcId: NpcId, state: GameStateData): string {
-  const band = inferDialogueProgressBand(state);
-  const sonicVisible = (state.world.presentNpcs[state.player.location] ?? []).includes("sonic");
-  return `OPENING_BEAT npc=${npcId} progress=${band} sonic_visible=${sonicVisible} time=${state.timer.remainingSec}. In character, speak first in 1-2 short sentences and include one concrete next move.`;
-}
-
 function clampDialogueForDisplay(npcId: NpcId, rawText: string): string {
   const normalized = String(rawText || "").replace(/\s+/g, " ").trim();
   if (!normalized) return "";
@@ -515,6 +500,23 @@ export function useGameController(): {
       window.clearInterval(interval);
     };
   }, [director, ready, saveManager]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    const flush = () => saveManager.flushDeferred();
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        flush();
+      }
+    };
+    window.addEventListener("beforeunload", flush);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("beforeunload", flush);
+      document.removeEventListener("visibilitychange", onVisibility);
+      flush();
+    };
+  }, [saveManager]);
 
   const performAction = async (action: GameAction): Promise<ActionResult> => {
     const store = stateRef.current;
@@ -1892,25 +1894,16 @@ export function useGameController(): {
             .slice(-2)
             .some((turn) => String(turn.npcId || "") === action.npcId);
           if (!hasRecentNpcLine) {
-            const shouldUseScriptedGreeting = encounterCount === 0
-              || (action.npcId === "dean_cain" && (state.dialogue.deanStage === "intro_pending" || state.dialogue.deanStage === "name_pending"));
-            if (shouldUseScriptedGreeting) {
-              const greet = dialogue.greeting(action.npcId, encounterCount, `${state.meta.seed}:${state.timer.remainingSec}:tap-open`);
-              const openingTurns = parseDisplayTurns(action.npcId, greet.text, defaultDialogueSpeaker(action.npcId));
-              openingTurns.forEach((turn) => pushDialogueTurn(state, createDialogueTurn(action.npcId, turn.text, state, {
-                npcId: action.npcId,
-                displaySpeaker: turn.displaySpeaker ?? defaultDialogueSpeaker(action.npcId),
-                poseKey: inferNpcPoseKey(action.npcId, turn.text, state, "OPENING_LINE")
-              })));
-              updateNpcMemory(state, action.npcId, greet.text);
-              state.dialogue.source = greet.source;
-              state.quality.sourceCounts[greet.source] = (state.quality.sourceCounts[greet.source] ?? 0) + 1;
-            } else {
-              pendingSystemReactions.push({
-                npcId: action.npcId,
-                input: `__SYSTEM__:${buildOpeningSystemPrompt(action.npcId, state)}`
-              });
-            }
+            const greet = dialogue.greeting(action.npcId, encounterCount, `${state.meta.seed}:${state.timer.remainingSec}:tap-open`);
+            const openingTurns = parseDisplayTurns(action.npcId, greet.text, defaultDialogueSpeaker(action.npcId));
+            openingTurns.forEach((turn) => pushDialogueTurn(state, createDialogueTurn(action.npcId, turn.text, state, {
+              npcId: action.npcId,
+              displaySpeaker: turn.displaySpeaker ?? defaultDialogueSpeaker(action.npcId),
+              poseKey: inferNpcPoseKey(action.npcId, turn.text, state, "OPENING_LINE")
+            })));
+            updateNpcMemory(state, action.npcId, greet.text);
+            state.dialogue.source = greet.source;
+            state.quality.sourceCounts[greet.source] = (state.quality.sourceCounts[greet.source] ?? 0) + 1;
           }
           if (!state.dialogue.greetedNpcIds.includes(action.npcId)) {
             state.dialogue.greetedNpcIds.push(action.npcId);
@@ -2274,7 +2267,7 @@ export function useGameController(): {
       });
     }
 
-    saveManager.save(store.get());
+    saveManager.saveDeferred(store.get());
     autosaveDirtyRef.current = false;
     lastAutosaveAtRef.current = Date.now();
     return result;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { LocationId, NpcId } from "../../types/game";
 import type { DialogueTone } from "../../dialogue/types";
 
@@ -36,9 +36,6 @@ export function ScenePanel(props: Props) {
     dialogueQuickReplies,
     onSubmitQuickReply
   } = props;
-  const [activeBackground, setActiveBackground] = useState(sceneBackgroundImage);
-  const [previousBackground, setPreviousBackground] = useState("");
-  const [isBackgroundTransitioning, setIsBackgroundTransitioning] = useState(false);
   const [toneSelection, setToneSelection] = useState<{ npcId: NpcId | null; tone: DialogueTone | null }>({
     npcId: null,
     tone: null
@@ -47,40 +44,11 @@ export function ScenePanel(props: Props) {
     ? toneSelection.tone
     : null;
 
-  useEffect(() => {
-    if (!sceneBackgroundImage) return;
-    if (sceneBackgroundImage === activeBackground) return;
-    const img = new Image();
-    img.decoding = "async";
-    img.fetchPriority = "high";
-    img.onload = () => {
-      setPreviousBackground(activeBackground);
-      setActiveBackground(sceneBackgroundImage);
-      setIsBackgroundTransitioning(true);
-    };
-    img.src = sceneBackgroundImage;
-  }, [activeBackground, sceneBackgroundImage]);
-
-  useEffect(() => {
-    if (!isBackgroundTransitioning) return;
-    const id = window.setTimeout(() => {
-      setIsBackgroundTransitioning(false);
-      setPreviousBackground("");
-    }, 220);
-    return () => window.clearTimeout(id);
-  }, [isBackgroundTransitioning]);
-
   return (
     <section className={`scene scene-${locationId}`}>
-      {previousBackground && (
-        <div
-          className={`scene-bg-image-layer scene-bg-image-prev ${isBackgroundTransitioning ? "is-transitioning" : ""}`}
-          style={{ backgroundImage: `url("${previousBackground}")` }}
-        />
-      )}
       <div
-        className={`scene-bg-image-layer scene-bg-image-active ${isBackgroundTransitioning ? "is-transitioning" : ""}`}
-        style={{ backgroundImage: `url("${activeBackground || sceneBackgroundImage}")` }}
+        className="scene-bg-image-layer scene-bg-image-active"
+        style={{ backgroundImage: `url("${sceneBackgroundImage}")` }}
       />
       {shouldShowDialoguePopup && (
         <div className={`scene-character-stage scene-character-stage-${scenePopupPlacement}`} aria-live="polite">

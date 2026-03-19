@@ -977,7 +977,8 @@ export class DialogueOrchestrator {
         || clicheCheck.blocked
         || thunderheadBland.bland
         || !voiceSeparation.separated;
-      if (!outputSafety.ok || severeStyleMiss || shouldForceRewrite) {
+      const allowRewrite = config.enableRewrite && isCriticalIntent(context.intent);
+      if (allowRewrite && (!outputSafety.ok || severeStyleMiss || shouldForceRewrite)) {
         try {
           const guardReasons = [];
           if (repetitionCheck.repetitive) guardReasons.push(`repetition_score=${repetitionCheck.score}`);

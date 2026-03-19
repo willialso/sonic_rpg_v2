@@ -804,7 +804,6 @@ function App() {
       queue.add(value);
     };
 
-    add(sceneBackgroundImage);
     for (const nextLocation of locationRecord?.exits ?? []) {
       add(resolveBackgroundImage(content.assetManifest, nextLocation));
     }
@@ -831,7 +830,7 @@ function App() {
       img.src = url;
       preloadedAssetUrlsRef.current.add(url);
     });
-  }, [activeNpc, content, currentLocation, locationRecord?.exits, nearbyNpcPreloadKey, sceneBackgroundImage]);
+  }, [activeNpc, content, currentLocation, locationRecord?.exits, nearbyNpcPreloadKey]);
 
   const runAction = useCallback(async (action: UiAction, silent = false) => {
     if (action.type !== "TAKE_FOUND_ITEM") {
